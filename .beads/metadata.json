@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "Hopfion",
+  "project_id": "3fcdec41-6036-41de-bb76-abe2b3ec0577"
+}

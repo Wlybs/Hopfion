@@ -1,0 +1,24 @@
+// FeGe Bulk Hopfion Stability Test
+// Case 4: B_ext=0.5T(z), PBC=OFF, EnableDemag=OFF
+// 对照组：之前 Sutcliffe 类似条件但无几何约束（无冻结边界）
+// Grid: 128x128x128 @ 2nm = 256nm box
+
+SetGridSize(128, 128, 128)
+SetCellSize(2e-9, 2e-9, 2e-9)
+
+Msat   = 860e3
+Aex    = 13e-12
+Dbulk  = 1.58e-3
+Ku1    = 0
+alpha  = 0.5
+EnableDemag = false
+
+B_ext = vector(0, 0, 0.5)  // 0.5T 沿 z 轴
+
+m.LoadFile("bulk_hopfion_init.ovf")
+
+autosave(m, 2e-10)
+tableautosave(1e-11)
+TableAdd(E_Total)
+
+run(2e-9)

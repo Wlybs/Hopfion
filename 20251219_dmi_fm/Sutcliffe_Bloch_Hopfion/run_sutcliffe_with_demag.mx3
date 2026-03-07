@@ -1,0 +1,52 @@
+// FeGe Bloch Hopfion - Sutcliffe 几何 + 正确边界条件 + 退磁场
+// 参考:
+//   [1] Sutcliffe 2018, J. Phys. A 51, 375401
+//   [2] Khodzhaev & Turgut 2022, J. Phys.: Condens. Matter 34, 225805
+//
+// 与原 Sutcliffe_Bloch_Hopfion.mx3 的唯一区别:
+//   去掉了 EnableDemag = false (开启退磁场)
+//
+// 关键边界条件: frozenspins 强制顶底层 m=e3 (沿z轴)
+// 这是 Hopfion 稳定存在的必要条件 (Sutcliffe 2018, 公式 2.3)
+//
+// FeGe @ 276K: Msat=384kA/m, Aex=8.78pJ/m, Dbulk=1.58mJ/m2, L=70nm
+// 圆柱盘: d=3L=210nm, h=L=70nm
+
+Nx := 105
+Ny := 105
+Nz := 35
+SetGridSize(Nx, Ny, Nz)
+SetCellSize(2e-09, 2e-09, 2e-09)
+
+Diameter := 2.1e-07   // 210nm = 3L
+Height   := 7e-08     // 70nm  = L
+Cyl      := Cylinder(Diameter, Height)
+SetGeom(Cyl)
+
+Msat  = 384e3
+Aex   = 8.78e-12
+Dbulk = 1.58e-3
+Ku1   = 0
+// EnableDemag = true (默认，不设置)
+
+// 顶底层冻结 (m = e3 边界条件, Sutcliffe 2018 公式 2.3)
+LayerThick := 2e-09
+TopLayer    := Layer(Nz - 1)
+BottomLayer := Layer(0)
+Caps        := TopLayer.add(BottomLayer)
+defRegion(1, Caps)
+frozenspins.setRegion(1, 1)
+
+// 初始态: Sutcliffe z-独立初始条件 (论文公式 3.1)
+// init_hopfion.ovf 是用该公式生成的
+LoadFile("init_hopfion.ovf")
+
+alpha = 0.5
+TableAdd(E_Total)
+TableAdd(E_demag)
+TableAutoSave(1e-11)
+
+autosave(m, 1e-10)   // 每 100ps 保存一帧，5ns 共 50 帧
+Run(5e-9)
+
+saveas(m, "hopfion_sutcliffe_demag_final")
