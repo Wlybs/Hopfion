@@ -24,6 +24,10 @@ spin_wave_dynamics/
 │   ├── gen_02ns.py / gen_05ns.py   #   mx3 生成脚本
 │   └── results/                    #   输出图表（8个文件，见实验2详述）
 ├── amplitude_sweep/                # 实验3：幅度扫描
+├── multisource_baseline/           # 实验5：多源自旋波方向控制
+│   ├── sw_srcZ_neg_f200GHz.mx3    #   srcZ(-z) 基线仿真脚本（待运行）
+│   └── analyze_baselines.py       #   三源基线对比分析
+├── srcZ_freq_sweep/               # srcZ(+z) 频率扫描数据（实验5 复用）
 └── README.md
 ```
 
@@ -155,6 +159,50 @@ spin_wave_dynamics/
 
 ---
 
+## 实验4：拓扑 Hall 角定量表征 (`freq_sweep/` + `amplitude_sweep/`)
+
+**目的**：定量测量 Q_H=1 FM Hopfion 在自旋波驱动下的拓扑 Hall 偏转角 θ_H。
+
+**分析脚本**：
+- `freq_sweep/analyze_hall_angle.py`：θ_H(f) 频率依赖
+- `amplitude_sweep/analyze_hall_angle_amplitude.py`：θ_H(B) 幅度依赖
+
+**核心结果**（2026-03-27）：
+
+| 维度 | 结果 | 有效范围 |
+|---|---|---|
+| θ_H vs f | 强响应频率 θ_H ≈ 85-90°，1000GHz 最大位移（14.3nm@0.5ns） | 100-300, 700-1000 GHz |
+| θ_H vs B | 有效幅度下 θ_H ≈ 85-89°，不随幅度显著变化 | B ≥ 0.5T @440GHz |
+| 死区 | 400-600 GHz 位移 < 0.1nm，θ_H 无意义 | — |
+
+**物理结论**：FM Hopfion 的拓扑 Hall 角在有效驱动范围内稳定接近 90°，表明 Magnus 力主导运动方向，具有拓扑保护特征。速度标度 v_perp ∝ B^n（n > 1，非线性）。
+
+**bd 任务**：Hopfion-rt4.1
+
+---
+
+## 实验5：多源自旋波方向控制 (`multisource_baseline/`)
+
+**目的**：建立源面位置→Hopfion 运动方向的完整映射，验证不同传播方向的 Hall 角差异。
+
+**分析脚本**：`multisource_baseline/analyze_baselines.py`
+
+**Phase 1 基线结果**（2026-03-27，srcZ(-z) 待补充）：
+
+| 配置 | θ_H (deg) | 位移 (nm) | 物理含义 |
+|---|---|---|---|
+| srcX (+x) @ 200GHz | 87.4 | 2.51 | 面内 SW → 近 90° Hall 偏转 |
+| srcZ(+z) @ 200GHz | 1.2 | 7.39 | 轴向 SW → 几乎纯平行运动 |
+| srcZ(-z) @ 200GHz | 待运行 | — | 反向轴向 SW |
+
+**物理结论**：面内自旋波（srcX）产生 ~90° Hall 偏转，轴向自旋波（srcZ）几乎无 Hall 偏转（1.2°）。这揭示了 Hopfion 拓扑 Hall 效应的强方向选择性。
+
+**后续阶段**：Phase 2 双源组合、Phase 3 慢相位调制圆形轨迹。
+
+**bd 任务**：Hopfion-rt4.2
+
+---
+
 ## 对称性分析：独立激励配置
 
 Hopfion 环面位于 xOy 平面，具有绕 z 轴的旋转对称性（C₄ᵥ）：
@@ -240,3 +288,5 @@ Hopfion 环面位于 xOy 平面，具有绕 z 轴的旋转对称性（C₄ᵥ）
 | 2026-03-25 | **修正**：撤销"440GHz死区"结论；废弃单点位移benchmark；确立运动模式分类分析框架 |
 | 2026-03-26 | 合并三个 freq_sweep 目录为 freq_sweep/（02ns + 05ns）；补充对称性分析和共振判据 |
 | 2026-03-26 | **完成 P0**：02ns（10频率）+ 05ns（4频率）运动模式分析。修正速度计算为向量微分 v=dr/dt。核心发现：Magnus 力导致 dz>>dx；强响应窗口 100-200GHz 和 1000GHz；400-600GHz 为死区；1000GHz 出现边界反弹 |
+| 2026-03-27 | **实验4：拓扑 Hall 角定量表征** — θ_H(f) 和 θ_H(B) 分析完成。核心结论：有效范围内 θ_H ≈ 85-90°，拓扑保护。bd: Hopfion-rt4.1 |
+| 2026-03-27 | **实验5 Phase 1：多源基线** — srcX 和 srcZ(+z) 分析完成，srcZ(-z) 仿真待运行。面内vs轴向 Hall 角差异显著（87° vs 1°）。bd: Hopfion-rt4.2 |
