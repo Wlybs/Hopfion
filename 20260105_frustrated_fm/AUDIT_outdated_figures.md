@@ -168,9 +168,77 @@
 
 ---
 
-## E 类：与论文图基本对应、形式相近的源图（保留即可） ✓ 无需处理 2026-05-14
+## E 类：与论文图基本对应、形式相近的源图 — 重画为论文风格 (进行中)
 
-**结果**：9 张全部保留原状，与论文 figures/ 基本一致。
+> **2026-05-15 校正**：之前 E 类标"保留即可"是判断失误——"形式相近"≠"风格统一"。
+> 源目录这些 E 类图实际是旧 analyzer 跑的英文风格，需要按 paper_style 重画。
+> D 类同步处理（user 决定全部 results/ 走论文风格）。
+
+### 进度跟踪 (E + D 类批量重画)
+
+✓ **1/9 已完成**: `spin_wave_dynamics/amplitude_sweep/plane_wave/` (4 张 E)
+   - trajectory_vs_B.png / velocity_vs_B.png / scaling_440GHz.png / hall_angle_vs_amplitude.png
+   - 改 analyze_amplitude_sweep.py / analyze_amplitude_scaling.py / analyze_hall_angle_amplitude.py
+   - commit 5f718a0
+
+### 剩余 (next session 接手)
+
+⏳ **8/9 待做** (约 23 张):
+
+1. `spin_wave_dynamics/amplitude_sweep/point_source/` (7 D)
+   - analyzer: analyze_full_B_sweep.py / analyze_ps_baseline.py
+   - 图: B_sweep_8pts_final, dr_vs_B_curve, energy_comparison, perturbation_comparison, perturbation_profiles, position_comparison, ps_B_sweep_full
+
+2. `spin_wave_dynamics/drive_selection/plane_wave/` (6 D)
+   - analyzer: analyze_sw_4combos.py
+   - 图: energy_4combos, energy_5combos, hopfion_position_4combos, hopfion_position_5combos, sw_perturbation_growth, sw_perturbation_profiles
+
+3. `spin_wave_dynamics/freq_sweep/plane_wave/srcX/` 余下 (1 E + 3 D ≈ 4)
+   - 图: hall_angle_vs_freq (E5, fig4-freq-3 论文用), motion_mode_map (E6, fig4-freq-4 论文用) — 这俩可能已论文风格需 verify
+   - 图: hall_angle_time_resolved (D15) 等
+
+4. `spin_wave_dynamics/freq_sweep/plane_wave/srcZ/` (3 D)
+   - 图: direction_map / displacement_srcZ / freq_response_map
+
+5. `spin_wave_dynamics/freq_sweep/plane_wave/energy_absorption/` (1 E)
+   - 图: energy_absorption_spectrum
+
+6. `spin_wave_dynamics/freq_sweep/point_source/` (3 D)
+   - 图: point_source_comparison / point_source_freq_response / point_source_hall_angle
+
+7. `spin_wave_dynamics/multisource_control/baseline/` (2 E)
+   - analyzer: analyze_baselines.py
+   - 图: baseline_trajectories (E7, fig4-ms-1 论文用) / direction_rose_plot (E8, fig4-ms-2)
+
+8. `spin_wave_dynamics/multisource_control/bidirectional_z/` (1 D)
+   - 图: z_control_demo
+
+### 已知 paper_style 边界 case
+
+🐛 `panel_label` 默认 `top_center_outside` 与单 axes 上的 `legend_above` (位置 (0.5, 1.02)) 重叠
+   - 表现: hall_angle_vs_amplitude.png 的 (b) 标号被 legend 压住
+   - 修复方案: 当 axes 使用 legend_above 时, panel_label 自动 fallback 到 `top_left_outside`，或加 `top_right_outside`
+   - 位置: `/mnt/d/Research/Hopfion/scripts/paper_style.py`
+
+### 复用模板 (来自 amp_sweep/plane_wave/)
+
+每个 analyzer 改造步骤一致:
+```python
+# 1. 顶部 imports 增加
+sys.path.insert(0, "/mnt/d/Research/Hopfion/scripts")
+from paper_style import (setup_paper_style, COLORS, save_paper_fig,
+                          panel_label, shared_legend_above, legend_above,
+                          sweep_colors)
+setup_paper_style()
+
+# 2. plot 部分关键替换
+# 英文 label → 中文斜体: r"时间 $t$ (ns)" / r"$|\Delta r|$ (nm)"
+# colors = plt.cm.<cmap>(np.linspace(...)) → sweep_colors(N, cmap=)
+# ax.set_title / plt.suptitle → 删除 (留 caption)
+# ax.legend(fontsize=...) → legend_above(ax, ncol=) 或 shared_legend_above(fig, axes[0], ncol=)
+# panel 标号 → panel_label(fig, ax, "(a)")
+# plt.savefig + plt.tight_layout → save_paper_fig(fig, out_png)
+```
 
 
 
