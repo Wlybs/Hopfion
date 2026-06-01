@@ -1,0 +1,49 @@
+CellSize	:= 0.5e-9
+SetGridSize(100, 100, 100)
+SetCellSize(CellSize, CellSize, CellSize)
+DefRegion(1, XRange(24.5e-9, 25e-9))
+DefRegion(2, XRange(-25e-9, -24.5e-9))
+OpenBC		= true
+EnableDemag	= false
+
+// MnSi parameters
+Ms		:= 1.51e5
+Msat		= Ms
+A		:= 0.5e-12
+Aex		= A
+//Kc1		= 1e3
+//anisC1	= vector(1, 0, 0)
+//anisC2	= vector(0, 1, 0)
+Ku1		= 1e4
+anisU		= vector(0, 0, 1)
+alpha		= 0.005
+//Dbulk		= 0.115e-3
+
+// Extra Exchange Field (J4)
+mx2	:= Shifted(m,2,0,0)
+mx_2	:= Shifted(m,-2,0,0)
+my2	:= Shifted(m,0,2,0)
+my_2	:= Shifted(m,0,-2,0)
+mz2	:= Shifted(m,0,0,2)
+mz_2	:= Shifted(m,0,0,-2)
+laplacian2 := Add(Add(Add(Add(Add(mx2, mx_2), my2), my_2), mz2), mz_2)
+
+Bex	:= A*0.248
+BField	:= Mul( Const(-2.0/Ms * Bex/(CellSize*CellSize)), laplacian2)
+BEdens	:= Mul( Const(Bex/(CellSize*CellSize)), Dot(laplacian2, m))
+
+AddFieldTerm(BField)
+AddEdensTerm(BEdens)
+
+// Spin Configuration
+m.LoadFile("stable-state-h+1+2_trans11.ovf")
+
+tableAdd(E_total)
+
+// External magnetic field
+B_ext.setRegion(0, Vector(0, 0, 13e-3))  // 在整个模拟区域（区域 0）应用一个恒定外部磁场；磁场强度为 13mT，方向为 z轴。
+
+autosave(m, 10e-11)
+tableautosave(10e-11)
+
+run(25e-9)
