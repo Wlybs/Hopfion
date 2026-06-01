@@ -1,0 +1,56 @@
+// run.mx3  — bg=mx, axis=x, 10ns 稳定性验证（完整描述）
+// 实际执行分四段续跑：phase1(0~2ns) + phase2(2~4.75ns)
+//                   + phase3(4.75~9.45ns) + phase4(9.45~10ns)
+// 输出已合并至 run.out/（OVF 符号链接 + 合并 table.txt）
+//
+// 若从零完整重跑，可直接使用本脚本：
+//   mumax3 run.mx3
+
+cellsize := 0.5e-9
+Ms_val   := 1.5e5
+A_base   := 5e-12
+
+SetGridSize(100, 100, 100)
+SetCellSize(cellsize, cellsize, cellsize)
+SetPBC(1, 1, 1)
+
+Msat        = Ms_val
+Aex         = A_base
+Dbulk       = 0
+Dind        = 0
+EnableDemag = false
+alpha       = 0.2
+
+// J4: 第四近邻（距离 2a，6个方向）
+A_J4     := A_base * (-0.082)
+Coeff_J4 := A_J4 * 2.0 / (Ms_val * cellsize * cellsize)
+sum_J4   := Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0,  2, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0,  0,  2))
+sum_J4    = Add(sum_J4, Shifted(m, 0,  0, -2))
+AddFieldTerm(Mul(Const(Coeff_J4), sum_J4))
+
+// J2: 次近邻（距离 sqrt(2)a，12个方向）
+A_J2     := A_base * (-0.164)
+Coeff_J2 := A_J2 * 2.0 / (Ms_val * cellsize * cellsize)
+sum_J2   := Add(Shifted(m,  1,  1, 0), Shifted(m,  1, -1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, -1,  1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, -1, -1, 0))
+sum_J2    = Add(sum_J2, Shifted(m,  0,  1,  1))
+sum_J2    = Add(sum_J2, Shifted(m,  0,  1, -1))
+sum_J2    = Add(sum_J2, Shifted(m,  0, -1,  1))
+sum_J2    = Add(sum_J2, Shifted(m,  0, -1, -1))
+sum_J2    = Add(sum_J2, Shifted(m,  1,  0,  1))
+sum_J2    = Add(sum_J2, Shifted(m,  1,  0, -1))
+sum_J2    = Add(sum_J2, Shifted(m, -1,  0,  1))
+sum_J2    = Add(sum_J2, Shifted(m, -1,  0, -1))
+AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
+
+// 初始态: bg=mx=+1, Hopfion 轴=x, R=3nm, r=2nm
+m.LoadFile("../initial_states/hopfion_x_R3_r2.ovf")
+
+autosave(m, 5e-11)
+tableautosave(1e-11)
+TableAdd(E_Total)
+run(10e-9)
