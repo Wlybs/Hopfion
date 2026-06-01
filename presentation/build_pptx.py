@@ -28,15 +28,29 @@ def split_pages(md: str):
     return pages
 
 
+def clean_markdown(text: str) -> str:
+    """Strip --- separators and ** * markdown markers."""
+    lines = text.split("\n")
+    out = []
+    for line in lines:
+        s = line.rstrip()
+        if s.strip() in ("---", "___", "***"):
+            continue
+        s = re.sub(r"\*\*(.+?)\*\*", r"\1", s)
+        s = re.sub(r"(?<!\*)\*([^*\n]+?)\*(?!\*)", r"\1", s)
+        out.append(s)
+    return "\n".join(out).strip()
+
+
 def extract_image(body: str):
     """Return (image_path or None, body_without_image)."""
     m = re.search(r"!\[.*?\]\(([^)]+)\)", body)
     if not m:
-        return None, body
+        return None, clean_markdown(body)
     img_rel = m.group(1)
     img_path = HERE / img_rel if not img_rel.startswith("/") else Path(img_rel)
     body_clean = re.sub(r"!\[.*?\]\([^)]+\)\s*\n*", "", body).strip()
-    return img_path if img_path.exists() else None, body_clean
+    return img_path if img_path.exists() else None, clean_markdown(body_clean)
 
 
 def add_slide(prs, title, body):
@@ -48,8 +62,8 @@ def add_slide(prs, title, body):
     tf = tb_title.text_frame
     tf.word_wrap = True
     p = tf.paragraphs[0]
-    p.text = title
-    p.font.size = Pt(22)
+    p.text = re.sub(r"\*\*(.+?)\*\*", r"\1", title)
+    p.font.size = Pt(20)
     p.font.bold = True
     p.font.color.rgb = RGBColor(0x1F, 0x2D, 0x5A)
 
@@ -75,7 +89,7 @@ def add_slide(prs, title, body):
         else:
             p = tf.add_paragraph()
         p.text = line
-        p.font.size = Pt(13)
+        p.font.size = Pt(20)
         p.font.color.rgb = RGBColor(0x20, 0x20, 0x20)
 
 
