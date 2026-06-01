@@ -1,0 +1,40 @@
+// FeGe Bloch Hopfion - 从 Sutcliffe 解析近似出发 + Relax()
+// 初始态: Sutcliffe eq.3.3 的解析 Hopfion (已在 Hopfion 局部极小值附近)
+// 边界: frozenspins 顶底层 (m=e3)
+// 物理: EnableDemag=true
+//
+// 若 Relax() 收敛到 Hopfion，说明它是能量局部极小值
+
+Nx := 105; Ny := 105; Nz := 35
+SetGridSize(Nx, Ny, Nz)
+SetCellSize(2e-09, 2e-09, 2e-09)
+SetGeom(Cylinder(2.1e-07, 7e-08))
+
+Msat  = 384e3
+Aex   = 8.78e-12
+Dbulk = 1.58e-3
+Ku1   = 0
+// EnableDemag = true (默认)
+
+// 顶底层冻结 m=e3
+defRegion(1, Layer(Nz-1).add(Layer(0)))
+frozenspins.setRegion(1, 1)
+
+m.LoadFile("hopfion_sutcliffe_analytic.ovf")
+
+TableAdd(E_Total)
+TableAdd(E_demag)
+tableautosave(1e-11)
+
+// 从 Sutcliffe 解析解出发做能量最小化
+alpha = 0.5
+Relax()
+
+saveas(m, "hopfion_analytic_relax")
+
+// 低阻尼验证动力学稳定性
+alpha = 0.02
+autosave(m, 2e-10)
+Run(2e-9)
+
+saveas(m, "hopfion_analytic_final")

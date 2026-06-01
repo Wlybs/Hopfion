@@ -1,0 +1,28 @@
+// FeGe Bulk Hopfion Stability Test
+// Case 1: B_ext=0.5T(z), PBC=ON, EnableDemag=ON
+// 核心测试：saturated FM 背景 + 最物理的 bulk 条件
+// Grid: 128x128x128 @ 2nm = 256nm box
+// FeGe: Msat=860kA/m, Aex=13pJ/m, Dbulk=1.58mJ/m2
+// FeGe saturation field B_sat ~ 0.35T, use 0.5T to ensure FM background
+
+SetGridSize(128, 128, 128)
+SetCellSize(2e-9, 2e-9, 2e-9)
+SetPBC(1, 1, 1)       // 3D 周期性边界条件 (bulk)
+
+Msat   = 860e3
+Aex    = 13e-12
+Dbulk  = 1.58e-3
+Ku1    = 0
+alpha  = 0.5           // 高阻尼弛豫
+EnableDemag = true
+
+B_ext = vector(0, 0, 0.5)  // 0.5T 沿 z 轴，稳定 FM 背景
+
+m.LoadFile("bulk_hopfion_init.ovf")
+
+autosave(m, 2e-10)
+tableautosave(1e-11)
+TableAdd(E_Total)
+TableAdd(E_demag)
+
+run(2e-9)
