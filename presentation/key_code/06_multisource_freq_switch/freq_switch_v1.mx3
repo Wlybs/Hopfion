@@ -1,0 +1,94 @@
+// === Z-axis Bidirectional Control Demo (v3) ===
+// Phase 1 (0.00-0.10ns): srcX_vibX ON  → +z acceleration (short: limit inertia)
+// Phase 2 (0.10-0.40ns): srcZ_vibX ON  → brake + -z reversal (0.30ns)
+// Phase 3 (0.40-0.50ns): all OFF       → free drift, show final state
+// f = 200GHz, B = 1T
+//
+// Rationale: shorter Phase 1 keeps Hopfion close to srcZ source (~11nm),
+// so srcZ drive remains effective for reversal. Total 0.5ns → ~3h runtime.
+
+CellSize := 0.5e-9
+SetGridSize(100, 100, 100)
+SetCellSize(CellSize, CellSize, CellSize)
+
+// Absorbing boundary regions (alpha=100)
+DefRegion(1, XRange(22.5e-9, 25e-9))
+DefRegion(2, XRange(-25e-9, -22.5e-9))
+DefRegion(3, YRange(22.5e-9, 25e-9))
+DefRegion(4, YRange(-25e-9, -22.5e-9))
+DefRegion(5, ZRange(22.5e-9, 25e-9))
+DefRegion(6, ZRange(-25e-9, -22.5e-9))
+
+// Source regions
+DefRegion(7, XRange(-10e-9, -9.5e-9))   // srcX
+DefRegion(8, ZRange(-10e-9, -9.5e-9))   // srcZ
+
+EnableDemag = false
+MaxErr = 1e-4
+
+Ms     := 1.5e5
+Msat    = Ms
+A_base := 5e-12
+Aex     = A_base
+Dbulk   = 0
+Dind    = 0
+Ku1     = 1e4
+anisU   = vector(0, 0, 1)
+
+alpha = 0.001
+alpha.setRegion(1, 100)
+alpha.setRegion(2, 100)
+alpha.setRegion(3, 100)
+alpha.setRegion(4, 100)
+alpha.setRegion(5, 100)
+alpha.setRegion(6, 100)
+
+// J4 (4th neighbor)
+A_J4     := A_base * (-0.082)
+Coeff_J4 := A_J4 * 2.0 / (Ms * CellSize * CellSize)
+sum_J4   := Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 2, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 0, 2))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 0, -2))
+AddFieldTerm(Mul(Const(Coeff_J4), sum_J4))
+
+// J2 (2nd neighbor)
+A_J2     := A_base * (-0.164)
+Coeff_J2 := A_J2 * 2.0 / (Ms * CellSize * CellSize)
+sum_J2   := Add(Shifted(m, 1, 1, 0), Shifted(m, 1, -1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, -1, -1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, 0, 1, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, 1, -1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, -1, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, -1, -1))
+sum_J2    = Add(sum_J2, Shifted(m, 1, 0, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 1, 0, -1))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 0, 1))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 0, -1))
+AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
+
+// Load initial state
+m.LoadFile("/mnt/d/Research/Hopfion/20260105_frustrated_fm/centered_stability_test/stability_Ku10k.out/m000020.ovf")
+
+f_sw := 200e9 * 2 * pi
+
+autosave(m, 1e-11)    // 10ps → 51 frames over 0.5ns
+tableautosave(1e-12)
+TableAdd(E_Total)
+
+// === Phase 1: srcX ON → +z (0.00 - 0.10 ns) ===
+B_ext.setRegion(7, Vector(sin(f_sw*t), 0, 0))
+B_ext.setRegion(8, Vector(0, 0, 0))
+run(0.10e-9)
+
+// === Phase 2: srcZ ON → brake + -z reversal (0.10 - 0.40 ns) ===
+B_ext.setRegion(7, Vector(0, 0, 0))
+B_ext.setRegion(8, Vector(sin(f_sw*t), 0, 0))
+run(0.30e-9)
+
+// === Phase 3: all OFF → free drift (0.40 - 0.50 ns) ===
+B_ext.setRegion(7, Vector(0, 0, 0))
+B_ext.setRegion(8, Vector(0, 0, 0))
+run(0.10e-9)
