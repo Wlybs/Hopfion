@@ -1,0 +1,74 @@
+// === Point Source Amplitude Sweep: B_amp=500 T, f=1100GHz ===
+// srcX_vibX, single cell at x=-10nm (DefRegionCell 30,50,50)
+// Contrast: ps_srcX_vibX_amp500.mx3 (440GHz) — only frequency changed
+// run=0.5ns, autosave=10ps (51 frames)
+
+CellSize := 0.5e-9
+SetGridSize(100, 100, 100)
+SetCellSize(CellSize, CellSize, CellSize)
+
+DefRegion(1, XRange( 22.5e-9,  25e-9))
+DefRegion(2, XRange(-25e-9,  -22.5e-9))
+DefRegion(3, YRange( 22.5e-9,  25e-9))
+DefRegion(4, YRange(-25e-9,  -22.5e-9))
+DefRegion(5, ZRange( 22.5e-9,  25e-9))
+DefRegion(6, ZRange(-25e-9,  -22.5e-9))
+
+// Point source: single cell at (ix=30, iy=50, iz=50) → x=-10nm, y=0, z=0
+DefRegionCell(7, 30, 50, 50)
+
+EnableDemag = false
+MaxErr = 1e-4
+
+Ms     := 1.5e5
+Msat    = Ms
+A_base := 5e-12
+Aex     = A_base
+Dbulk   = 0
+Dind    = 0
+Ku1     = 1e4
+anisU   = vector(0, 0, 1)
+
+alpha = 0.001
+alpha.setRegion(1, 100)
+alpha.setRegion(2, 100)
+alpha.setRegion(3, 100)
+alpha.setRegion(4, 100)
+alpha.setRegion(5, 100)
+alpha.setRegion(6, 100)
+
+A_J4     := A_base * (-0.082)
+Coeff_J4 := A_J4 * 2.0 / (Ms * CellSize * CellSize)
+sum_J4   := Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 2, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 0, 2))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 0, -2))
+AddFieldTerm(Mul(Const(Coeff_J4), sum_J4))
+
+A_J2     := A_base * (-0.164)
+Coeff_J2 := A_J2 * 2.0 / (Ms * CellSize * CellSize)
+sum_J2   := Add(Shifted(m, 1, 1, 0), Shifted(m, 1, -1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, -1, -1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, 0, 1, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, 1, -1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, -1, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, -1, -1))
+sum_J2    = Add(sum_J2, Shifted(m, 1, 0, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 1, 0, -1))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 0, 1))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 0, -1))
+AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
+
+m.LoadFile("/mnt/d/Research/Hopfion/20260105_frustrated_fm/centered_stability_test/stability_Ku10k.out/m000020.ovf")
+
+f_sw  := 1100e9 * 2 * pi
+B_amp := 500.0
+B_ext.setRegion(7, Vector(B_amp*sin(f_sw*t), 0, 0))
+
+autosave(m, 1e-11)     // 10ps → 51 frames over 0.5ns
+tableautosave(1e-12)   // 1ps
+TableAdd(E_Total)
+
+run(0.5e-9)
