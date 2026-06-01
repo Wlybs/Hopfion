@@ -1,0 +1,138 @@
+// === LIF Neuron Cycle Demo: Sub-threshold B=0.1T (F3) ===
+// Phase 2: LIF protocol with reduced amplitude (B=0.1T) — sub-threshold case
+// Start/rest: +z end (LOW Ku=5500), integrate toward -z (HIGH Ku=10000)
+// 1100 GHz @ 0.1T → -z (integrate), 100 GHz @ 0.1T → +z (fire/reset)
+// Expected: Hopfion does NOT reach threshold, no firing event
+//
+// Ku gradient: 10 regions along z, 10000→5500 J/m³ (dKu=500/region)
+
+CellSize := 0.5e-9
+SetGridSize(100, 100, 100)
+SetCellSize(CellSize, CellSize, CellSize)
+
+// --- Gradient Ku regions (DEFINED FIRST) ---
+DefRegion(10, ZRange(-22.5e-9, -18.0e-9))
+DefRegion(11, ZRange(-18.0e-9, -13.5e-9))
+DefRegion(12, ZRange(-13.5e-9,  -9.0e-9))
+DefRegion(13, ZRange( -9.0e-9,  -4.5e-9))
+DefRegion(14, ZRange( -4.5e-9,   0.0))
+DefRegion(15, ZRange(  0.0,      4.5e-9))
+DefRegion(16, ZRange(  4.5e-9,   9.0e-9))
+DefRegion(17, ZRange(  9.0e-9,  13.5e-9))
+DefRegion(18, ZRange( 13.5e-9,  18.0e-9))
+DefRegion(19, ZRange( 18.0e-9,  22.5e-9))
+
+// --- Absorbing boundary regions (DEFINED SECOND) ---
+DefRegion(1, XRange(22.5e-9, 25e-9))
+DefRegion(2, XRange(-25e-9, -22.5e-9))
+DefRegion(3, YRange(22.5e-9, 25e-9))
+DefRegion(4, YRange(-25e-9, -22.5e-9))
+DefRegion(5, ZRange(22.5e-9, 25e-9))
+DefRegion(6, ZRange(-25e-9, -22.5e-9))
+
+// --- Source region (DEFINED LAST) ---
+DefRegion(7, ZRange(-10e-9, -9.5e-9))
+
+EnableDemag = false
+MaxErr = 1e-4
+
+Ms     := 1.5e5
+Msat    = Ms
+A_base := 5e-12
+Aex     = A_base
+Dbulk   = 0
+Dind    = 0
+anisU   = vector(0, 0, 1)
+
+// --- Gradient Ku per region ---
+Ku1 = 1e4
+Ku1.setRegion(10, 10000)
+Ku1.setRegion(11,  9500)
+Ku1.setRegion(12,  9000)
+Ku1.setRegion(13,  8500)
+Ku1.setRegion(14,  8000)
+Ku1.setRegion(15,  7500)
+Ku1.setRegion(16,  7000)
+Ku1.setRegion(17,  6500)
+Ku1.setRegion(18,  6000)
+Ku1.setRegion(19,  5500)
+
+alpha = 0.001
+alpha.setRegion(1, 100)
+alpha.setRegion(2, 100)
+alpha.setRegion(3, 100)
+alpha.setRegion(4, 100)
+alpha.setRegion(5, 100)
+alpha.setRegion(6, 100)
+
+// --- J4 (4th neighbor exchange) ---
+A_J4     := A_base * (-0.082)
+Coeff_J4 := A_J4 * 2.0 / (Ms * CellSize * CellSize)
+sum_J4   := Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 2, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 0, 2))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 0, -2))
+AddFieldTerm(Mul(Const(Coeff_J4), sum_J4))
+
+// --- J2 (2nd neighbor exchange) ---
+A_J2     := A_base * (-0.164)
+Coeff_J2 := A_J2 * 2.0 / (Ms * CellSize * CellSize)
+sum_J2   := Add(Shifted(m, 1, 1, 0), Shifted(m, 1, -1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, -1, -1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, 0, 1, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, 1, -1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, -1, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, -1, -1))
+sum_J2    = Add(sum_J2, Shifted(m, 1, 0, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 1, 0, -1))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 0, 1))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 0, -1))
+AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
+
+m.LoadFile("/mnt/d/Research/Hopfion/20260105_frustrated_fm/centered_stability_test/stability_Ku10k.out/m000020.ovf")
+
+autosave(m, 5e-12)
+tableautosave(1e-12)
+TableAdd(E_Total)
+
+// === LIF Protocol — Sub-threshold B=0.1T ===
+f_integrate := 1100e9 * 2 * pi   // 1100 GHz → -z (toward high Ku, integrate)
+f_reset     := 100e9 * 2 * pi    // 100 GHz → +z (back to low Ku start, fire/reset)
+
+// Pulse 1: Integrate (0.00 - 0.15 ns)
+B_ext.setRegion(7, Vector(0.1*sin(f_integrate*t), 0, 0))
+run(0.15e-9)
+
+// Gap 1: Leak (0.15 - 0.40 ns)
+B_ext.setRegion(7, Vector(0, 0, 0))
+run(0.25e-9)
+
+// Pulse 2: Integrate (0.40 - 0.55 ns)
+B_ext.setRegion(7, Vector(0.1*sin(f_integrate*t), 0, 0))
+run(0.15e-9)
+
+// Gap 2: Leak (0.55 - 0.80 ns)
+B_ext.setRegion(7, Vector(0, 0, 0))
+run(0.25e-9)
+
+// Pulse 3: Integrate (0.80 - 0.95 ns)
+B_ext.setRegion(7, Vector(0.1*sin(f_integrate*t), 0, 0))
+run(0.15e-9)
+
+// Gap 3: Leak (0.95 - 1.20 ns)
+B_ext.setRegion(7, Vector(0, 0, 0))
+run(0.25e-9)
+
+// Pulse 4: Integrate — threshold (1.20 - 1.35 ns)
+B_ext.setRegion(7, Vector(0.1*sin(f_integrate*t), 0, 0))
+run(0.15e-9)
+
+// Fire + Reset: 100 GHz (1.35 - 1.85 ns)
+B_ext.setRegion(7, Vector(0.1*sin(f_reset*t), 0, 0))
+run(0.50e-9)
+
+// Refractory: OFF (1.85 - 2.15 ns)
+B_ext.setRegion(7, Vector(0, 0, 0))
+run(0.30e-9)

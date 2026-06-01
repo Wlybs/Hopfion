@@ -1,0 +1,106 @@
+// === Gradient Ku Drive-Release Test ===
+// Phase 1 verification: does gradient Ku create a restoring force?
+// Phase A (0.00-0.30ns): srcZ @ 100GHz, B=1T → push Hopfion to +z
+// Phase B (0.30-2.30ns): OFF → observe spontaneous drift-back (Leaky)
+//
+// Ku gradient: 10 regions along z, 10000→5500 J/m³ (dKu=500/region)
+
+CellSize := 0.5e-9
+SetGridSize(100, 100, 100)
+SetCellSize(CellSize, CellSize, CellSize)
+
+// --- Gradient Ku regions (DEFINED FIRST) ---
+DefRegion(10, ZRange(-22.5e-9, -18.0e-9))
+DefRegion(11, ZRange(-18.0e-9, -13.5e-9))
+DefRegion(12, ZRange(-13.5e-9,  -9.0e-9))
+DefRegion(13, ZRange( -9.0e-9,  -4.5e-9))
+DefRegion(14, ZRange( -4.5e-9,   0.0))
+DefRegion(15, ZRange(  0.0,      4.5e-9))
+DefRegion(16, ZRange(  4.5e-9,   9.0e-9))
+DefRegion(17, ZRange(  9.0e-9,  13.5e-9))
+DefRegion(18, ZRange( 13.5e-9,  18.0e-9))
+DefRegion(19, ZRange( 18.0e-9,  22.5e-9))
+
+// --- Absorbing boundary regions (DEFINED SECOND) ---
+DefRegion(1, XRange(22.5e-9, 25e-9))
+DefRegion(2, XRange(-25e-9, -22.5e-9))
+DefRegion(3, YRange(22.5e-9, 25e-9))
+DefRegion(4, YRange(-25e-9, -22.5e-9))
+DefRegion(5, ZRange(22.5e-9, 25e-9))
+DefRegion(6, ZRange(-25e-9, -22.5e-9))
+
+// --- Source region (DEFINED LAST) ---
+DefRegion(7, ZRange(-10e-9, -9.5e-9))
+
+EnableDemag = false
+MaxErr = 1e-4
+
+Ms     := 1.5e5
+Msat    = Ms
+A_base := 5e-12
+Aex     = A_base
+Dbulk   = 0
+Dind    = 0
+anisU   = vector(0, 0, 1)
+
+// --- Gradient Ku per region ---
+Ku1 = 1e4
+Ku1.setRegion(10, 10000)
+Ku1.setRegion(11,  9500)
+Ku1.setRegion(12,  9000)
+Ku1.setRegion(13,  8500)
+Ku1.setRegion(14,  8000)
+Ku1.setRegion(15,  7500)
+Ku1.setRegion(16,  7000)
+Ku1.setRegion(17,  6500)
+Ku1.setRegion(18,  6000)
+Ku1.setRegion(19,  5500)
+
+alpha = 0.001
+alpha.setRegion(1, 100)
+alpha.setRegion(2, 100)
+alpha.setRegion(3, 100)
+alpha.setRegion(4, 100)
+alpha.setRegion(5, 100)
+alpha.setRegion(6, 100)
+
+// --- J4 (4th neighbor exchange) ---
+A_J4     := A_base * (-0.082)
+Coeff_J4 := A_J4 * 2.0 / (Ms * CellSize * CellSize)
+sum_J4   := Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 2, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 0, 2))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 0, -2))
+AddFieldTerm(Mul(Const(Coeff_J4), sum_J4))
+
+// --- J2 (2nd neighbor exchange) ---
+A_J2     := A_base * (-0.164)
+Coeff_J2 := A_J2 * 2.0 / (Ms * CellSize * CellSize)
+sum_J2   := Add(Shifted(m, 1, 1, 0), Shifted(m, 1, -1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, -1, -1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, 0, 1, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, 1, -1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, -1, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, -1, -1))
+sum_J2    = Add(sum_J2, Shifted(m, 1, 0, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 1, 0, -1))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 0, 1))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 0, -1))
+AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
+
+m.LoadFile("/mnt/d/Research/Hopfion/20260105_frustrated_fm/centered_stability_test/stability_Ku10k.out/m000020.ovf")
+
+autosave(m, 5e-12)
+tableautosave(1e-12)
+TableAdd(E_Total)
+
+// === Phase A: Drive — srcZ @ 100 GHz (0.00 - 0.30 ns) ===
+f1 := 100e9 * 2 * pi
+B_ext.setRegion(7, Vector(sin(f1*t), 0, 0))
+run(0.30e-9)
+
+// === Phase B: Release — OFF (0.30 - 2.30 ns) ===
+B_ext.setRegion(7, Vector(0, 0, 0))
+run(2.00e-9)
