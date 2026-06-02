@@ -13,7 +13,6 @@
 |---|---|
 | `My_old_simulation_srcZ_410GHz.mx3` | 旧版本代表（**系数错误**，原文件名 `z_f_sw_410000000000.0_505050.mx3`）|
 | `deviceB_srcZ_1000GHz.mx3` | Device B（用户次要机器）独立验证版本 |
-| `srtp_fege.mx3` | srtp 早期项目：FeGe Bloch Hopfion 尝试 |
 | `srtp_hopfion_spinwave.mx3` | srtp 早期：自旋波 + 磁场驱动 3D 运动 |
 
 ## 原始数据位置

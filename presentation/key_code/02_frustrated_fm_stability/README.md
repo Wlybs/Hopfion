@@ -4,7 +4,7 @@
 
 ## 物理主题
 
-- 固有吸引子：R8r4 / R12r5 初始 → 都收敛到 R=2.60 nm (Ku=0)
+- 稳态尺寸：R8r4 / R12r5 初始 → 都收敛到 R=2.60 nm (Ku=0)。稳态由体系参数决定（Ku、J2/J4、Aex、Ms），与初态尺寸无关
 - 居中稳态：Ku=0/10k/50k 三组 1 ns 都通过稳态判据（漂移 <2 nm）
 - Ku=10k 选为后续自旋波仿真的初始态（最稳，z 漂移 -0.019 nm）
 - Ku 临界趋势：Ku 增大 → Hopfion 收缩 → R8r4 体系 ~52–55k 区间坍塌（13 点扫描）
@@ -15,8 +15,8 @@
 | 文件 | 功能 |
 |---|---|
 | `generate_centered_ovf.py` | 居中 Hopfion 初始态 OVF 生成 |
-| `size_sweep_R8r4_Ku0.mx3` | 尺寸扫描 R8r4 初始 → 吸引子 |
-| `size_sweep_R12r5_Ku0.mx3` | 尺寸扫描 R12r5 初始 → 吸引子 |
+| `size_sweep_R8r4_Ku0.mx3` | 尺寸扫描 R8r4 初始 → 稳态尺寸 |
+| `size_sweep_R12r5_Ku0.mx3` | 尺寸扫描 R12r5 初始 → 稳态尺寸 |
 | `stability_Ku0.mx3` | 居中稳态 Ku=0（呼吸模式）|
 | `stability_Ku10k.mx3` | 居中稳态 Ku=10k（最稳，SW 初始态来源）|
 | `stability_Ku50k.mx3` | 居中稳态 Ku=50k |
