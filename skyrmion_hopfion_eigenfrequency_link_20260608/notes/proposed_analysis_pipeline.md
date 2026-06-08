@@ -55,4 +55,4 @@
 - **resonant coupling frequency**：能量吸收峰或模式选择清楚，但空间模态尚未完全确认。
 - **drive-response window**：位移大、可用于控制，但可能混合散射、传播、阻尼和非线性效应。
 
-按这个标准，当前 `200 GHz`、`100 GHz` 可作为 resonant coupling 候选，`700/800/1000/1100 GHz` 更适合作为 drive-response window 先行汇报。
+按这个标准，当前 `srcX 200 GHz` 可作为 resonant coupling 候选；`srcZ 100 GHz` 应先作为特殊非平衡响应窗口汇报；`700/800/1000/1100 GHz` 更适合作为 drive-response window 先行汇报。

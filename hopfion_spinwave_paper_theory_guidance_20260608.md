@@ -48,7 +48,7 @@ flowchart LR
 
 - 不能直接把所有位移峰叫作 Hopfion 固有频率。
 - `srcX 200 GHz` 有位移响应和能量吸收双重支持，可作为候选 resonant coupling frequency。
-- `srcZ 100 GHz` 有位移异常和能量吸收提示，但需要复核 `E_total` 斜率符号和拟合窗口。
+- `srcZ 100 GHz` 有位移异常，但能量吸收复核显示它是最强绝对能量率响应且 `dE/dt<0`，非正吸收峰。
 - `srcX 1000 GHz`、`srcZ 1100 GHz` 更像 strong drive-response windows，可能混合了内部模式、散射推力、传播效率和非线性形变。
 
 对应深入文件：`hopfion_spinwave_paper_theory_guidance_20260608/A_frequency_modes.md`
@@ -140,6 +140,5 @@ topological texture + incoming magnon current
 
 - **已确认现象**：频率选择、源几何红移、双向控制、强激发坍塌。
 - **强支持解释**：magnon-Hopfion coupling 具有选择性，源几何改变 k 谱，自旋波通过动量/角动量转移驱动 Hopfion。
-- **候选解释**：`200 GHz srcX` 与 `100 GHz srcZ` 可能是低阶耦合模式。
+- **候选解释**：`200 GHz srcX` 可能是低阶耦合模式；`100 GHz srcZ` 先降级为特殊非平衡响应窗口。
 - **待验证解释**：`1000/1100 GHz` 是否对应高阶内部模式，仍需脉冲 FFT 和空间模态图。
-

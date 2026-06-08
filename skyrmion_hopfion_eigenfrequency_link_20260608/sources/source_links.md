@@ -22,7 +22,7 @@
   https://cir.nii.ac.jp/crid/1360587980066928896  
   https://doi.org/10.1155/2018/2602913
 
-- Okamura, Y. et al. 2013, *Microwave magnetoelectric effect via skyrmion resonance modes in a helimagnetic multiferroic*, Nature Communications 4, 2391.  
+- Okamura, Y. et al. 2013, *Microwave magnetoelectric effect via skyrmion resonance modes in a helimagnetic multiferroic*, Nature Communications 4:2391.
   https://www.nature.com/articles/ncomms3391
 
 - Raftrey, D., Fischer, P. 2021, *Field-driven dynamics of magnetic Hopfions*, PRL 127, 257201.  

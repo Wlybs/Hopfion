@@ -102,7 +102,7 @@ DOI：https://doi.org/10.1103/PhysRevB.101.014418
 | 频率窗口 | 现象 | 证据等级 | 推荐表述 |
 |---|---|---|---|
 | `srcX 200 GHz` | 位移强，能量吸收摘要中 `dE/dt` 最大且拟合质量高 | 较强 | candidate resonant coupling frequency |
-| `srcZ 100 GHz` | 位移方向异常为 +z，能量吸收摘要标为强响应 | 中等 | candidate resonant coupling frequency, pending energy-slope sign check |
+| `srcZ 100 GHz` | 位移方向异常为 +z；能量吸收复核为最强绝对能量率响应但 `dE/dt<0` | 中等 | special nonequilibrium response window, not a positive absorption peak |
 | `srcX 1000 GHz` | 位移强，0.5 ns 中更明显 | 中等 | strong drive-response window |
 | `srcZ 1100 GHz` | 位移最强，可用于反向控制，但强驱动后坍塌 | 中等 | strong nonlinear drive-response window |
 | 点源 `srcX 700 GHz` | 相对平面源红移 | 中等 | point-source response peak |
@@ -114,7 +114,7 @@ DOI：https://doi.org/10.1103/PhysRevB.101.014418
 - 当前没有 pulse-off free oscillation FFT。
 - 当前没有 cell-wise FFT spatial mode map。
 - 能量吸收谱摘要已存在，但 `srcZ` 表中多处 `dE/dt` 为负，必须复核符号含义和拟合窗口。
-- 因此，严格 paper 中不能写“we identify the eigenfrequency at 1000 GHz/1100 GHz”。可以写“we identify frequency-selective drive-response windows, among which 200 GHz and 100 GHz are candidate resonant coupling frequencies”.
+- 因此，严格 paper 中不能写“we identify the eigenfrequency at 1000 GHz/1100 GHz”。可以写“we identify frequency-selective drive-response windows, among which 200 GHz under srcX is the strongest candidate resonant coupling frequency; 100 GHz under srcZ is an anomalous nonequilibrium response rather than a positive absorption peak”.
 
 ## A6. 下一步建议
 
@@ -122,4 +122,3 @@ DOI：https://doi.org/10.1103/PhysRevB.101.014418
 2. 做短脉冲自由振荡，输出 `PSD_center`、`PSD_R`、`PSD_r`、`PSD_E`。
 3. 对 `100/200/1000/1100 GHz` 做空间 FFT 模态图。
 4. 写 paper 时用“eigenfrequency / resonant coupling / drive-response”三级术语。
-

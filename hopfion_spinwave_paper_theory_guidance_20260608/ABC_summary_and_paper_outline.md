@@ -20,7 +20,7 @@
 
 - Hopfion 自旋波驱动响应具有明确频率选择性。
 - `srcX 200 GHz` 是当前最值得作为候选 resonant coupling frequency 的频点，因为位移响应和能量吸收摘要都支持它。
-- `srcZ 100 GHz` 是候选特殊耦合频点，因为它既有方向反常，也有能量吸收提示。
+- `srcZ 100 GHz` 是特殊非平衡响应频点，因为它有方向反常和最强绝对能量率响应，但能量吸收复核显示 `dE/dt<0`，不能写成正吸收峰。
 - `srcX 1000 GHz` 和 `srcZ 1100 GHz` 是强 drive-response windows，可用于运动控制，但不能直接叫固有频率。
 
 ### 当前失败/不足
@@ -34,7 +34,7 @@
 
 可写：
 
-> The frequency scan reveals multiple drive-response windows. The low-frequency peaks around 100-200 GHz are candidate resonant coupling channels, while the high-frequency windows around 1000-1100 GHz provide strong nonlinear driving.
+> The frequency scan reveals multiple drive-response windows. The srcX response around 200 GHz is the strongest candidate resonant-coupling channel, whereas the anomalous srcZ response around 100 GHz is better described as a strong nonequilibrium response with negative fitted energy rate. The high-frequency windows around 1000-1100 GHz provide strong nonlinear driving.
 
 不可写：
 
@@ -141,4 +141,3 @@
 > Frequency-selective and source-geometry-dependent spin-wave control of a frustrated-ferromagnetic Hopfion.
 
 这个定位允许我们诚实展示已有现象，同时通过 skyrmion/Hopfion 文献把现象组织成理论上可理解的 magnon-Hopfion coupling story。
-

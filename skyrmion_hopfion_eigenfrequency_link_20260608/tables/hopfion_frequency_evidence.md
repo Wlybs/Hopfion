@@ -19,7 +19,7 @@
 | `srcX_vibX` | 0.2 ns 扫描中 `200 GHz` 位移 `2.508 nm`，`1000 GHz` 位移 `5.500 nm`；0.5 ns 中 `1000 GHz` 位移 `14.317 nm` | `200 GHz` 更接近能量吸收支持的候选内禀耦合；`1000 GHz` 是强驱动窗口 |
 | `srcX_vibX` 能量斜率 | `200 GHz` 的 `dE/dt = 39.814 nJ/s`, `R^2=0.9857`，摘要标为最强吸收频率 | 支持 `200 GHz` 作为优先本征模候选 |
 | `srcZ_vibX` | `100 GHz` 为 +z 异常强响应 `17.598 nm`；`1100 GHz` 为 -z 强响应 `18.149 nm`；`1000 GHz` 也强 | `100/1100 GHz` 分别可用作双向 z 控制，但本征模归属未定 |
-| `srcZ_vibX` 能量斜率 | 摘要标 `100 GHz` 为最强响应；表中多为负斜率 | 需要复核符号约定和拟合窗口，暂列为候选耦合频率 |
+| `srcZ_vibX` 能量斜率 | 复核后 `100 GHz` 为最强绝对能量率响应，但拟合 `dE/dt<0` | 不是正吸收峰；暂列为特殊非平衡响应窗口 |
 
 ## 点源频率扫描
 
@@ -41,7 +41,7 @@
 | 频率 | 建议称呼 | 理由 |
 |---:|---|---|
 | `200 GHz srcX` | 候选 resonant coupling frequency | 位移和能量吸收均支持 |
-| `100 GHz srcZ` | 候选 resonant coupling frequency | 位移异常 + 能量斜率提示，但需复核符号 |
+| `100 GHz srcZ` | 特殊非平衡响应窗口 | 位移异常 +z；能量吸收复核为最强绝对能量率响应但 `dE/dt<0`，非正吸收峰 |
 | `700 GHz point srcX` | point-source drive-response peak | 点源红移峰，未做自由振荡谱 |
 | `800 GHz point srcZ` | point-source drive-response peak | 点源红移峰，方向复杂 |
 | `1000 GHz srcX` | strong drive-response window | 位移强，但能量吸收未同步支持 |

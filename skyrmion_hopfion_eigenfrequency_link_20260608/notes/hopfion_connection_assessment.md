@@ -6,7 +6,7 @@
 
 `srcX` 平面源的 `200 GHz` 值得优先关注。原因是它同时出现在位移响应的强响应区，并且能量吸收谱摘要中 `dE/dt` 拟合质量较高、数值最大。按 skyrmion 文献语言，这更接近“被驱动场有效泵入某个内禀模式”的证据。
 
-`srcZ` 平面源的 `100 GHz` 也值得关注。它在位移图中表现为方向异常的 +z 强响应，且能量斜率摘要把它标为最强能量响应。不过这里需要重新确认 `E_total` 的符号约定和拟合窗口，因为表中不少 `dE/dt` 为负，不能简单把所有绝对值峰称为吸收峰。
+`srcZ` 平面源的 `100 GHz` 仍值得关注，但不能再列为候选本征耦合。能量吸收复核显示它是最强绝对能量率响应，同时拟合 `dE/dt<0`，因此不是正吸收峰；应暂写为“特殊能量率/非平衡响应窗口”。详见 `/mnt/d/Research/Hopfion/hopfion_energy_absorption_audit_20260608/notes/paper_interpretation_cn.md`。
 
 ### B. 更应称为“强驱动位移窗口”的频率
 
@@ -46,6 +46,6 @@
 
 当前数据可以支持如下表述：
 
-> Hopfion 自旋波驱动存在与 skyrmion 本征模谱学相似的频率选择性。能量吸收谱提示 `srcX 200 GHz` 与 `srcZ 100 GHz` 可能对应较低阶的内禀耦合模式，而 `srcX 1000 GHz`、`srcZ 1100 GHz` 更像强动量传递/强耦合控制窗口。点源红移和 1100 GHz 强驱动坍塌可分别用 skyrmion 文献中的 spin-wave reflectivity 机制与强非线性 redshift/collapse 图像解释。
+> Hopfion 自旋波驱动存在与 skyrmion 本征模谱学相似的频率选择性。能量吸收谱支持 `srcX 200 GHz` 作为当前最稳的候选 resonant coupling frequency；`srcZ 100 GHz` 是最强绝对能量率响应且 `dE/dt<0`，应写成特殊非平衡响应窗口，而不是正吸收峰或本征频率。`srcX 1000 GHz`、`srcZ 1100 GHz` 更像强动量传递/强耦合控制窗口。点源红移和 1100 GHz 强驱动坍塌可分别用 skyrmion 文献中的 spin-wave reflectivity 机制与强非线性 redshift/collapse 图像解释。
 
 严格表述时，建议把“Hopfion 固有频率”写成“候选固有/共振耦合频率”，直到补齐脉冲自由振荡 FFT 和空间模态图。
