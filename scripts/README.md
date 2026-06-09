@@ -83,6 +83,13 @@ from hopfion_analysis import hopfion_centroid, compute_Rr, extract_trajectory
 | `generate_cw_mx3(path, freq, src, vib, B)` | 连续波 mx3 生成 | 参数 | .mx3 文件 |
 | `pulse_eigenmode_analysis(out_dir, dt)` | 脉冲后 FFT 本征模谱 | 脉冲仿真 .out | `{freqs, psd_dx/dy/dz, psd_E}` |
 | `load_mumax_table(path)` | 加载 table.txt | table.txt 路径 | `{列名: ndarray}` |
+| `generate_sinc_ringdown_mx3(path, axis, cutoff_ghz, b0_t)` | uniform sinc 弱脉冲 table-only mx3 | 参数 | .mx3 文件 |
+| `ringdown_fft_from_table(table_path, columns)` | 对 table 平均磁化/能量做 FFT | table.txt | `{freqs_ghz, psd_*}` |
+| `find_fft_peaks(freqs, power)` | 从功率谱提取候选峰 | FFT 频率轴和功率 | `list[dict]` |
+
+#### `ringdown_fft_from_table` 使用场景
+
+`hopfion_eigenmode_ringdown_20260608` 使用该函数分析 weak sinc pulse 后的 table-only 自由振荡谱。它只处理 `table.txt` 中的 `mx/my/mz/E_total`，不读取 OVF，因此适合快速区分“候选固有频率”和连续自旋波频扫中的“强驱动窗口”。
 
 ---
 

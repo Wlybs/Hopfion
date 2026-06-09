@@ -1,0 +1,5 @@
+drive_source,drive_frequency_ghz,drive_status,ringdown_run,ringdown_signal,primary_channel,nearest_peak_ghz,delta_ghz,match_within_10ghz,interpretation
+plane srcX,200.0,candidate resonant coupling from positive energy absorption,Bx,mz,False,173.66368976742754,26.33631023257246,False,未通过 10 GHz 对齐判据，暂按强驱动/传播/散射窗口处理
+plane srcX,1000.0,strong high-frequency drive window,Bx,mz,False,173.66368976742754,826.3363102325725,False,未通过 10 GHz 对齐判据，暂按强驱动/传播/散射窗口处理
+plane srcZ,100.0,"strongest absolute energy-rate response, dE/dt<0, not positive absorption",Bz,mz,True,77.6372256978046,22.362774302195405,False,未通过 10 GHz 对齐判据，暂按强驱动/传播/散射窗口处理
+plane srcZ,1100.0,strong high-frequency displacement/control window,Bz,mz,True,173.6622153766682,926.3377846233318,False,未通过 10 GHz 对齐判据，暂按强驱动/传播/散射窗口处理

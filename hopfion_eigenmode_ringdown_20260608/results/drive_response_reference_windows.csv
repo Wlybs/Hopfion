@@ -1,0 +1,5 @@
+source,frequency_ghz,status
+plane srcX,200.0,candidate resonant coupling from positive energy absorption
+plane srcX,1000.0,strong high-frequency drive window
+plane srcZ,100.0,"strongest absolute energy-rate response, dE/dt<0, not positive absorption"
+plane srcZ,1100.0,strong high-frequency displacement/control window
