@@ -49,6 +49,7 @@
 
 - `/tmp/skyrmion_hopfion_freq_mineru/mochizuki_2012_skyrmion_modes/auto/mochizuki_2012_skyrmion_modes.md`
 - `/tmp/skyrmion_hopfion_freq_mineru/kravchuk_2018_skyrmion_eigenmodes/auto/kravchuk_2018_skyrmion_eigenmodes.md`
+- `/tmp/skyrmion_hopfion_freq_mineru/raftrey_2021_field_hopfions/auto/raftrey_2021_field_hopfions.md`
 
 这些临时文件不纳入交付文件夹，避免结果包过重。
 
