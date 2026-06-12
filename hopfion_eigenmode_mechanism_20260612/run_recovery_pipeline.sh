@@ -106,8 +106,39 @@ if ! json_true "$ROOT/results/clean_linearity_gate.json" passed; then
     exit 0
 fi
 
+python3 - "$ROOT" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+sys.path.insert(0, str(root.parent / "scripts"))
+from resonance_analysis import generate_circular_burst_mx3
+
+gate = json.loads((root / "results" / "clean_linearity_gate.json").read_text(encoding="utf-8"))
+frequency = float(gate["candidate_frequency_ghz"])
+initial = root / "mx3" / "equilibrate_open_boundary.out" / "equilibrated_open_boundary.ovf"
+for handedness, label in ((1, "plus"), (-1, "minus")):
+    generate_circular_burst_mx3(
+        root / "mx3" / f"clean_circular_{label}_2mT.mx3",
+        handedness=handedness,
+        frequency_ghz=frequency,
+        b0_t=0.002,
+        run_ns=0.5,
+        init_ovf=str(initial),
+    )
+PY
+
+run_case clean_Bz_0mT_10ns
 run_case clean_Bz_1mT_10ns
 run_case clean_spatial_Bz_0mT
 run_case clean_spatial_Bz_5mT
+run_case clean_spatial_uniform_Bz_5mT
 run_case clean_circular_plus_2mT
 run_case clean_circular_minus_2mT
+python3 "$ROOT/analysis/analyze_clean_validation.py" > "$ROOT/logs/clean_validation_analysis.log" 2>&1
+if json_true "$ROOT/results/stage1_gate.json" passed; then
+    bash "$ROOT/run_stage2.sh"
+else
+    printf 'clean spatial gate failed; CW and k-spectrum stage is not launched\n'
+fi

@@ -80,6 +80,10 @@ def analyze():
         raise FileNotFoundError("stage2_simulation_manifest.csv is missing")
     with manifest_path.open(encoding="utf-8") as handle:
         cases = [row for row in csv.DictReader(handle) if row["kind"] == "cw"]
+    stage1_gate = json.loads(
+        (ROOT / "results" / "stage1_gate.json").read_text(encoding="utf-8")
+    )
+    target_frequency = float(stage1_gate.get("target_frequency_ghz", 174.0))
 
     rows = []
     for case in cases:
@@ -109,12 +113,14 @@ def analyze():
             writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
             writer.writeheader()
             writer.writerows(rows)
-        _plot_frequency_bridge(rows, ROOT / "figures" / "cw_bridge_frequency.png")
+        _plot_frequency_bridge(
+            rows, ROOT / "figures" / "cw_bridge_frequency.png", target_frequency
+        )
 
     amplitude_rows = [
         row for row in rows
         if row["source_axis"] == "x" and row["vib_axis"] == "x"
-        and float(row["frequency_ghz"]) == 174.0
+        and abs(float(row["frequency_ghz"]) - target_frequency) < 1e-9
     ]
     fit = None
     if len(amplitude_rows) == 3 and all(row["response_vector"] > 0 for row in amplitude_rows):
@@ -135,7 +141,7 @@ def analyze():
     return summary
 
 
-def _plot_frequency_bridge(rows: list[dict], path: Path):
+def _plot_frequency_bridge(rows: list[dict], path: Path, target_frequency: float):
     selected = sorted(
         (
             row for row in rows
@@ -151,7 +157,13 @@ def _plot_frequency_bridge(rows: list[dict], path: Path):
     responses = [row["response_vector"] for row in selected]
     fig, ax = plt.subplots(figsize=(7, 4.2))
     ax.plot(frequencies, responses, "o-", color="#176b87", label="CW coherent response")
-    ax.axvline(173.66, color="#c44e52", ls="--", lw=1.2, label="ringdown 173.66 GHz")
+    ax.axvline(
+        target_frequency,
+        color="#c44e52",
+        ls="--",
+        lw=1.2,
+        label=f"clean ringdown {target_frequency:.2f} GHz",
+    )
     ax.set_xlabel("drive frequency (GHz)")
     ax.set_ylabel("coherent |m| amplitude")
     ax.grid(True, alpha=0.25)

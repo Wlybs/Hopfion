@@ -28,6 +28,7 @@ from generate_simulations import generate_stage1_files  # noqa: E402
 from generate_controls import generate_control_files  # noqa: E402
 from generate_stage2 import generate_stage2_files  # noqa: E402
 from analyze_controls import evaluate_clean_linearity, evaluate_quench_control  # noqa: E402
+from analyze_clean_validation import evaluate_spatial_mode_power  # noqa: E402
 
 
 def test_estimate_peak_metrics_recovers_lorentzian_fwhm_and_q():
@@ -331,11 +332,20 @@ def test_generate_stage2_is_gated_and_writes_fifteen_runs(tmp_path):
     assert len(list((tmp_path / "mx3").glob("wavefield_*.mx3"))) == 4
     assert (tmp_path / "results" / "stage2_simulation_manifest.csv").is_file()
 
+    gate_path.write_text(
+        json.dumps({"passed": True, "target_frequency_ghz": 120.0}),
+        encoding="utf-8",
+    )
+    shifted = generate_stage2_files(tmp_path, gate_path=gate_path)
+    shifted_cw = [row for row in shifted if row["kind"] == "cw"]
+    assert any(float(row["frequency_ghz"]) == 120.0 for row in shifted_cw)
+    assert not any(float(row["frequency_ghz"]) == 174.0 for row in shifted_cw)
+
 
 def test_generate_control_files_writes_quench_and_clean_matrix(tmp_path):
     manifest = generate_control_files(tmp_path)
 
-    assert len(manifest) == 11
+    assert len(manifest) == 13
     assert {row["stage"] for row in manifest} == {
         "quench_control",
         "equilibration",
@@ -346,6 +356,8 @@ def test_generate_control_files_writes_quench_and_clean_matrix(tmp_path):
     text = clean_1mt.read_text(encoding="utf-8")
     assert "equilibrate_open_boundary.out/equilibrated_open_boundary.ovf" in text
     assert (tmp_path / "results" / "control_simulation_manifest.csv").is_file()
+    uniform = tmp_path / "mx3" / "clean_spatial_uniform_Bz_5mT.mx3"
+    assert "m = uniform(0, 0, 1)" in uniform.read_text(encoding="utf-8")
 
 
 def test_evaluate_quench_control_detects_drive_independent_mode():
@@ -377,3 +389,16 @@ def test_evaluate_clean_linearity_requires_scaling_snr_and_peak_agreement():
 
     assert passed["passed"] is True
     assert failed["passed"] is False
+
+
+def test_evaluate_spatial_mode_power_uses_topology_and_uniform_control():
+    mask = np.zeros((3, 3, 3), dtype=bool)
+    mask[1, 1, 1] = True
+    hopfion_power = np.ones((3, 3, 3))
+    hopfion_power[mask] = 4.0
+    uniform_power = np.full((3, 3, 3), 0.2)
+
+    result = evaluate_spatial_mode_power(hopfion_power, uniform_power, mask)
+
+    assert result["passed"] is True
+    assert result["localization_ratio"] == 4.0

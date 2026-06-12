@@ -88,23 +88,25 @@ def generate_control_files(output_root):
             initial_state="equilibrated_open_boundary",
         )
 
-    linewidth_name = "clean_Bz_1mT_10ns"
-    generate_sinc_ringdown_mx3(
-        mx3_dir / f"{linewidth_name}.mx3",
-        drive_axis="z",
-        b0_t=0.001,
-        run_ns=1.0,
-        table_dt_ps=0.05,
-        init_ovf=str(equilibrated),
-    )
-    add(
-        linewidth_name,
-        "clean_validation",
-        "sinc",
-        b0_t=0.001,
-        run_ns=1.0,
-        initial_state="equilibrated_open_boundary",
-    )
+    for amplitude in (0.0, 0.001):
+        millitesla = int(round(amplitude * 1000))
+        linewidth_name = f"clean_Bz_{millitesla}mT_10ns"
+        generate_sinc_ringdown_mx3(
+            mx3_dir / f"{linewidth_name}.mx3",
+            drive_axis="z",
+            b0_t=amplitude,
+            run_ns=1.0,
+            table_dt_ps=0.05,
+            init_ovf=str(equilibrated),
+        )
+        add(
+            linewidth_name,
+            "clean_validation",
+            "sinc",
+            b0_t=amplitude,
+            run_ns=1.0,
+            initial_state="equilibrated_open_boundary",
+        )
 
     for amplitude in (0.0, 0.005):
         millitesla = int(round(amplitude * 1000))
@@ -127,6 +129,26 @@ def generate_control_files(output_root):
             run_ns=0.3,
             initial_state="equilibrated_open_boundary",
         )
+
+    uniform_name = "clean_spatial_uniform_Bz_5mT"
+    generate_sinc_ringdown_mx3(
+        mx3_dir / f"{uniform_name}.mx3",
+        drive_axis="z",
+        b0_t=0.005,
+        run_ns=0.3,
+        table_dt_ps=0.05,
+        uniform_background=True,
+        spatial_roi=(26, 74, 26, 74, 26, 74),
+        spatial_dt_ps=0.2,
+    )
+    add(
+        uniform_name,
+        "clean_validation",
+        "spatial_sinc",
+        b0_t=0.005,
+        run_ns=0.3,
+        initial_state="uniform_z",
+    )
 
     for handedness, label in ((1, "plus"), (-1, "minus")):
         name = f"clean_circular_{label}_2mT"

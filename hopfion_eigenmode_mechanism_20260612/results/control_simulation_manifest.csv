@@ -5,8 +5,10 @@ clean_Bz_0mT_05ns,clean_linearity,sinc,0.0,0.5,equilibrated_open_boundary,mx3/cl
 clean_Bz_1mT_05ns,clean_linearity,sinc,0.001,0.5,equilibrated_open_boundary,mx3/clean_Bz_1mT_05ns.mx3
 clean_Bz_2mT_05ns,clean_linearity,sinc,0.002,0.5,equilibrated_open_boundary,mx3/clean_Bz_2mT_05ns.mx3
 clean_Bz_5mT_05ns,clean_linearity,sinc,0.005,0.5,equilibrated_open_boundary,mx3/clean_Bz_5mT_05ns.mx3
+clean_Bz_0mT_10ns,clean_validation,sinc,0.0,1.0,equilibrated_open_boundary,mx3/clean_Bz_0mT_10ns.mx3
 clean_Bz_1mT_10ns,clean_validation,sinc,0.001,1.0,equilibrated_open_boundary,mx3/clean_Bz_1mT_10ns.mx3
 clean_spatial_Bz_0mT,clean_validation,spatial_sinc,0.0,0.3,equilibrated_open_boundary,mx3/clean_spatial_Bz_0mT.mx3
 clean_spatial_Bz_5mT,clean_validation,spatial_sinc,0.005,0.3,equilibrated_open_boundary,mx3/clean_spatial_Bz_5mT.mx3
+clean_spatial_uniform_Bz_5mT,clean_validation,spatial_sinc,0.005,0.3,uniform_z,mx3/clean_spatial_uniform_Bz_5mT.mx3
 clean_circular_plus_2mT,clean_validation,circular,0.002,0.5,equilibrated_open_boundary,mx3/clean_circular_plus_2mT.mx3
 clean_circular_minus_2mT,clean_validation,circular,0.002,0.5,equilibrated_open_boundary,mx3/clean_circular_minus_2mT.mx3

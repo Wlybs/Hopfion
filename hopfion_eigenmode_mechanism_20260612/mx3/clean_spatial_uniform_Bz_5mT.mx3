@@ -1,0 +1,76 @@
+// === Frustrated FM Hopfion — uniform sinc ringdown (Z-axis) ===
+// Table-only run for eigenmode screening. No OVF autosave is enabled.
+
+CellSize := 0.5e-9
+SetGridSize(100, 100, 100)
+SetCellSize(CellSize, CellSize, CellSize)
+
+// Six absorbing boundary slabs, matching spin_wave_dynamics freq_sweep setup.
+DefRegion(1, XRange(22.5e-9, 25e-9))
+DefRegion(2, XRange(-25e-9, -22.5e-9))
+DefRegion(3, YRange(22.5e-9, 25e-9))
+DefRegion(4, YRange(-25e-9, -22.5e-9))
+DefRegion(5, ZRange(22.5e-9, 25e-9))
+DefRegion(6, ZRange(-25e-9, -22.5e-9))
+
+EnableDemag = false
+MaxErr = 1e-4
+
+Ms     := 1.5e5
+Msat    = Ms
+A_base := 5e-12
+Aex     = A_base
+Dbulk   = 0
+Dind    = 0
+Ku1     = 1e4
+anisU   = vector(0, 0, 1)
+
+alpha = 0.001
+alpha.setRegion(1, 100)
+alpha.setRegion(2, 100)
+alpha.setRegion(3, 100)
+alpha.setRegion(4, 100)
+alpha.setRegion(5, 100)
+alpha.setRegion(6, 100)
+
+// -- J4: fourth-nearest frustrated exchange --
+A_J4     := A_base * (-0.082)
+Coeff_J4 := A_J4 * 2.0 / (Ms * CellSize * CellSize)
+sum_J4   := Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 2, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 0, 2))
+sum_J4    = Add(sum_J4, Shifted(m, 0, 0, -2))
+AddFieldTerm(Mul(Const(Coeff_J4), sum_J4))
+
+// -- J2: next-nearest frustrated exchange --
+A_J2     := A_base * (-0.164)
+Coeff_J2 := A_J2 * 2.0 / (Ms * CellSize * CellSize)
+sum_J2   := Add(Shifted(m, 1, 1, 0), Shifted(m, 1, -1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, -1, -1, 0))
+sum_J2    = Add(sum_J2, Shifted(m, 0, 1, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, 1, -1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, -1, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 0, -1, -1))
+sum_J2    = Add(sum_J2, Shifted(m, 1, 0, 1))
+sum_J2    = Add(sum_J2, Shifted(m, 1, 0, -1))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 0, 1))
+sum_J2    = Add(sum_J2, Shifted(m, -1, 0, -1))
+AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
+
+m = uniform(0, 0, 1)
+
+B0 := 0.005
+fc := 2000e9
+t0 := 2.37e-12
+pulse := B0 * sin(2*pi*fc*(t-t0))/(2*pi*fc*(t-t0) + 1e-30)
+B_ext = Vector(0, 0, pulse)
+
+roi_m := Crop(m, 26, 74, 26, 74, 26, 74)
+autosave(roi_m, 0.2e-12)
+
+tableautosave(0.05e-12)
+TableAdd(E_Total)
+
+run(0.3e-9)

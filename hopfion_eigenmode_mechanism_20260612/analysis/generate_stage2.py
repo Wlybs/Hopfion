@@ -58,21 +58,27 @@ def generate_stage2_files(output_root, gate_path=None):
         )
         return []
 
+    target_frequency = float(gate.get("target_frequency_ghz", 174.0))
+
+    def frequency_label(value):
+        return f"{value:g}".replace(".", "p").replace("-", "m")
+
     rows = []
     cw_cases = []
-    for frequency in (150, 160, 170, 174, 180, 190, 200):
+    for offset in (-24, -14, -4, 0, 6, 16, 26):
+        frequency = target_frequency + offset
         cw_cases.append(("x", "x", frequency, 0.2))
     cw_cases.extend([
-        ("x", "x", 174, 0.05),
-        ("x", "x", 174, 0.1),
-        ("z", "x", 174, 0.2),
-        ("x", "z", 174, 0.2),
+        ("x", "x", target_frequency, 0.05),
+        ("x", "x", target_frequency, 0.1),
+        ("z", "x", target_frequency, 0.2),
+        ("x", "z", target_frequency, 0.2),
     ])
     for source_axis, vib_axis, frequency, amplitude in cw_cases:
         millitesla = int(round(amplitude * 1000))
         name = (
             f"cw_src{source_axis.upper()}_vib{vib_axis.upper()}_"
-            f"f{frequency}_B{millitesla:03d}mT"
+            f"f{frequency_label(frequency)}_B{millitesla:03d}mT"
         )
         path = mx3_dir / f"{name}.mx3"
         generate_cw_mx3(
@@ -118,7 +124,11 @@ def generate_stage2_files(output_root, gate_path=None):
 
     _write_manifest(results_dir / "stage2_simulation_manifest.csv", rows)
     status_path.write_text(
-        json.dumps({"generated": True, "run_count": len(rows)}, indent=2) + "\n",
+        json.dumps({
+            "generated": True,
+            "run_count": len(rows),
+            "target_frequency_ghz": target_frequency,
+        }, indent=2) + "\n",
         encoding="utf-8",
     )
     return rows
