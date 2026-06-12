@@ -21,6 +21,7 @@ from resonance_analysis import (  # noqa: E402
     generate_sinc_ringdown_mx3,
     generate_wavefield_mx3,
     ringdown_fft_difference,
+    read_ovf_time_s,
     wavevector_power_spectrum,
     topology_mask_from_reference,
 )
@@ -312,6 +313,18 @@ def test_ringdown_fft_difference_removes_common_quench_mode(tmp_path):
     common_index = np.argmin(np.abs(spectrum["freqs_ghz"] - 174.0))
     assert abs(metrics["frequency_ghz"] - 120.0) <= frequency_step / 2
     assert metrics["power"] > 1000 * spectrum["psd_mz"][common_index]
+
+
+def test_read_ovf_time_s_reads_header_without_touching_binary_payload(tmp_path):
+    ovf = tmp_path / "frame.ovf"
+    ovf.write_bytes(
+        b"# OOMMF OVF 2.0\n"
+        b"# Desc: Total simulation time:  1.25e-10  s\n"
+        b"# Begin: Data Binary 4\n"
+        b"\x00\xff\x00\xff"
+    )
+
+    assert read_ovf_time_s(ovf) == 1.25e-10
 
 
 def test_generate_stage2_is_gated_and_writes_fifteen_runs(tmp_path):

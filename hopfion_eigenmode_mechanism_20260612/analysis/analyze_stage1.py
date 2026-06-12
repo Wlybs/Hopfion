@@ -26,6 +26,7 @@ from resonance_analysis import (  # noqa: E402
     evaluate_mode_localization,
     fit_power_law,
     load_mumax_table,
+    read_ovf_time_s,
     ringdown_fft_from_table,
     topology_mask_from_reference,
 )
@@ -241,7 +242,8 @@ def analyze_spatial(results_dir: Path, figures_dir: Path) -> dict | None:
     if len(hopfion_paths) != len(background_paths):
         raise ValueError("Hopfion and background ROI frame counts differ")
 
-    times = np.arange(len(hopfion_paths), dtype=float) * 0.2e-12
+    times = np.asarray([read_ovf_time_s(path) for path in hopfion_paths])
+    background_times = np.asarray([read_ovf_time_s(path) for path in background_paths])
     hopfion_reference = _load_ovf(hopfion_paths[0])
     background_reference = _load_ovf(background_paths[0])
     hopfion_modes = accumulate_complex_modes(
@@ -252,7 +254,7 @@ def analyze_spatial(results_dir: Path, figures_dir: Path) -> dict | None:
     )
     background_modes = accumulate_complex_modes(
         _frame_stream(background_paths),
-        times,
+        background_times,
         SPATIAL_FREQUENCIES_GHZ,
         reference=background_reference,
     )

@@ -23,6 +23,7 @@ from resonance_analysis import (  # noqa: E402
     estimate_peak_metrics,
     evaluate_mode_localization,
     load_mumax_table,
+    read_ovf_time_s,
     ringdown_fft_difference,
     topology_mask_from_reference,
 )
@@ -67,7 +68,7 @@ def _frames(paths):
 
 
 def _mode(paths, frequency_ghz, reference):
-    times = np.arange(len(paths), dtype=float) * 0.2e-12
+    times = np.asarray([read_ovf_time_s(path) for path in paths])
     return accumulate_complex_modes(
         _frames(paths), times, [frequency_ghz], reference=reference
     )[frequency_ghz]

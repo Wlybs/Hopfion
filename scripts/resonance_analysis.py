@@ -19,6 +19,7 @@ resonance_analysis.py — Hopfion 共振频率分析工具库
 """
 
 import os
+import re
 import numpy as np
 
 
@@ -43,6 +44,23 @@ def load_mumax_table(table_path):
     if data.ndim == 1:
         data = data.reshape(1, -1)
     return {name: data[:, i] for i, name in enumerate(col_names)}
+
+
+def read_ovf_time_s(ovf_path):
+    """Read the simulation time from an OVF header without reading payload."""
+    pattern = re.compile(r"Total simulation time:\s*([0-9.eE+-]+)\s*s")
+    with open(ovf_path, "rb") as handle:
+        for _ in range(256):
+            line = handle.readline()
+            if not line:
+                break
+            text = line.decode("ascii", errors="ignore")
+            match = pattern.search(text)
+            if match:
+                return float(match.group(1))
+            if "Begin: Data" in text:
+                break
+    raise ValueError(f"No simulation time found in OVF header: {ovf_path}")
 
 
 # ──────────────────────────────────────────────

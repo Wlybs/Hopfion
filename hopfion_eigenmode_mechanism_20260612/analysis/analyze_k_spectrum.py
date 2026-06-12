@@ -19,7 +19,11 @@ ROOT = Path(__file__).resolve().parents[1]
 REPO = ROOT.parent
 sys.path.insert(0, str(REPO / "scripts"))
 
-from resonance_analysis import accumulate_complex_modes, wavevector_power_spectrum  # noqa: E402
+from resonance_analysis import (  # noqa: E402
+    accumulate_complex_modes,
+    read_ovf_time_s,
+    wavevector_power_spectrum,
+)
 from paper_style import (  # noqa: E402
     panel_label,
     save_paper_fig,
@@ -46,10 +50,10 @@ def analyze_case(case: dict) -> tuple[dict, dict]:
     paths = sorted(out_dir.glob("slice_m*.ovf"))
     if len(paths) < 100:
         raise FileNotFoundError(f"insufficient slice frames in {out_dir}")
-    dt_s = 0.02e-12
-    start = int(round(10.0 / 0.02))
-    selected = paths[start:]
-    times = np.arange(start, len(paths), dtype=float) * dt_s
+    all_times = np.asarray([read_ovf_time_s(path) for path in paths])
+    selected_mask = all_times >= 10e-12
+    selected = [path for path, keep in zip(paths, selected_mask) if keep]
+    times = all_times[selected_mask]
     reference = _load_ovf(paths[0])
     frequency = float(case["frequency_ghz"])
     mode = accumulate_complex_modes(
