@@ -383,10 +383,7 @@ AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
 
 {initialization}
 
-B0 := {b0_t}
-fc := {cutoff_ghz:g}e9
-t0 := {t0_ps}e-12
-pulse := B0 * sin(2*pi*fc*(t-t0))/(2*pi*fc*(t-t0) + 1e-30)
+{drive_setup}
 {b_ext}
 
 {spatial_output}
@@ -441,12 +438,16 @@ def generate_sinc_ringdown_mx3(out_path, drive_axis='x', cutoff_ghz=2000.0,
             f"autosave(roi_m, {spatial_dt_ps:g}e-12)"
         )
 
+    drive_setup = (
+        f"B0 := {b0_t}\n"
+        f"fc := {cutoff_ghz:g}e9\n"
+        f"t0 := {t0_ps}e-12\n"
+        "pulse := B0 * sin(2*pi*fc*(t-t0))/(2*pi*fc*(t-t0) + 1e-30)"
+    )
     script = _FRUSTRATED_FM_RINGDOWN_TABLE_ONLY_MX3.format(
         drive_axis=drive_axis.upper(),
         initialization=initialization,
-        b0_t=b0_t,
-        cutoff_ghz=cutoff_ghz,
-        t0_ps=t0_ps,
+        drive_setup=drive_setup,
         table_dt_ps=table_dt_ps,
         run_ns=run_ns,
         b_ext=b_ext,
@@ -470,20 +471,21 @@ def generate_circular_burst_mx3(out_path, handedness=1,
                     "centered_stability_test/stability_Ku10k.out/m000020.ovf")
 
     sign = "" if handedness == 1 else "-"
-    b_ext = (
+    drive_setup = (
+        f"B0 := {b0_t}\n"
         f"carrier := {frequency_ghz:g}e9 * 2 * pi\n"
         f"center := {center_ps:g}e-12\n"
         f"sigma := {sigma_ps:g}e-12\n"
-        "envelope := B0 * exp(-((t-center)*(t-center))/(2*sigma*sigma))\n"
+        "envelope := B0 * exp(-((t-center)*(t-center))/(2*sigma*sigma))"
+    )
+    b_ext = (
         "B_ext = Vector(envelope*cos(carrier*t), "
         f"{sign}envelope*sin(carrier*t), 0)"
     )
     script = _FRUSTRATED_FM_RINGDOWN_TABLE_ONLY_MX3.format(
         drive_axis="CIRCULAR",
         initialization=f'm.LoadFile("{init_ovf}")',
-        b0_t=b0_t,
-        cutoff_ghz=2000.0,
-        t0_ps=2.37,
+        drive_setup=drive_setup,
         table_dt_ps=table_dt_ps,
         run_ns=run_ns,
         b_ext=b_ext,
@@ -573,10 +575,18 @@ def evaluate_mode_localization(mask_mean_power, outside_mean_power,
                                hopfion_total_power, background_total_power,
                                min_localization=2.0, min_background_contrast=3.0):
     """Apply the project-level operational gate for a localized mode."""
-    if outside_mean_power <= 0 or background_total_power <= 0:
-        raise ValueError("reference powers must be positive")
-    localization_ratio = float(mask_mean_power / outside_mean_power)
-    background_contrast = float(hopfion_total_power / background_total_power)
+    if outside_mean_power < 0 or background_total_power < 0:
+        raise ValueError("reference powers must be non-negative")
+    localization_ratio = (
+        float(mask_mean_power / outside_mean_power)
+        if outside_mean_power > 0
+        else (float("inf") if mask_mean_power > 0 else 0.0)
+    )
+    background_contrast = (
+        float(hopfion_total_power / background_total_power)
+        if background_total_power > 0
+        else (float("inf") if hopfion_total_power > 0 else 0.0)
+    )
     return {
         "localization_ratio": localization_ratio,
         "background_contrast": background_contrast,
@@ -585,6 +595,73 @@ def evaluate_mode_localization(mask_mean_power, outside_mean_power,
             and background_contrast >= min_background_contrast
         ),
     }
+
+
+def accumulate_complex_modes(frames, times_s, frequencies_ghz, reference=None,
+                             window='hann'):
+    """Stream frames into complex Fourier amplitudes at selected frequencies."""
+    times = np.asarray(times_s, dtype=float)
+    if len(times) < 2 or np.any(np.diff(times) <= 0):
+        raise ValueError("times_s must be strictly increasing")
+    frequencies = [float(freq) for freq in frequencies_ghz]
+    if not frequencies:
+        raise ValueError("frequencies_ghz must not be empty")
+    if window == 'hann':
+        weights = np.hanning(len(times))
+    elif window in (None, 'none'):
+        weights = np.ones(len(times))
+    else:
+        raise ValueError("window must be 'hann', 'none', or None")
+
+    iterator = iter(frames)
+    first = np.asarray(next(iterator), dtype=np.float32)
+    if reference is None:
+        reference_array = first.copy()
+    else:
+        reference_array = np.asarray(reference, dtype=np.float32)
+    if first.shape != reference_array.shape:
+        raise ValueError("frame and reference shapes differ")
+
+    sums = {
+        freq: np.zeros(first.shape, dtype=np.complex128)
+        for freq in frequencies
+    }
+
+    def add_frame(index, frame):
+        array = np.asarray(frame, dtype=np.float32)
+        if array.shape != reference_array.shape:
+            raise ValueError("all frames must share one shape")
+        delta = array - reference_array
+        for freq in frequencies:
+            phase = np.exp(-2j * np.pi * freq * 1e9 * times[index])
+            sums[freq] += delta * (weights[index] * phase)
+
+    add_frame(0, first)
+    processed = 1
+    for index, frame in enumerate(iterator, start=1):
+        if index >= len(times):
+            raise ValueError("more frames than timestamps")
+        add_frame(index, frame)
+        processed += 1
+    if processed != len(times):
+        raise ValueError("frame and timestamp counts differ")
+
+    normalization = float(np.sum(weights))
+    if normalization == 0:
+        normalization = 1.0
+    return {freq: amplitude / normalization for freq, amplitude in sums.items()}
+
+
+def topology_mask_from_reference(reference, relative_threshold=0.1):
+    """Create a topology-region mask from the initial departure from +z."""
+    array = np.asarray(reference, dtype=float)
+    if array.ndim != 4 or array.shape[-1] != 3:
+        raise ValueError("reference must have shape (nx, ny, nz, 3)")
+    contrast = np.maximum(1.0 - array[..., 2], 0.0)
+    maximum = float(np.max(contrast))
+    if maximum <= 0:
+        return np.zeros(contrast.shape, dtype=bool)
+    return contrast >= relative_threshold * maximum
 
 
 def ringdown_fft_from_table(table_path, columns=('mx', 'my', 'mz', 'E_total'),
