@@ -1,0 +1,30 @@
+{
+  "window_s": [
+    5e-12,
+    5e-10
+  ],
+  "target_frequency_ghz": 173.66,
+  "lockin_amplitude": {
+    "1mT": 1.5601609025859174e-07,
+    "5mT": 1.5481164299214792e-07
+  },
+  "amplitude_ratio_5mT_to_1mT": 0.9922799804529938,
+  "raw_amplitude_exponent": -0.004815329065675928,
+  "trajectory_correlation": 0.9981257835509406,
+  "relative_rms_difference": 0.0635348183001741,
+  "fft_peak_metrics": {
+    "1mT": {
+      "frequency_ghz": 173.6620902005467,
+      "power": 1.899631294695599e-10,
+      "fwhm_ghz": 4.2481820392365535,
+      "quality_factor": 40.879154564608946
+    },
+    "5mT": {
+      "frequency_ghz": 173.6622153766682,
+      "power": 1.8843797612985706e-10,
+      "fwhm_ghz": 4.251368635037977,
+      "quality_factor": 40.84854320686705
+    }
+  },
+  "interpretation": "Raw 1 mT and 5 mT oscillations are nearly identical; this supports a common quench contribution but does not establish its source without the zero-field control."
+}

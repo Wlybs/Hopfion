@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 mx3/*.out/
 logs/*.log
+results/*.lock
