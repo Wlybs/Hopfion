@@ -98,9 +98,10 @@ def velocity_response_spectrum(sweep_dir, freqs_ghz, dt_ns,
 
 def energy_absorption_spectrum(sweep_dir, freqs_ghz, t_skip_frac=0.3):
     """
-    从频率扫描的 table.txt 提取平均能量吸收率 dE_total/dt。
+    从频率扫描的 table.txt 提取后瞬态总能量趋势 dE_total/dt。
 
-    共振频率处 Hopfion 从自旋波高效吸收能量，dE/dt 显著偏高。
+    警告：该量包含弛豫、耗散与驱动共同作用，不能单独解释为净吸收率。
+    函数名因兼容既有分析保留；新研究应配合相干响应或外场做功量使用。
 
     Parameters
     ----------
@@ -144,7 +145,7 @@ def energy_absorption_spectrum(sweep_dir, freqs_ghz, t_skip_frac=0.3):
 # ──────────────────────────────────────────────
 
 _FRUSTRATED_FM_MX3 = """\
-// === Frustrated FM Hopfion — {title} ===
+// === Frustrated FM — {title} ===
 
 CellSize := 0.5e-9
 SetGridSize(100, 100, 100)
@@ -156,7 +157,7 @@ DefRegion(3, YRange(22.5e-9, 25e-9))
 DefRegion(4, YRange(-25e-9, -22.5e-9))
 DefRegion(5, ZRange(22.5e-9, 25e-9))
 DefRegion(6, ZRange(-25e-9, -22.5e-9))
-DefRegion(7, {source_region})
+{source_definition}
 
 EnableDemag = false
 MaxErr = 1e-4
@@ -202,20 +203,20 @@ sum_J2    = Add(sum_J2, Shifted(m, -1, 0, 1))
 sum_J2    = Add(sum_J2, Shifted(m, -1, 0, -1))
 AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
 
-m.LoadFile("{init_ovf}")
+{initialization}
 
 {excitation}
 
-autosave(m, {dt_ovf:.1f}e-12)
-tableautosave({dt_table:.2f}e-12)
+{output_commands}
+tableautosave({table_dt_ps:g}e-12)
 TableAdd(E_Total)
 
-run({run_ns}e-9)
+run({run_expression})
 """
 
 _SRC_REGIONS = {
-    'x': 'XRange(-10e-9, -9.5e-9)',
-    'z': 'ZRange(-10e-9, -9.5e-9)',
+    'x': 'DefRegion(7, XRange(-10e-9, -9.5e-9))',
+    'z': 'DefRegion(7, ZRange(-10e-9, -9.5e-9))',
 }
 
 
@@ -264,12 +265,12 @@ def generate_pulse_mx3(out_path, source_axis='x', vib_axis='x',
 
     script = _FRUSTRATED_FM_MX3.format(
         title=title,
-        source_region=_SRC_REGIONS[source_axis],
-        init_ovf=init_ovf,
+        source_definition=_SRC_REGIONS[source_axis],
+        initialization=f'm.LoadFile("{init_ovf}")',
         excitation=excitation,
-        dt_ovf=dt_save_ps,
-        dt_table=dt_save_ps * 0.5,
-        run_ns=run_ns,
+        output_commands=f"autosave(m, {dt_save_ps:g}e-12)",
+        table_dt_ps=dt_save_ps * 0.5,
+        run_expression=f"{run_ns}e-9",
     )
 
     with open(out_path, 'w') as f:
@@ -277,7 +278,9 @@ def generate_pulse_mx3(out_path, source_axis='x', vib_axis='x',
 
 
 def generate_cw_mx3(out_path, freq_ghz, source_axis='x', vib_axis='x',
-                      B_amp=1.0, run_ns=0.2, dt_save_ps=10.0, init_ovf=None):
+                      B_amp=1.0, run_ns=0.2, dt_save_ps=10.0,
+                      table_dt_ps=None, save_m=True, init_ovf=None,
+                      spatial_roi=None, spatial_dt_ps=None):
     """
     生成连续波激励的 mx3 脚本。支持 srcX/srcZ + vibX/vibZ。
 
@@ -305,18 +308,183 @@ def generate_cw_mx3(out_path, freq_ghz, source_axis='x', vib_axis='x',
     title = (f"CW src{source_axis.upper()}_vib{vib_axis.upper()}, "
              f"f={freq_ghz}GHz, B={B_amp}T")
 
+    if table_dt_ps is None:
+        table_dt_ps = min(dt_save_ps, 1.0)
+    output_lines = []
+    if save_m:
+        output_lines.append(f"autosave(m, {dt_save_ps:g}e-12)")
+    if spatial_roi is not None:
+        if len(spatial_roi) != 6:
+            raise ValueError("spatial_roi must contain six cell indices")
+        if spatial_dt_ps is None or spatial_dt_ps <= 0:
+            raise ValueError("spatial_dt_ps must be positive when spatial_roi is set")
+        x1, x2, y1, y2, z1, z2 = spatial_roi
+        output_lines.extend([
+            f"roi_m := Crop(m, {x1}, {x2}, {y1}, {y2}, {z1}, {z2})",
+            f"autosave(roi_m, {spatial_dt_ps:g}e-12)",
+        ])
+    output_commands = "\n".join(output_lines)
     script = _FRUSTRATED_FM_MX3.format(
         title=title,
-        source_region=_SRC_REGIONS[source_axis],
-        init_ovf=init_ovf,
+        source_definition=_SRC_REGIONS[source_axis],
+        initialization=f'm.LoadFile("{init_ovf}")',
         excitation=excitation,
-        dt_ovf=dt_save_ps,
-        dt_table=min(dt_save_ps, 1.0),
-        run_ns=run_ns,
+        output_commands=output_commands,
+        table_dt_ps=table_dt_ps,
+        run_expression=f"{run_ns}e-9",
     )
 
     with open(out_path, 'w') as f:
         f.write(script)
+
+
+def generate_wavefield_mx3(out_path, geometry, frequency_ghz,
+                           plane_b_t=0.1, point_b_t=10.0,
+                           run_ps=30.0, slice_dt_ps=0.02):
+    """Generate a uniform-background slice run for incident-wave k spectra."""
+    if geometry == 'plane':
+        source_definition = "DefRegion(7, XRange(-10e-9, -9.5e-9))"
+        amplitude = plane_b_t
+    elif geometry == 'point':
+        source_definition = "DefRegionCell(7, 30, 50, 50)"
+        amplitude = point_b_t
+    else:
+        raise ValueError("geometry must be 'plane' or 'point'")
+
+    excitation = (
+        f"B_amp := {amplitude:g}\n"
+        f"f_sw := {frequency_ghz:g}e9 * 2 * pi\n"
+        "B_ext.setRegion(7, Vector(B_amp*sin(f_sw*t), 0, 0))"
+    )
+    output_commands = (
+        "slice_m := CropZ(m, 50, 51)\n"
+        f"autosave(slice_m, {slice_dt_ps:g}e-12)"
+    )
+    script = _FRUSTRATED_FM_MX3.format(
+        title=f"{geometry} wavefield, f={frequency_ghz:g}GHz",
+        source_definition=source_definition,
+        initialization="m = uniform(0, 0, 1)",
+        excitation=excitation,
+        output_commands=output_commands,
+        table_dt_ps=slice_dt_ps,
+        run_expression=f"{run_ps:g}e-12",
+    )
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write(script)
+
+
+def wavevector_power_spectrum(complex_field, cell_size_nm,
+                              low_k_fraction_of_nyquist=0.25,
+                              window='none'):
+    """Compute a normalized 2D wavevector spectrum and compact metrics.
+
+    The input is a complex, frequency-demodulated spatial mode. Wavevectors
+    are returned in rad/nm. The peak magnitude is read from the full 2D FFT;
+    radial averages are used only for width diagnostics.
+    """
+    field = np.asarray(complex_field, dtype=np.complex128)
+    field = np.squeeze(field)
+    if field.ndim != 2 or min(field.shape) < 4:
+        raise ValueError("complex_field must be a two-dimensional array")
+    if cell_size_nm <= 0:
+        raise ValueError("cell_size_nm must be positive")
+
+    field = field - np.mean(field)
+    if window == 'hann':
+        weights = np.outer(np.hanning(field.shape[0]), np.hanning(field.shape[1]))
+    elif window in (None, 'none'):
+        weights = np.ones(field.shape)
+    else:
+        raise ValueError("window must be 'hann', 'none', or None")
+
+    amplitude = np.fft.fftshift(np.fft.fft2(field * weights))
+    power = np.abs(amplitude) ** 2
+    total = float(np.sum(power))
+    if total <= 0:
+        raise ValueError("complex_field has no non-constant spectral power")
+    power /= total
+
+    kx = np.fft.fftshift(np.fft.fftfreq(field.shape[0], d=cell_size_nm)) * 2 * np.pi
+    ky = np.fft.fftshift(np.fft.fftfreq(field.shape[1], d=cell_size_nm)) * 2 * np.pi
+    kx_grid, ky_grid = np.meshgrid(kx, ky, indexing='ij')
+    k_radius = np.hypot(kx_grid, ky_grid)
+
+    peak_flat = int(np.argmax(power))
+    peak_index = np.unravel_index(peak_flat, power.shape)
+    peak_k = float(k_radius[peak_index])
+
+    dk = min(2 * np.pi / (field.shape[0] * cell_size_nm),
+             2 * np.pi / (field.shape[1] * cell_size_nm))
+    edges = np.arange(0.0, float(np.max(k_radius)) + 1.5 * dk, dk)
+    radial_index = np.clip(np.digitize(k_radius.ravel(), edges) - 1, 0, len(edges) - 2)
+    radial_sum = np.bincount(
+        radial_index, weights=power.ravel(), minlength=len(edges) - 1
+    )
+    radial_count = np.bincount(radial_index, minlength=len(edges) - 1)
+    radial_power = np.divide(
+        radial_sum,
+        radial_count,
+        out=np.zeros_like(radial_sum),
+        where=radial_count > 0,
+    )
+    radial_k = 0.5 * (edges[:-1] + edges[1:])
+
+    nonzero = power[power > 0]
+    entropy = float(-np.sum(nonzero * np.log(nonzero)) / np.log(power.size))
+    k_nyquist = np.pi / cell_size_nm
+    low_k_cutoff = low_k_fraction_of_nyquist * k_nyquist
+    low_k_fraction = float(np.sum(power[k_radius <= low_k_cutoff]))
+
+    radial_peak_index = int(np.argmax(radial_power[1:]) + 1)
+    half = radial_power[radial_peak_index] / 2.0
+    left = radial_peak_index
+    right = radial_peak_index
+    while left > 0 and radial_power[left - 1] >= half:
+        left -= 1
+    while right + 1 < len(radial_power) and radial_power[right + 1] >= half:
+        right += 1
+    radial_fwhm = None
+    if right > left:
+        radial_fwhm = float(radial_k[right] - radial_k[left])
+
+    return {
+        "kx_rad_per_nm": kx,
+        "ky_rad_per_nm": ky,
+        "power": power,
+        "radial_k_rad_per_nm": radial_k,
+        "radial_power": radial_power,
+        "peak_k_rad_per_nm": peak_k,
+        "radial_fwhm_rad_per_nm": radial_fwhm,
+        "low_k_cutoff_rad_per_nm": float(low_k_cutoff),
+        "low_k_power_fraction": low_k_fraction,
+        "spectral_entropy": entropy,
+    }
+
+
+def coherent_amplitude(times_s, signal, frequency_ghz, t_start_s=0.0,
+                       window='hann'):
+    """Return the lock-in amplitude of a real signal at one frequency."""
+    times = np.asarray(times_s, dtype=float)
+    values = np.asarray(signal, dtype=float)
+    if times.shape != values.shape:
+        raise ValueError("times_s and signal must have matching shapes")
+    mask = np.isfinite(times) & np.isfinite(values) & (times >= t_start_s)
+    times = times[mask]
+    values = values[mask]
+    if len(times) < 8:
+        raise ValueError("Need at least 8 samples after t_start_s")
+    if window == 'hann':
+        weights = np.hanning(len(times))
+    elif window in (None, 'none'):
+        weights = np.ones(len(times))
+    else:
+        raise ValueError("window must be 'hann', 'none', or None")
+    weight_sum = float(np.sum(weights))
+    if weight_sum <= 0:
+        raise ValueError("window has zero total weight")
+    centered = values - np.average(values, weights=weights)
+    phase = np.exp(-2j * np.pi * float(frequency_ghz) * 1e9 * times)
+    return float(2.0 * np.abs(np.sum(centered * weights * phase)) / weight_sum)
 
 
 _FRUSTRATED_FM_RINGDOWN_TABLE_ONLY_MX3 = """\

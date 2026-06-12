@@ -78,7 +78,7 @@ from hopfion_analysis import hopfion_centroid, compute_Rr, extract_trajectory
 | 函数 | 方法 | 输入 | 返回 |
 |---|---|---|---|
 | `velocity_response_spectrum(sweep_dir, freqs, dt)` | v̄(f) 速度响应谱 | 频率扫描 .out 目录 | `{freq: v̄}` |
-| `energy_absorption_spectrum(sweep_dir, freqs)` | ΔĖ(f) 能量吸收谱 | 频率扫描 table.txt | `{freq: dE/dt}` |
+| `energy_absorption_spectrum(sweep_dir, freqs)` | 后瞬态总能量趋势，旧名兼容，不能单独称净吸收 | 频率扫描 table.txt | `{freq: dE/dt}` |
 | `generate_pulse_mx3(path, src, vib, sigma, B)` | 脉冲 mx3 生成 | 参数 | .mx3 文件 |
 | `generate_cw_mx3(path, freq, src, vib, B)` | 连续波 mx3 生成 | 参数 | .mx3 文件 |
 | `pulse_eigenmode_analysis(out_dir, dt)` | 脉冲后 FFT 本征模谱 | 脉冲仿真 .out | `{freqs, psd_dx/dy/dz, psd_E}` |
@@ -90,6 +90,9 @@ from hopfion_analysis import hopfion_centroid, compute_Rr, extract_trajectory
 | `fit_power_law(amplitudes, responses)` | 弱场响应幂律拟合 | 正幅度与响应数组 | `dict` |
 | `evaluate_mode_localization(...)` | Hopfion 局域模式阶段门 | 掩膜/背景功率 | `dict` |
 | `generate_circular_burst_mx3(...)` | 高斯包络圆偏微波 mx3 | 旋向、载频、场强 | `.mx3` 文件 |
+| `generate_wavefield_mx3(...)` | 均匀背景点源/平面源二维切片仿真 | 几何、频率、范数匹配场强 | `.mx3` 文件 |
+| `coherent_amplitude(t, signal, frequency)` | 锁相提取指定驱动频率的相干幅值 | 时间序列 | `float` |
+| `wavevector_power_spectrum(mode, cell_size_nm)` | 复模态二维 FFT、径向 k 谱与熵指标 | 二维复振幅 | `dict` |
 
 #### `ringdown_fft_from_table` 使用场景
 

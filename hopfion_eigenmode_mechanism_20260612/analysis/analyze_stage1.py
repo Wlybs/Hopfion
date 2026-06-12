@@ -301,11 +301,12 @@ def _plot_mode_projections(hopfion_power, background_power, mask, path: Path):
     fig, axes = plt.subplots(2, 3, figsize=(11, 7))
     datasets = [hopfion_power, background_power]
     titles = ["Hopfion", "uniform background"]
+    projection_labels = ["xy (sum z)", "xz (sum y)", "yz (sum x)"]
     for row, (data, title) in enumerate(zip(datasets, titles)):
         projections = [np.sum(data, axis=2), np.sum(data, axis=1), np.sum(data, axis=0)]
         for col, projection in enumerate(projections):
             image = axes[row, col].imshow(projection.T, origin="lower", cmap="magma")
-            axes[row, col].set_title(f"{title}: {'xyz'[col]} projection")
+            axes[row, col].set_title(f"{title}: {projection_labels[col]}")
             fig.colorbar(image, ax=axes[row, col], fraction=0.046)
     fig.suptitle("173.66 GHz complex-mode power")
     fig.tight_layout()
@@ -345,8 +346,12 @@ def main():
         "circular": analyze_circular(results_dir),
         "spatial_gate": analyze_spatial(results_dir, figures_dir),
     }
-    if args.require_complete and any(value is None for value in summary.values()):
-        raise FileNotFoundError("Stage-1 outputs are incomplete")
+    if args.require_complete:
+        linear_complete = summary["ringdown"].get("available_linear_runs") == 3
+        linewidth_complete = "linewidth_1ns" in summary["ringdown"]
+        other_complete = summary["circular"] is not None and summary["spatial_gate"] is not None
+        if not (linear_complete and linewidth_complete and other_complete):
+            raise FileNotFoundError("Stage-1 outputs are incomplete")
     _write_json(results_dir / "stage1_summary.json", summary)
     write_interpretation(summary, notes_dir / "stage1_interpretation.md")
 
