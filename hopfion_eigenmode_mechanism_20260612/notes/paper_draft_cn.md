@@ -10,7 +10,7 @@
 
 ## 当前已知结果
 
-弱 `Bz` sinc 脉冲的 table-average ringdown 在 `173.66 GHz` 给出最强 `m_z` 与 `E_total` 峰。该峰目前只能称为候选本征频率，因为空间平均信号无法排除均匀背景、有限盒子或体自旋波模式。已有连续驱动峰均未通过 10 GHz 对齐判据。`srcX 200 GHz` 与该峰相差 `26.34 GHz`，`srcZ 100 GHz` 与最近弱峰 `77.64 GHz` 相差 `22.36 GHz`，而 `1000-1100 GHz` 高频窗口距离更远。因此，现阶段不把 `100/200/1000/1100 GHz` 直接命名为 Hopfion 固有频率。
+弱 `Bz` sinc 脉冲的 table-average ringdown 在 `173.66 GHz` 给出最强 `m_z` 与 `E_total` 峰。运行中的幅度审计进一步发现，1 mT 与 5 mT 的原始锁相幅值近似相同，且既有 `Bx/Bz` 数据的主峰功率也近似相同。这表明从 PBC 高阻尼稳定态切换到开放吸收边界、低阻尼动力学几何时产生了显著共同淬火响应。该频率仍可能属于自由本征谱，但在零场差分前不能声称由 sinc 脉冲线性激发。已有连续驱动峰均未通过 10 GHz 对齐判据。`srcX 200 GHz` 与该峰相差 `26.34 GHz`，`srcZ 100 GHz` 与最近弱峰 `77.64 GHz` 相差 `22.36 GHz`，而 `1000-1100 GHz` 高频窗口距离更远。因此，现阶段不把 `100/200/1000/1100 GHz` 直接命名为 Hopfion 固有频率。
 
 ## 待结果自动回填的主结论
 
@@ -40,4 +40,3 @@ G_ab(q) qdot_b + alpha D_ab(q) qdot_b
 ```
 
 其中 `q={X,Y,Z,R_ring,r_tube,Phi_toroidal,Phi_poloidal}`。该表达式借鉴 magnon-driven skyrmion 的 Thiele 图像以及 frustrated-magnet Hopfion 的平移、旋转和 dilation 耦合，但本工作尚未从数值数据反演 `G_ab`、`D_ab` 或 `F_a^mag`，因此只将其作为组织现象的理论框架，不声称完成定量 Thiele 拟合。
-
