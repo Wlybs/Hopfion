@@ -381,13 +381,15 @@ sum_J2    = Add(sum_J2, Shifted(m, -1, 0, 1))
 sum_J2    = Add(sum_J2, Shifted(m, -1, 0, -1))
 AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
 
-m.LoadFile("{init_ovf}")
+{initialization}
 
 B0 := {b0_t}
 fc := {cutoff_ghz:g}e9
 t0 := {t0_ps}e-12
 pulse := B0 * sin(2*pi*fc*(t-t0))/(2*pi*fc*(t-t0) + 1e-30)
 {b_ext}
+
+{spatial_output}
 
 tableautosave({table_dt_ps}e-12)
 TableAdd(E_Total)
@@ -398,7 +400,9 @@ run({run_ns}e-9)
 
 def generate_sinc_ringdown_mx3(out_path, drive_axis='x', cutoff_ghz=2000.0,
                                 b0_t=0.005, t0_ps=2.37, run_ns=0.5,
-                                table_dt_ps=0.05, init_ovf=None):
+                                table_dt_ps=0.05, init_ovf=None,
+                                uniform_background=False, spatial_roi=None,
+                                spatial_dt_ps=None):
     """
     生成 uniform weak sinc pulse 的 table-only ringdown Mumax3 脚本。
 
@@ -419,19 +423,168 @@ def generate_sinc_ringdown_mx3(out_path, drive_axis='x', cutoff_ghz=2000.0,
     else:
         b_ext = "B_ext = Vector(0, 0, pulse)"
 
+    if uniform_background:
+        initialization = "m = uniform(0, 0, 1)"
+    else:
+        initialization = f'm.LoadFile("{init_ovf}")'
+
+    if spatial_roi is None:
+        spatial_output = ""
+    else:
+        if len(spatial_roi) != 6:
+            raise ValueError("spatial_roi must contain six cell indices")
+        if spatial_dt_ps is None or spatial_dt_ps <= 0:
+            raise ValueError("spatial_dt_ps must be positive when spatial_roi is set")
+        x1, x2, y1, y2, z1, z2 = spatial_roi
+        spatial_output = (
+            f"roi_m := Crop(m, {x1}, {x2}, {y1}, {y2}, {z1}, {z2})\n"
+            f"autosave(roi_m, {spatial_dt_ps:g}e-12)"
+        )
+
     script = _FRUSTRATED_FM_RINGDOWN_TABLE_ONLY_MX3.format(
         drive_axis=drive_axis.upper(),
-        init_ovf=init_ovf,
+        initialization=initialization,
         b0_t=b0_t,
         cutoff_ghz=cutoff_ghz,
         t0_ps=t0_ps,
         table_dt_ps=table_dt_ps,
         run_ns=run_ns,
         b_ext=b_ext,
+        spatial_output=spatial_output,
     )
 
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write(script)
+
+
+def generate_circular_burst_mx3(out_path, handedness=1,
+                                 frequency_ghz=174.0, b0_t=0.002,
+                                 center_ps=60.0, sigma_ps=20.0,
+                                 run_ns=0.5, table_dt_ps=0.05,
+                                 init_ovf=None):
+    """Generate a Gaussian-envelope circular microwave burst."""
+    if handedness not in (-1, 1):
+        raise ValueError("handedness must be -1 or 1")
+    if init_ovf is None:
+        init_ovf = ("/mnt/d/Research/Hopfion/20260105_frustrated_fm/"
+                    "centered_stability_test/stability_Ku10k.out/m000020.ovf")
+
+    sign = "" if handedness == 1 else "-"
+    b_ext = (
+        f"carrier := {frequency_ghz:g}e9 * 2 * pi\n"
+        f"center := {center_ps:g}e-12\n"
+        f"sigma := {sigma_ps:g}e-12\n"
+        "envelope := B0 * exp(-((t-center)*(t-center))/(2*sigma*sigma))\n"
+        "B_ext = Vector(envelope*cos(carrier*t), "
+        f"{sign}envelope*sin(carrier*t), 0)"
+    )
+    script = _FRUSTRATED_FM_RINGDOWN_TABLE_ONLY_MX3.format(
+        drive_axis="CIRCULAR",
+        initialization=f'm.LoadFile("{init_ovf}")',
+        b0_t=b0_t,
+        cutoff_ghz=2000.0,
+        t0_ps=2.37,
+        table_dt_ps=table_dt_ps,
+        run_ns=run_ns,
+        b_ext=b_ext,
+        spatial_output="",
+    )
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write(script)
+
+
+def estimate_peak_metrics(freqs_ghz, power, target_ghz,
+                          search_halfwidth_ghz=30.0):
+    """Estimate peak frequency, numerical FWHM, and Q near a target."""
+    freqs = np.asarray(freqs_ghz, dtype=float)
+    psd = np.asarray(power, dtype=float)
+    if freqs.shape != psd.shape:
+        raise ValueError("freqs_ghz and power must have the same shape")
+    mask = (np.isfinite(freqs) & np.isfinite(psd)
+            & (freqs >= target_ghz - search_halfwidth_ghz)
+            & (freqs <= target_ghz + search_halfwidth_ghz))
+    f = freqs[mask]
+    y = psd[mask]
+    if len(f) < 3 or np.max(y) <= 0:
+        return {"status": "no_peak"}
+
+    peak_index = int(np.argmax(y))
+    peak_frequency = float(f[peak_index])
+    peak_power = float(y[peak_index])
+    half_power = peak_power / 2.0
+
+    left_candidates = np.where(y[:peak_index] < half_power)[0]
+    right_candidates = np.where(y[peak_index + 1:] < half_power)[0]
+    if len(left_candidates) == 0 or len(right_candidates) == 0:
+        return {
+            "status": "fwhm_unresolved",
+            "frequency_ghz": peak_frequency,
+            "power": peak_power,
+        }
+
+    left_low = int(left_candidates[-1])
+    left_high = left_low + 1
+    right_high = peak_index + 1 + int(right_candidates[0])
+    right_low = right_high - 1
+
+    left_cross = float(np.interp(
+        half_power,
+        [y[left_low], y[left_high]],
+        [f[left_low], f[left_high]],
+    ))
+    right_cross = float(np.interp(
+        half_power,
+        [y[right_high], y[right_low]],
+        [f[right_high], f[right_low]],
+    ))
+    fwhm = right_cross - left_cross
+    if fwhm <= 0:
+        return {"status": "fwhm_unresolved", "frequency_ghz": peak_frequency}
+    return {
+        "status": "ok",
+        "frequency_ghz": peak_frequency,
+        "power": peak_power,
+        "fwhm_ghz": float(fwhm),
+        "quality_factor": float(peak_frequency / fwhm),
+    }
+
+
+def fit_power_law(amplitudes, responses):
+    """Fit response = prefactor * amplitude**exponent in log space."""
+    x = np.asarray(amplitudes, dtype=float)
+    y = np.asarray(responses, dtype=float)
+    if x.shape != y.shape or len(x) < 2:
+        raise ValueError("amplitudes and responses need matching lengths >= 2")
+    if np.any(x <= 0) or np.any(y <= 0):
+        raise ValueError("amplitudes and responses must be positive")
+    slope, intercept = np.polyfit(np.log(x), np.log(y), 1)
+    predicted = intercept + slope * np.log(x)
+    residual = np.sum((np.log(y) - predicted) ** 2)
+    total = np.sum((np.log(y) - np.mean(np.log(y))) ** 2)
+    r_squared = 1.0 if total == 0 else 1.0 - residual / total
+    return {
+        "exponent": float(slope),
+        "prefactor": float(np.exp(intercept)),
+        "r_squared": float(r_squared),
+    }
+
+
+def evaluate_mode_localization(mask_mean_power, outside_mean_power,
+                               hopfion_total_power, background_total_power,
+                               min_localization=2.0, min_background_contrast=3.0):
+    """Apply the project-level operational gate for a localized mode."""
+    if outside_mean_power <= 0 or background_total_power <= 0:
+        raise ValueError("reference powers must be positive")
+    localization_ratio = float(mask_mean_power / outside_mean_power)
+    background_contrast = float(hopfion_total_power / background_total_power)
+    return {
+        "localization_ratio": localization_ratio,
+        "background_contrast": background_contrast,
+        "passed": bool(
+            localization_ratio >= min_localization
+            and background_contrast >= min_background_contrast
+        ),
+    }
 
 
 def ringdown_fft_from_table(table_path, columns=('mx', 'my', 'mz', 'E_total'),

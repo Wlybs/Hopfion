@@ -86,6 +86,10 @@ from hopfion_analysis import hopfion_centroid, compute_Rr, extract_trajectory
 | `generate_sinc_ringdown_mx3(path, axis, cutoff_ghz, b0_t)` | uniform sinc 弱脉冲 table-only mx3 | 参数 | .mx3 文件 |
 | `ringdown_fft_from_table(table_path, columns)` | 对 table 平均磁化/能量做 FFT | table.txt | `{freqs_ghz, psd_*}` |
 | `find_fft_peaks(freqs, power)` | 从功率谱提取候选峰 | FFT 频率轴和功率 | `list[dict]` |
+| `estimate_peak_metrics(freqs, power, target)` | 目标峰位、数值 FWHM 与 Q | 频率轴、功率谱 | `dict` |
+| `fit_power_law(amplitudes, responses)` | 弱场响应幂律拟合 | 正幅度与响应数组 | `dict` |
+| `evaluate_mode_localization(...)` | Hopfion 局域模式阶段门 | 掩膜/背景功率 | `dict` |
+| `generate_circular_burst_mx3(...)` | 高斯包络圆偏微波 mx3 | 旋向、载频、场强 | `.mx3` 文件 |
 
 #### `ringdown_fft_from_table` 使用场景
 
