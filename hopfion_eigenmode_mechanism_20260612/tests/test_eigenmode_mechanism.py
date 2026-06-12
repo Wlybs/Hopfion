@@ -17,13 +17,17 @@ from resonance_analysis import (  # noqa: E402
     fit_power_law,
     generate_circular_burst_mx3,
     generate_cw_mx3,
+    generate_equilibrated_state_mx3,
     generate_sinc_ringdown_mx3,
     generate_wavefield_mx3,
+    ringdown_fft_difference,
     wavevector_power_spectrum,
     topology_mask_from_reference,
 )
 from generate_simulations import generate_stage1_files  # noqa: E402
+from generate_controls import generate_control_files  # noqa: E402
 from generate_stage2 import generate_stage2_files  # noqa: E402
+from analyze_controls import evaluate_clean_linearity, evaluate_quench_control  # noqa: E402
 
 
 def test_estimate_peak_metrics_recovers_lorentzian_fwhm_and_q():
@@ -116,6 +120,19 @@ def test_generate_uniform_background_ringdown_does_not_load_hopfion(tmp_path):
     text = mx3.read_text(encoding="utf-8")
     assert "m = uniform(0, 0, 1)" in text
     assert "m.LoadFile(" not in text
+
+
+def test_generate_equilibrated_state_uses_target_open_boundaries(tmp_path):
+    mx3 = tmp_path / "equilibrate_open.mx3"
+
+    generate_equilibrated_state_mx3(mx3)
+
+    text = mx3.read_text(encoding="utf-8")
+    assert "SetPBC" not in text
+    assert "alpha = 0.2" in text
+    assert "alpha.setRegion(1, 100)" in text
+    assert "Relax()" in text
+    assert 'saveas(m, "equilibrated_open_boundary")' in text
 
 
 def test_generate_circular_burst_uses_quadrature_components(tmp_path):
@@ -265,6 +282,37 @@ def test_coherent_amplitude_recovers_sinusoid_amplitude():
     assert abs(amplitude - 0.37) < 1e-3
 
 
+def test_ringdown_fft_difference_removes_common_quench_mode(tmp_path):
+    times = np.arange(0.0, 0.2e-9, 0.05e-12)
+    common = 2e-5 * np.sin(2 * np.pi * 174e9 * times)
+    driven_only = 4e-6 * np.sin(2 * np.pi * 120e9 * times + 0.3)
+    control = tmp_path / "control.txt"
+    driven = tmp_path / "driven.txt"
+
+    def write_table(path, mz):
+        with path.open("w", encoding="utf-8") as handle:
+            handle.write("# t (s)\tmx ()\tmy ()\tmz ()\tE_total (J)\n")
+            for time_s, value in zip(times, mz):
+                handle.write(f"{time_s}\t0\t0\t{value}\t0\n")
+
+    write_table(control, common)
+    write_table(driven, common + driven_only)
+    spectrum = ringdown_fft_difference(
+        driven,
+        control,
+        columns=("mz",),
+        t_start_s=5e-12,
+    )
+    metrics = estimate_peak_metrics(
+        spectrum["freqs_ghz"], spectrum["psd_mz"], 120.0, 10.0
+    )
+
+    frequency_step = spectrum["freqs_ghz"][1] - spectrum["freqs_ghz"][0]
+    common_index = np.argmin(np.abs(spectrum["freqs_ghz"] - 174.0))
+    assert abs(metrics["frequency_ghz"] - 120.0) <= frequency_step / 2
+    assert metrics["power"] > 1000 * spectrum["psd_mz"][common_index]
+
+
 def test_generate_stage2_is_gated_and_writes_fifteen_runs(tmp_path):
     gate_path = tmp_path / "results" / "stage1_gate.json"
     gate_path.parent.mkdir(parents=True)
@@ -282,3 +330,50 @@ def test_generate_stage2_is_gated_and_writes_fifteen_runs(tmp_path):
     assert len(list((tmp_path / "mx3").glob("cw_*.mx3"))) == 11
     assert len(list((tmp_path / "mx3").glob("wavefield_*.mx3"))) == 4
     assert (tmp_path / "results" / "stage2_simulation_manifest.csv").is_file()
+
+
+def test_generate_control_files_writes_quench_and_clean_matrix(tmp_path):
+    manifest = generate_control_files(tmp_path)
+
+    assert len(manifest) == 11
+    assert {row["stage"] for row in manifest} == {
+        "quench_control",
+        "equilibration",
+        "clean_linearity",
+        "clean_validation",
+    }
+    clean_1mt = tmp_path / "mx3" / "clean_Bz_1mT_05ns.mx3"
+    text = clean_1mt.read_text(encoding="utf-8")
+    assert "equilibrate_open_boundary.out/equilibrated_open_boundary.ovf" in text
+    assert (tmp_path / "results" / "control_simulation_manifest.csv").is_file()
+
+
+def test_evaluate_quench_control_detects_drive_independent_mode():
+    result = evaluate_quench_control(
+        control_amplitude=0.9,
+        one_mt_amplitude=1.0,
+        five_mt_amplitude=1.02,
+    )
+
+    assert result["quench_dominated"] is True
+    assert result["control_to_1mt_ratio"] == 0.9
+
+
+def test_evaluate_clean_linearity_requires_scaling_snr_and_peak_agreement():
+    passed = evaluate_clean_linearity(
+        exponent=2.05,
+        r_squared=0.99,
+        snr_5mt=8.0,
+        peak_spread_ghz=2.0,
+        frequency_step_ghz=2.1,
+    )
+    failed = evaluate_clean_linearity(
+        exponent=0.1,
+        r_squared=0.99,
+        snr_5mt=8.0,
+        peak_spread_ghz=2.0,
+        frequency_step_ghz=2.1,
+    )
+
+    assert passed["passed"] is True
+    assert failed["passed"] is False

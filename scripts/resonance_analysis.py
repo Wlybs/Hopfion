@@ -373,6 +373,37 @@ def generate_wavefield_mx3(out_path, geometry, frequency_ghz,
         f.write(script)
 
 
+def generate_equilibrated_state_mx3(out_path, init_ovf=None,
+                                    bulk_alpha=0.2,
+                                    output_name='equilibrated_open_boundary'):
+    """Generate an energy-relaxation run under the target open boundaries."""
+    if init_ovf is None:
+        init_ovf = ("/mnt/d/Research/Hopfion/20260105_frustrated_fm/"
+                    "centered_stability_test/stability_Ku10k.out/m000020.ovf")
+    relaxation = (
+        f"alpha = {bulk_alpha:g}\n"
+        "alpha.setRegion(1, 100)\n"
+        "alpha.setRegion(2, 100)\n"
+        "alpha.setRegion(3, 100)\n"
+        "alpha.setRegion(4, 100)\n"
+        "alpha.setRegion(5, 100)\n"
+        "alpha.setRegion(6, 100)\n"
+        "Relax()\n"
+        f'saveas(m, "{output_name}")'
+    )
+    script = _FRUSTRATED_FM_MX3.format(
+        title="equilibrate Hopfion under target open boundaries",
+        source_definition="",
+        initialization=f'm.LoadFile("{init_ovf}")',
+        excitation=relaxation,
+        output_commands="",
+        table_dt_ps=10.0,
+        run_expression="0",
+    )
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write(script)
+
+
 def wavevector_power_spectrum(complex_field, cell_size_nm,
                               low_k_fraction_of_nyquist=0.25,
                               window='none'):
@@ -878,6 +909,47 @@ def ringdown_fft_from_table(table_path, columns=('mx', 'my', 'mz', 'E_total'),
         psd = np.abs(np.fft.rfft(sig * weights)) ** 2 / norm
         result[f'psd_{col}'] = psd
 
+    return result
+
+
+def ringdown_fft_difference(driven_table_path, control_table_path,
+                            columns=('mx', 'my', 'mz', 'E_total'),
+                            t_start_s=0.0, window='hann'):
+    """FFT of a driven trajectory after subtracting an interpolated control."""
+    driven = load_mumax_table(driven_table_path)
+    control = load_mumax_table(control_table_path)
+    if 't' not in driven or 't' not in control:
+        raise ValueError("Both tables need a time column")
+    driven_t = np.asarray(driven['t'], dtype=float)
+    control_t = np.asarray(control['t'], dtype=float)
+    mask = (
+        (driven_t >= t_start_s)
+        & (driven_t >= np.min(control_t))
+        & (driven_t <= np.max(control_t))
+    )
+    if np.count_nonzero(mask) < 8:
+        raise ValueError("Driven and control tables have insufficient overlap")
+    times = driven_t[mask]
+    dt = float(np.median(np.diff(times)))
+    if not np.isfinite(dt) or dt <= 0:
+        raise ValueError("Invalid driven time column")
+    if window == 'hann':
+        weights = np.hanning(len(times))
+    elif window in (None, 'none'):
+        weights = np.ones(len(times))
+    else:
+        raise ValueError("window must be 'hann', 'none', or None")
+    norm = float(np.sum(weights ** 2)) or 1.0
+    result = {'freqs_ghz': np.fft.rfftfreq(len(times), d=dt) * 1e-9}
+    for column in columns:
+        if column not in driven or column not in control:
+            continue
+        reference = np.interp(times, control_t, np.asarray(control[column], dtype=float))
+        signal = np.asarray(driven[column], dtype=float)[mask] - reference
+        signal -= np.mean(signal)
+        result[f'psd_{column}'] = (
+            np.abs(np.fft.rfft(signal * weights)) ** 2 / norm
+        )
     return result
 
 
