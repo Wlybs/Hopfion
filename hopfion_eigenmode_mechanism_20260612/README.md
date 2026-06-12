@@ -20,3 +20,5 @@ bash hopfion_eigenmode_mechanism_20260612/run_stage1.sh
 - 局域性阈值是本项目操作性标准，不声称是普适常数。
 - 均匀背景出现同等级峰时，记录为背景/有限几何候选模式。
 - 连续波强位移窗口不自动等于本征共振。
+
+当前证据的权威入口见 `notes/evidence_status_20260612.md`。该文件明确覆盖早期文档在 ringdown 完成前对 `srcX 200 GHz` 的候选命名。带结果占位符的论文讨论框架见 `notes/paper_draft_cn.md`；占位符只能由本批次机器输出回填。
