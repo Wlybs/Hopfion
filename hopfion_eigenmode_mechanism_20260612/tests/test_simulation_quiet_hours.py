@@ -81,3 +81,4 @@ def test_all_scheme_b_pipelines_use_the_shared_quiet_hours_runner():
     for name in ("run_stage1.sh", "run_recovery_pipeline.sh", "run_stage2.sh"):
         text = (package / name).read_text(encoding="utf-8")
         assert "run_mumax_with_quiet_hours.sh" in text
+        assert 'bash "$QUIET_RUNNER"' in text

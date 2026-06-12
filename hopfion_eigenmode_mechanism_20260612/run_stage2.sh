@@ -52,7 +52,7 @@ for entry in "${CASES[@]}"; do
     fi
     started_at="$(date --iso-8601=seconds)"
     set +e
-    "$QUIET_RUNNER" --mx3 "$ROOT/$relative_mx3" \
+    bash "$QUIET_RUNNER" --mx3 "$ROOT/$relative_mx3" \
         --table "$output_dir/table.txt" -- \
         "$MUMAX3" -o "$output_dir" "$ROOT/$relative_mx3" \
         > "$ROOT/logs/${name}.log" 2>&1

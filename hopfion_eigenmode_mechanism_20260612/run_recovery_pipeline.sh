@@ -33,7 +33,7 @@ run_case() {
     local started_at
     started_at="$(date --iso-8601=seconds)"
     set +e
-    "$QUIET_RUNNER" --mx3 "$mx3" --table "$out/table.txt" -- \
+    bash "$QUIET_RUNNER" --mx3 "$mx3" --table "$out/table.txt" -- \
         "$MUMAX3" -o "$out" "$mx3" > "$log" 2>&1
     local exit_code=$?
     set -e
