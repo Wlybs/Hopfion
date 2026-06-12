@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MUMAX3="/home/wujiale/go/bin/mumax3"
+QUIET_RUNNER="$ROOT/../scripts/run_mumax_with_quiet_hours.sh"
 export LD_LIBRARY_PATH="/home/wujiale/mumax3/mumax3.11.1_linux_cuda12.9/lib:/home/wujiale/.local/cuda-12.8/targets/x86_64-linux/lib:${LD_LIBRARY_PATH:-}"
 
 mkdir -p "$ROOT/logs" "$ROOT/results"
@@ -27,7 +28,8 @@ run_case() {
     local started
     started="$(date --iso-8601=seconds)"
     set +e
-    "$MUMAX3" -o "$out" "$mx3" >> "$log" 2>&1
+    "$QUIET_RUNNER" --mx3 "$mx3" --table "$out/table.txt" -- \
+        "$MUMAX3" -o "$out" "$mx3" >> "$log" 2>&1
     local code=$?
     set -e
     local finished
@@ -48,4 +50,3 @@ run_case circular_plus_2mT
 run_case circular_minus_2mT
 run_case spatial_hopfion_Bz
 run_case spatial_uniform_Bz
-

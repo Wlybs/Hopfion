@@ -109,6 +109,16 @@ from hopfion_analysis import hopfion_centroid, compute_Rr, extract_trajectory
 | `param_sweep.py` | 参数扫描任务生成 |
 | `run_and_log.py` | 仿真运行与日志记录 |
 
+### `simulation_quiet_hours.py` 与 `run_mumax_with_quiet_hours.sh`
+
+方案 B 的 Mumax 启动守门与夜间暂停工具，统一使用新加坡时区：
+
+- `23:00-03:00` 不启动新算例。
+- `23:00` 前已启动的固定时长算例，若按实时进度预计能在 `23:30` 前完成，则允许完整结束。
+- 预计超过 `23:30`、完成时间未知（例如 `Relax()`），或算例在 `23:00` 才启动时，立即 `SIGSTOP` Mumax，并在 `03:00` 后 `SIGCONT` 原位续跑。
+- 即使宽限算例在 `23:30` 前完成，下一组也必须等到 `03:00`。
+- 包装器只管理进程，不改变 `.mx3`、输出目录、日志重定向或 `.complete` 规则。
+
 ---
 
 ## 新增脚本规范

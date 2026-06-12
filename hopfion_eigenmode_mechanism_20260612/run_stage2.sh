@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MUMAX3="${MUMAX3:-/home/wujiale/go/bin/mumax3}"
+QUIET_RUNNER="$ROOT/../scripts/run_mumax_with_quiet_hours.sh"
 export LD_LIBRARY_PATH="/home/wujiale/mumax3/mumax3.11.1_linux_cuda12.9/lib:/home/wujiale/.local/cuda-12.8/targets/x86_64-linux/lib:${LD_LIBRARY_PATH:-}"
 mkdir -p "$ROOT/logs" "$ROOT/results"
 
@@ -51,7 +52,10 @@ for entry in "${CASES[@]}"; do
     fi
     started_at="$(date --iso-8601=seconds)"
     set +e
-    "$MUMAX3" -o "$output_dir" "$ROOT/$relative_mx3" > "$ROOT/logs/${name}.log" 2>&1
+    "$QUIET_RUNNER" --mx3 "$ROOT/$relative_mx3" \
+        --table "$output_dir/table.txt" -- \
+        "$MUMAX3" -o "$output_dir" "$ROOT/$relative_mx3" \
+        > "$ROOT/logs/${name}.log" 2>&1
     exit_code=$?
     set -e
     finished_at="$(date --iso-8601=seconds)"
