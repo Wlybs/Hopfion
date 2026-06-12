@@ -20,6 +20,9 @@ REPO = ROOT.parent
 sys.path.insert(0, str(REPO / "scripts"))
 
 from resonance_analysis import coherent_amplitude, fit_power_law, load_mumax_table  # noqa: E402
+from paper_style import COLORS, legend_above, save_paper_fig, setup_paper_style  # noqa: E402
+
+setup_paper_style()
 
 
 def _load_ovf(path: Path) -> np.ndarray:
@@ -156,10 +159,10 @@ def _plot_frequency_bridge(rows: list[dict], path: Path, target_frequency: float
     frequencies = [float(row["frequency_ghz"]) for row in selected]
     responses = [row["response_vector"] for row in selected]
     fig, ax = plt.subplots(figsize=(7, 4.2))
-    ax.plot(frequencies, responses, "o-", color="#176b87", label="CW coherent response")
+    ax.plot(frequencies, responses, "o-", color=COLORS["primary"], label="CW coherent response")
     ax.axvline(
         target_frequency,
-        color="#c44e52",
+        color=COLORS["secondary"],
         ls="--",
         lw=1.2,
         label=f"clean ringdown {target_frequency:.2f} GHz",
@@ -167,9 +170,8 @@ def _plot_frequency_bridge(rows: list[dict], path: Path, target_frequency: float
     ax.set_xlabel("drive frequency (GHz)")
     ax.set_ylabel("coherent |m| amplitude")
     ax.grid(True, alpha=0.25)
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(path, dpi=220)
+    legend_above(ax)
+    save_paper_fig(fig, path)
     plt.close(fig)
 
 

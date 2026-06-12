@@ -29,6 +29,14 @@ from resonance_analysis import (  # noqa: E402
     ringdown_fft_from_table,
     topology_mask_from_reference,
 )
+from paper_style import (  # noqa: E402
+    COLORS,
+    legend_above,
+    save_paper_fig,
+    setup_paper_style,
+)
+
+setup_paper_style()
 
 
 TARGET_GHZ = 173.66
@@ -146,14 +154,13 @@ def _plot_linearity(amplitudes, powers, fit, path: Path):
     y = y[order]
     fit_y = fit["prefactor"] * x ** fit["exponent"]
     fig, ax = plt.subplots(figsize=(6, 4.2))
-    ax.loglog(x * 1e3, y, "o", color="#176b87", label="ringdown peak")
-    ax.loglog(x * 1e3, fit_y, "-", color="#c44e52", label=f"n={fit['exponent']:.2f}")
+    ax.loglog(x * 1e3, y, "o", color=COLORS["primary"], label="ringdown peak")
+    ax.loglog(x * 1e3, fit_y, "-", color=COLORS["secondary"], label=f"n={fit['exponent']:.2f}")
     ax.set_xlabel("pulse amplitude (mT)")
     ax.set_ylabel("m_z peak power (arb. units)")
     ax.grid(True, which="both", alpha=0.25)
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(path, dpi=220)
+    legend_above(ax)
+    save_paper_fig(fig, path)
     plt.close(fig)
 
 
@@ -162,13 +169,12 @@ def _plot_linewidth(spectrum, path: Path):
     freqs = spectrum["freqs_ghz"]
     power = spectrum["psd_mz"]
     mask = (freqs >= 130) & (freqs <= 220)
-    ax.plot(freqs[mask], power[mask] / np.max(power[mask]), color="#202020")
-    ax.axvline(TARGET_GHZ, color="#c44e52", ls="--", lw=1)
+    ax.plot(freqs[mask], power[mask] / np.max(power[mask]), color=COLORS["ref"])
+    ax.axvline(TARGET_GHZ, color=COLORS["secondary"], ls="--", lw=1)
     ax.set_xlabel("frequency (GHz)")
     ax.set_ylabel("normalized m_z power")
     ax.grid(True, alpha=0.25)
-    fig.tight_layout()
-    fig.savefig(path, dpi=220)
+    save_paper_fig(fig, path)
     plt.close(fig)
 
 
@@ -300,17 +306,17 @@ def analyze_spatial(results_dir: Path, figures_dir: Path) -> dict | None:
 def _plot_mode_projections(hopfion_power, background_power, mask, path: Path):
     fig, axes = plt.subplots(2, 3, figsize=(11, 7))
     datasets = [hopfion_power, background_power]
-    titles = ["Hopfion", "uniform background"]
+    row_labels = ["Hopfion", "uniform background"]
     projection_labels = ["xy (sum z)", "xz (sum y)", "yz (sum x)"]
-    for row, (data, title) in enumerate(zip(datasets, titles)):
+    for row, (data, row_label) in enumerate(zip(datasets, row_labels)):
         projections = [np.sum(data, axis=2), np.sum(data, axis=1), np.sum(data, axis=0)]
         for col, projection in enumerate(projections):
             image = axes[row, col].imshow(projection.T, origin="lower", cmap="magma")
-            axes[row, col].set_title(f"{title}: {projection_labels[col]}")
+            if row == 1:
+                axes[row, col].set_xlabel(projection_labels[col])
             fig.colorbar(image, ax=axes[row, col], fraction=0.046)
-    fig.suptitle("173.66 GHz complex-mode power")
-    fig.tight_layout()
-    fig.savefig(path, dpi=200)
+        axes[row, 0].set_ylabel(row_label)
+    save_paper_fig(fig, path)
     plt.close(fig)
 
 

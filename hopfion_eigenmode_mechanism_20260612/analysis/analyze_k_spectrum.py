@@ -20,6 +20,14 @@ REPO = ROOT.parent
 sys.path.insert(0, str(REPO / "scripts"))
 
 from resonance_analysis import accumulate_complex_modes, wavevector_power_spectrum  # noqa: E402
+from paper_style import (  # noqa: E402
+    panel_label,
+    save_paper_fig,
+    shared_legend_above,
+    setup_paper_style,
+)
+
+setup_paper_style()
 
 
 def _load_ovf(path: Path) -> np.ndarray:
@@ -132,7 +140,8 @@ def _plot_case(metrics, detail, path: Path):
     spectrum = detail["spectrum"]
     fig, axes = plt.subplots(1, 2, figsize=(9, 4))
     axes[0].imshow(mode_power.T, origin="lower", cmap="magma", aspect="auto")
-    axes[0].set_title("demodulated transverse power")
+    axes[0].set_xlabel("x cell")
+    axes[0].set_ylabel("y cell")
     extent = [
         spectrum["kx_rad_per_nm"][0], spectrum["kx_rad_per_nm"][-1],
         spectrum["ky_rad_per_nm"][0], spectrum["ky_rad_per_nm"][-1],
@@ -140,11 +149,11 @@ def _plot_case(metrics, detail, path: Path):
     axes[1].imshow(
         spectrum["power"].T, origin="lower", cmap="viridis", aspect="auto", extent=extent
     )
-    axes[1].set_title(f"k power: peak {metrics['peak_k_rad_per_nm']:.3f} rad/nm")
     axes[1].set_xlabel("kx (rad/nm)")
     axes[1].set_ylabel("ky (rad/nm)")
-    fig.tight_layout()
-    fig.savefig(path, dpi=220)
+    panel_label(fig, axes[0], "(a)")
+    panel_label(fig, axes[1], "(b)")
+    save_paper_fig(fig, path)
     plt.close(fig)
 
 
@@ -159,13 +168,13 @@ def _plot_radial_comparison(rows, details, path: Path):
             if np.max(power) > 0:
                 power = power / np.max(power)
             ax.plot(spectrum["radial_k_rad_per_nm"], power, label=row["geometry"])
-        ax.set_title(f"{frequency:g} GHz")
-        ax.set_xlabel("|k| (rad/nm)")
+        ax.set_xlabel(f"|k| (rad/nm), {frequency:g} GHz")
         ax.grid(True, alpha=0.25)
-        ax.legend()
     axes[0].set_ylabel("normalized radial power")
-    fig.tight_layout()
-    fig.savefig(path, dpi=220)
+    shared_legend_above(fig, axes[0], ncol=2)
+    panel_label(fig, axes[0], "(a)")
+    panel_label(fig, axes[1], "(b)")
+    save_paper_fig(fig, path)
     plt.close(fig)
 
 

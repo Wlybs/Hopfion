@@ -26,6 +26,9 @@ from resonance_analysis import (  # noqa: E402
     ringdown_fft_difference,
     topology_mask_from_reference,
 )
+from paper_style import save_paper_fig, setup_paper_style  # noqa: E402
+
+setup_paper_style()
 
 
 def evaluate_spatial_mode_power(hopfion_power, uniform_power, topology_mask):
@@ -159,7 +162,7 @@ def _plot_spatial(hopfion_power, uniform_power, path: Path, frequency_ghz: float
     path.parent.mkdir(exist_ok=True)
     fig, axes = plt.subplots(2, 3, figsize=(11, 7))
     labels = ["xy (sum z)", "xz (sum y)", "yz (sum x)"]
-    for row, (data, title) in enumerate((
+    for row, (data, row_label) in enumerate((
         (hopfion_power, "Hopfion driven-control"),
         (uniform_power, "uniform driven"),
     )):
@@ -167,11 +170,11 @@ def _plot_spatial(hopfion_power, uniform_power, path: Path, frequency_ghz: float
             np.sum(data, axis=2), np.sum(data, axis=1), np.sum(data, axis=0)
         )):
             image = axes[row, column].imshow(projection.T, origin="lower", cmap="magma")
-            axes[row, column].set_title(f"{title}: {labels[column]}")
+            if row == 1:
+                axes[row, column].set_xlabel(labels[column])
             fig.colorbar(image, ax=axes[row, column], fraction=0.046)
-    fig.suptitle(f"clean complex-mode power at {frequency_ghz:.2f} GHz")
-    fig.tight_layout()
-    fig.savefig(path, dpi=220)
+        axes[row, 0].set_ylabel(row_label)
+    save_paper_fig(fig, path)
     plt.close(fig)
 
 
