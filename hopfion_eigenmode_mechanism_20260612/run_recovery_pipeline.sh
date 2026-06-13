@@ -21,6 +21,35 @@ if [[ ! -f "$status_file" ]]; then
     printf 'name\tstatus\tstarted_at\tfinished_at\texit_code\n' > "$status_file"
 fi
 
+archive_incomplete_case() {
+    local name="$1"
+    local out="$2"
+    local log="$3"
+    if [[ ! -d "$out" || -f "$out/.complete" || ! -f "$out/table.txt" ]]; then
+        return 0
+    fi
+    local rows
+    rows="$(wc -l < "$out/table.txt")"
+    if (( rows <= 1 )); then
+        return 0
+    fi
+
+    local stamp archive last_time archived_at
+    stamp="$(date +%Y%m%dT%H%M%S%z)"
+    archive="$ROOT/results/interrupted_runs/${name}_${stamp}_pid$$"
+    mkdir -p "$archive"
+    cp -a "$out" "$archive/output"
+    if [[ -f "$log" ]]; then
+        cp -a "$log" "$archive/runner.log"
+    fi
+    last_time="$(tail -n 1 "$out/table.txt" | cut -f1)"
+    archived_at="$(date --iso-8601=seconds)"
+    printf 'name\tlast_simulation_time_s\trows\tarchived_at\n%s\t%s\t%s\t%s\n' \
+        "$name" "$last_time" "$rows" "$archived_at" > "$archive/metadata.tsv"
+    printf '%s\tinterrupted_preserved\tunknown\t%s\t-\n' \
+        "$name" "$archived_at" >> "$status_file"
+}
+
 run_case() {
     local name="$1"
     local mx3="$ROOT/mx3/${name}.mx3"
@@ -29,12 +58,13 @@ run_case() {
     if [[ -f "$out/.complete" ]]; then
         return 0
     fi
+    archive_incomplete_case "$name" "$out" "$log"
     "$MUMAX3" -vet "$mx3" > "$ROOT/logs/${name}.vet.log" 2>&1
     local started_at
     started_at="$(date --iso-8601=seconds)"
     set +e
     bash "$QUIET_RUNNER" --mx3 "$mx3" --table "$out/table.txt" -- \
-        "$MUMAX3" -o "$out" "$mx3" > "$log" 2>&1
+        "$MUMAX3" -f -o "$out" "$mx3" > "$log" 2>&1
     local exit_code=$?
     set -e
     local finished_at

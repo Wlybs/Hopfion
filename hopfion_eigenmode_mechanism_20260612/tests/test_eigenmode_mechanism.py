@@ -56,6 +56,17 @@ def test_recovery_pipeline_recovers_archived_topology_reference():
     assert "import tempfile" in topology_preamble
 
 
+def test_recovery_pipeline_preserves_interrupted_runs_before_forced_restart():
+    script = (
+        REPO / "hopfion_eigenmode_mechanism_20260612" / "run_recovery_pipeline.sh"
+    ).read_text(encoding="utf-8")
+
+    assert "archive_incomplete_case" in script
+    assert 'cp -a "$out" "$archive/output"' in script
+    assert '"$MUMAX3" -f -o "$out" "$mx3"' in script
+    assert 'interrupted_preserved' in script
+
+
 def test_estimate_peak_metrics_recovers_lorentzian_fwhm_and_q():
     freqs = np.linspace(130.0, 220.0, 9001)
     center = 174.0
