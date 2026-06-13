@@ -32,6 +32,30 @@ from analyze_controls import evaluate_clean_linearity, evaluate_quench_control  
 from analyze_clean_validation import evaluate_spatial_mode_power  # noqa: E402
 
 
+def test_recovery_pipeline_converts_hopf_index_paths_to_strings():
+    script = (
+        REPO / "hopfion_eigenmode_mechanism_20260612" / "run_recovery_pipeline.sh"
+    ).read_text(encoding="utf-8")
+
+    assert "compute_hopf_index(str(initial)" in script
+    assert "compute_hopf_index(str(final)" in script
+
+
+def test_recovery_pipeline_recovers_archived_topology_reference():
+    script = (
+        REPO / "hopfion_eigenmode_mechanism_20260612" / "run_recovery_pipeline.sh"
+    ).read_text(encoding="utf-8")
+
+    assert "ovf_archive.tar.zst" in script
+    assert 'tar_exe = Path("/mnt/c/Windows/System32/tar.exe")' in script
+    assert 'subprocess.run([str(tar_exe), "-xOf"' in script
+    topology_preamble = script.split("run_case equilibrate_open_boundary", 1)[1].split(
+        "initial =", 1
+    )[0]
+    assert "import subprocess" in topology_preamble
+    assert "import tempfile" in topology_preamble
+
+
 def test_estimate_peak_metrics_recovers_lorentzian_fwhm_and_q():
     freqs = np.linspace(130.0, 220.0, 9001)
     center = 174.0

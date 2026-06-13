@@ -1,0 +1,8 @@
+{
+  "initial_qh_numeric": 0.7671797620848485,
+  "final_qh_numeric": 0.7671797601600588,
+  "relative_change": 2.5089161056061166e-09,
+  "passed": true,
+  "initial_reference_source": "ovf_archive.tar.zst:m000020.ovf",
+  "warning": "numeric Hopf integral is used as a relative preservation check, not forced to exactly one"
+}

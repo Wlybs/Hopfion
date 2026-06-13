@@ -70,7 +70,9 @@ fi
 run_case equilibrate_open_boundary
 python3 - "$ROOT" <<'PY'
 import json
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 root = Path(sys.argv[1])
@@ -79,14 +81,44 @@ from compute_hopf_index import compute_hopf_index
 
 initial = Path("/mnt/d/Research/Hopfion/20260105_frustrated_fm/centered_stability_test/stability_Ku10k.out/m000020.ovf")
 final = root / "mx3" / "equilibrate_open_boundary.out" / "equilibrated_open_boundary.ovf"
-initial_qh = float(compute_hopf_index(initial, pbc=False, verbose=False))
-final_qh = float(compute_hopf_index(final, pbc=False, verbose=False))
+temporary_initial = None
+initial_source = "direct"
+if not initial.is_file():
+    archive = initial.parent / "ovf_archive.tar.zst"
+    archive_member = initial.name
+    tar_exe = Path("/mnt/c/Windows/System32/tar.exe")
+    if not archive.is_file() or not tar_exe.is_file():
+        raise FileNotFoundError(
+            f"missing topology reference {initial} and readable archive fallback"
+        )
+    archive_windows = subprocess.run(
+        ["wslpath", "-w", str(archive)],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    with tempfile.NamedTemporaryFile(
+        prefix="hopfion_topology_reference_", suffix=".ovf", delete=False
+    ) as handle:
+        temporary_initial = Path(handle.name)
+        subprocess.run([str(tar_exe), "-xOf", archive_windows, archive_member],
+                       check=True, stdout=handle)
+    initial = temporary_initial
+    initial_source = f"{archive.name}:{archive_member}"
+
+try:
+    initial_qh = float(compute_hopf_index(str(initial), pbc=False, verbose=False))
+    final_qh = float(compute_hopf_index(str(final), pbc=False, verbose=False))
+finally:
+    if temporary_initial is not None:
+        temporary_initial.unlink(missing_ok=True)
 relative_change = abs(final_qh - initial_qh) / max(abs(initial_qh), 1e-12)
 payload = {
     "initial_qh_numeric": initial_qh,
     "final_qh_numeric": final_qh,
     "relative_change": relative_change,
     "passed": relative_change <= 0.15,
+    "initial_reference_source": initial_source,
     "warning": "numeric Hopf integral is used as a relative preservation check, not forced to exactly one",
 }
 (root / "results" / "equilibrated_topology_check.json").write_text(
