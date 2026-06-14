@@ -1,0 +1,42 @@
+{
+  "candidate_frequency_ghz": 79.14070096420065,
+  "frequency_step_ghz": 2.0292487426718115,
+  "amplitude_metrics": {
+    "0.001": {
+      "status": "ok",
+      "frequency_ghz": 79.31990879643904,
+      "power": 1.3447803433763298e-09,
+      "fwhm_ghz": 3.1332152886653404,
+      "quality_factor": 25.315818253340336
+    },
+    "0.002": {
+      "status": "ok",
+      "frequency_ghz": 79.42288106443974,
+      "power": 1.1798213246947161e-09,
+      "fwhm_ghz": 3.327188149584245,
+      "quality_factor": 23.87087158697778
+    },
+    "0.005": {
+      "status": "ok",
+      "frequency_ghz": 79.14070096420065,
+      "power": 1.2048095747017588e-09,
+      "fwhm_ghz": 2.9503061048284565,
+      "quality_factor": 26.82457282472465
+    }
+  },
+  "power_law": {
+    "exponent": -0.06352361655756332,
+    "prefactor": 8.402316254705836e-10,
+    "r_squared": 0.5322594173291747
+  },
+  "control_power_at_candidate": 4.5680422845104566e-10,
+  "snr_5mt": 2.6374746547051164,
+  "peak_spread_ghz": 0.28218010023908846,
+  "passed": false,
+  "criteria": {
+    "power_exponent": "1.5 <= n <= 2.5",
+    "r_squared": ">= 0.9",
+    "snr_5mt": ">= 3",
+    "peak_spread": "<= 1.5 frequency bins"
+  }
+}
