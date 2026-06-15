@@ -1,0 +1,73 @@
+STATIC-TEXTURE TRANSLATION-BLOCK THIELE ANALYSIS
+No micromagnetic simulation is run.
+Archive: /mnt/d/Research/Hopfion/20260105_frustrated_fm/centered_stability_test/stability_Ku10k.out/ovf_archive.tar.zst
+Texture member: m000020.ovf
+Convention: G_ab = +(Ms/gamma) integral m dot (d_a m x d_b m) dV
+Requested D convention: D_ab = +(alpha Ms/gamma) integral d_a m dot d_b m dV
+Literature: Liu et al., PRL 124, 127204 (2020), DOI 10.1103/PhysRevLett.124.127204
+
+GATE 4(a): 2D BLOCH-SKYRMION CALIBRATION
+  analytic Q: -1
+  computed Q: -0.998288530145
+  expected G_xy per unit thickness: -1.070997495542e-05
+  computed G_xy per unit thickness: -1.069164515614e-05
+  expected/computed sign: negative/negative
+  relative error: 0.171147%
+  PASS: True
+
+DAMPING EXTRACTION
+  alpha: 0.001
+  reported source file: /mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B1p0T.mx3
+  consistent scalar assignments found: 14 files
+  alpha.setRegion(..., 100) absorber assignments are not the material alpha.
+
+REAL RELAXED TEXTURE
+  scratch: /mnt/c/Users/JiaLeWu/AppData/Local/Temp/thiele_GD_6cbthm7h
+  array shape: [100, 100, 100]
+  mesh cell (m): [5e-10, 5e-10, 5e-10]
+  real R,r (nm): 2.1840844540303803, 1.6958934777400438
+
+TRANSLATION TENSORS, DELTA=1
+G (SI from requested formula):
+   0.000000000000e+00 -4.469339013402e-15  1.143130681741e-21
+   4.469339013402e-15  0.000000000000e+00  2.540288203445e-21
+  -1.143130681741e-21 -2.540288203445e-21  0.000000000000e+00
+D (SI, already alpha-weighted by requested formula):
+   1.169291759852e-16 -4.500140072971e-24 -1.901346024671e-23
+  -4.500140072971e-24  1.169291837397e-16  4.851048523043e-24
+  -1.901346024671e-23  4.851048523043e-24  1.422079850207e-16
+
+GATE 4(b): TENSOR ALGEBRA
+  max|G+G^T|/max|G|: 0.000000000000e+00
+  max|D-D^T|/max|D|: 0.000000000000e+00
+  threshold: 1.0e-03
+  PASS: True
+
+GATE 4(c): DELTA=1 VERSUS DELTA=2 CONVERGENCE
+  G denominator floor: 1.128199034237e-14 (3% of S)
+  D denominator floor: 1.128199034237e-17 (3% of D scale)
+G percent change, every entry:
+   0.000000000000e+00  7.976369144243e+01  2.141447644543e-05
+   7.976369144243e+01  0.000000000000e+00  4.509898176003e-05
+   2.141447644543e-05  4.509898176003e-05  0.000000000000e+00
+D percent change, every entry:
+   1.928833274241e+01  2.922755744843e-06  2.508165333025e-07
+   2.922755744843e-06  1.928833360062e+01  7.783401088297e-07
+   2.508165333025e-07  7.783401088297e-07  1.593532086492e+01
+  threshold for every entry: 5.000%
+  PASS: False
+
+GATE 4(d): CLOSED-LOOP TRANSLATIONAL GYROCOUPLING
+  natural scale S: 3.760663447456e-13
+  stated noise floor: 3.0% of S
+  |G_XY|=4.469339013402e-15; |G_XY|/S=1.188444%; below 3% noise floor; consistent with zero
+  |G_XZ|=1.143130681741e-21; |G_XZ|/S=0.000000%; below 3% noise floor; consistent with zero
+  |G_YZ|=2.540288203445e-21; |G_YZ|/S=0.000001%; below 3% noise floor; consistent with zero
+  all three consistent with zero: True
+  finite-computation PASS: True
+
+At least one numerical validation gate failed.
+STOP: no Hall-angle interpretation or prediction is reported.
+
+JSON written: /mnt/d/Research/Hopfion/results_thiele_GD_translation_20260615/G_D_translation.json
+Scratch cleaned: /mnt/c/Users/JiaLeWu/AppData/Local/Temp/thiele_GD_6cbthm7h

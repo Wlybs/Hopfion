@@ -1,0 +1,378 @@
+{
+  "analysis": "static texture, translation coordinates X/Y/Z only",
+  "status": "stopped_after_failed_validation_gate",
+  "integrity": {
+    "no_micromagnetic_simulation_run": true,
+    "prediction_not_called_validated": true,
+    "no_eigenfrequency_claim": true
+  },
+  "literature_convention": {
+    "source": "Y. Liu et al., Phys. Rev. Lett. 124, 127204 (2020)",
+    "doi": "https://doi.org/10.1103/PhysRevLett.124.127204",
+    "arxiv": "https://arxiv.org/abs/2001.00417",
+    "sign": "positive prefactor exactly as printed above and in the requested formula"
+  },
+  "constants": {
+    "Ms_A_per_m": 150000.0,
+    "gamma_SI": 176000000000.0,
+    "cell_spacing_m": 5e-10,
+    "cell_volume_m3": 1.2500000000000003e-28,
+    "exclude_boundary_cells_each_face": 5
+  },
+  "gates": {
+    "calibration": {
+      "texture": "2D Bloch skyrmion, core -z, background +z, vorticity +1",
+      "analytic_Q": -1,
+      "computed_Q": -0.9982885301449494,
+      "expected_G_xy_SI_per_m": -1.0709974955419749e-05,
+      "computed_G_xy_SI_per_m": -1.0691645156135202e-05,
+      "expected_sign": "negative",
+      "computed_sign": "negative",
+      "sign_matches": true,
+      "relative_error": 0.001711469855050511,
+      "relative_error_percent": 0.1711469855050511,
+      "threshold_relative_error_percent": 1.0,
+      "pass": true,
+      "grid": {
+        "shape": [
+          401,
+          401,
+          1
+        ],
+        "spacing_m": 2.5e-10
+      }
+    },
+    "tensor_symmetry": {
+      "antisymmetry_relative_error": 0.0,
+      "D_symmetry_relative_error": 0.0,
+      "threshold": 0.001,
+      "pass": true
+    },
+    "convergence": {
+      "comparison": "centered finite difference delta=1 cell versus delta=2 cells",
+      "percent_definition": "100*abs(delta2-delta1)/max(abs(delta1), stated tensor floor)",
+      "G_denominator_floor_SI": 1.128199034236887e-14,
+      "D_denominator_floor_SI": 1.128199034236887e-17,
+      "G_percent_change_every_entry": [
+        [
+          0.0,
+          79.76369144243009,
+          2.1414476445427045e-05
+        ],
+        [
+          79.76369144243009,
+          0.0,
+          4.509898176003443e-05
+        ],
+        [
+          2.1414476445427045e-05,
+          4.509898176003443e-05,
+          0.0
+        ]
+      ],
+      "D_percent_change_every_entry": [
+        [
+          19.288332742412855,
+          2.922755744842582e-06,
+          2.508165333025166e-07
+        ],
+        [
+          2.922755744842582e-06,
+          19.28833360062349,
+          7.783401088296945e-07
+        ],
+        [
+          2.508165333025166e-07,
+          7.783401088296945e-07,
+          15.935320864920978
+        ]
+      ],
+      "G_raw_percent_when_above_floor_else_null": [
+        [
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null
+        ]
+      ],
+      "D_raw_percent_when_above_floor_else_null": [
+        [
+          19.288332742412855,
+          null,
+          null
+        ],
+        [
+          null,
+          19.28833360062349,
+          null
+        ],
+        [
+          null,
+          null,
+          15.935320864920978
+        ]
+      ],
+      "threshold_percent": 5.0,
+      "pass": false
+    },
+    "closed_loop": {
+      "natural_scale_S_SI": 3.7606634474562904e-13,
+      "definition": "(Ms/gamma)*mean(sum_a |d_a m|^2)*V_eff",
+      "mean_grad_sq_m_minus_2": 4842262582550028.0,
+      "effective_volume_m3": 9.112500000000002e-23,
+      "noise_floor_fraction": 0.03,
+      "components": {
+        "XY": {
+          "absolute_G_SI": 4.469339013401656e-15,
+          "relative_to_S": 0.011884442933665636,
+          "relative_percent_of_S": 1.1884442933665635,
+          "noise_floor_fraction_of_S": 0.03,
+          "verdict": "below 3% noise floor; consistent with zero"
+        },
+        "XZ": {
+          "absolute_G_SI": 1.1431306817413847e-21,
+          "relative_to_S": 3.039704822601441e-09,
+          "relative_percent_of_S": 3.039704822601441e-07,
+          "noise_floor_fraction_of_S": 0.03,
+          "verdict": "below 3% noise floor; consistent with zero"
+        },
+        "YZ": {
+          "absolute_G_SI": 2.5402882034447958e-21,
+          "relative_to_S": 6.7548937546194e-09,
+          "relative_percent_of_S": 6.7548937546194e-07,
+          "noise_floor_fraction_of_S": 0.03,
+          "verdict": "below 3% noise floor; consistent with zero"
+        }
+      },
+      "all_three_consistent_with_zero": true,
+      "measurement_finite_pass": true
+    }
+  },
+  "alpha": {
+    "value": 0.001,
+    "source_file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B1p0T.mx3",
+    "all_consistent_source_files": [
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B0p05T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B0p1T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B0p2T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B0p3T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B0p5T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B0p7T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B1p0T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B2p0T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B3p0T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B5p0T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_f1000GHz_B0p5T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_f1000GHz_B2p0T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_f200GHz_B0p5T.mx3",
+      "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_f200GHz_B2p0T.mx3"
+    ],
+    "assignments": [
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B0p05T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B0p1T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B0p2T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B0p3T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B0p5T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B0p7T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B1p0T.mx3",
+        "line": 29,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B2p0T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B3p0T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B5p0T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_f1000GHz_B0p5T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_f1000GHz_B2p0T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_f200GHz_B0p5T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      },
+      {
+        "file": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_f200GHz_B2p0T.mx3",
+        "line": 28,
+        "value": 0.001,
+        "text": "alpha = 0.001"
+      }
+    ]
+  },
+  "texture": {
+    "archive": "/mnt/d/Research/Hopfion/20260105_frustrated_fm/centered_stability_test/stability_Ku10k.out/ovf_archive.tar.zst",
+    "member": "m000020.ovf",
+    "mesh_shape": [
+      100,
+      100,
+      100
+    ],
+    "mesh_cell_m": [
+      5e-10,
+      5e-10,
+      5e-10
+    ],
+    "max_unit_norm_error_after_renormalization": 2.220446049250313e-16,
+    "R_nm": 2.1840844540303803,
+    "r_nm": 1.6958934777400438
+  },
+  "translation_axes": [
+    "X",
+    "Y",
+    "Z"
+  ],
+  "G_SI": [
+    [
+      0.0,
+      -4.469339013401656e-15,
+      1.1431306817413847e-21
+    ],
+    [
+      4.469339013401656e-15,
+      0.0,
+      2.5402882034447958e-21
+    ],
+    [
+      -1.1431306817413847e-21,
+      -2.5402882034447958e-21,
+      0.0
+    ]
+  ],
+  "D_SI_requested_alpha_weighted": [
+    [
+      1.1692917598518184e-16,
+      -4.500140072970572e-24,
+      -1.9013460246709767e-23
+    ],
+    [
+      -4.500140072970572e-24,
+      1.1692918373971114e-16,
+      4.851048523042753e-24
+    ],
+    [
+      -1.9013460246709767e-23,
+      4.851048523042753e-24,
+      1.4220798502073609e-16
+    ]
+  ],
+  "D0_SI_without_alpha": [
+    [
+      1.1692917598518184e-13,
+      -4.500140072970572e-21,
+      -1.9013460246709767e-20
+    ],
+    [
+      -4.500140072970572e-21,
+      1.1692918373971115e-13,
+      4.851048523042753e-21
+    ],
+    [
+      -1.9013460246709767e-20,
+      4.851048523042753e-21,
+      1.422079850207361e-13
+    ]
+  ],
+  "delta2_G_SI": [
+    [
+      0.0,
+      -1.3468270978653524e-14,
+      3.55910984618332e-21
+    ],
+    [
+      1.3468270978653524e-14,
+      0.0,
+      7.628350970118578e-21
+    ],
+    [
+      -3.55910984618332e-21,
+      -7.628350970118578e-21,
+      0.0
+    ]
+  ],
+  "delta2_D_SI_requested_alpha_weighted": [
+    [
+      9.437548744819847e-17,
+      -4.1703950521064006e-24,
+      -1.904175734377402e-23
+    ],
+    [
+      -4.1703950521064006e-24,
+      9.437549270350966e-17,
+      4.938860778951703e-24
+    ],
+    [
+      -1.904175734377402e-23,
+      4.938860778951703e-24,
+      1.1954668631214303e-16
+    ]
+  ],
+  "all_numeric_validation_gates_pass": false,
+  "hall_prediction": null,
+  "theta_H_pred_deg": null,
+  "full_angle_from_inverse_deg": null,
+  "hall_prediction_withheld_reason": "delta=1 versus delta=2 convergence gate failed; stopped before interpretation as required"
+}
