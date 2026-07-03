@@ -1,0 +1,71 @@
+//mumax 3.11.1 [linux_amd64 go1.24.0(gc) CUDA-12.8]
+//commit hash: 549d2a52
+//CPU info: Intel(R) Core(TM) i7-14650HX, Cores: 12, MHz: 2419.208
+//GPU info: NVIDIA GeForce RTX 5070 Ti Laptop GPU(12226MB), CUDA Driver 12.8, cc=12.0, using cc=120 PTX
+//OS  info: Ubuntu 24.04.4 LTS, Hostname: wjl-5070ti-laptop
+//Timestamp: 2026-06-13 10:42:42
+//(c) Arne Vansteenkiste, Dynamat LAB, Ghent University, Belgium
+//This is free software without any warranty. See license.txt
+//********************************************************************//
+//  If you use mumax in any work or publication,                      //
+//  we kindly ask you to cite the references in references.bib        //
+//********************************************************************//
+//output directory: /home/wujiale/.config/superpowers/worktrees/Hopfion/codex-hopfion-eigenmode-mechanism-20260612/hopfion_eigenmode_mechanism_20260612/mx3/clean_Bz_0mT_05ns.out/
+//starting GUI at http://127.0.0.1:35367
+CellSize := 0.5e-9
+SetGridSize(100, 100, 100)
+SetCellSize(CellSize, CellSize, CellSize)
+DefRegion(1, XRange(22.5e-9, 25e-9))
+DefRegion(2, XRange(-25e-9, -22.5e-9))
+DefRegion(3, YRange(22.5e-9, 25e-9))
+DefRegion(4, YRange(-25e-9, -22.5e-9))
+DefRegion(5, ZRange(22.5e-9, 25e-9))
+DefRegion(6, ZRange(-25e-9, -22.5e-9))
+EnableDemag = false
+MaxErr = 1e-4
+Ms := 1.5e5
+Msat = Ms
+A_base := 5e-12
+Aex = A_base
+Dbulk = 0
+Dind = 0
+Ku1 = 1e4
+anisU = vector(0, 0, 1)
+alpha = 0.001
+alpha.setRegion(1, 100)
+alpha.setRegion(2, 100)
+alpha.setRegion(3, 100)
+alpha.setRegion(4, 100)
+alpha.setRegion(5, 100)
+alpha.setRegion(6, 100)
+A_J4 := A_base * (-0.082)
+Coeff_J4 := A_J4 * 2.0 / (Ms * CellSize * CellSize)
+sum_J4 := Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, 2))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, -2))
+AddFieldTerm(Mul(Const(Coeff_J4), sum_J4))
+A_J2 := A_base * (-0.164)
+Coeff_J2 := A_J2 * 2.0 / (Ms * CellSize * CellSize)
+sum_J2 := Add(Shifted(m, 1, 1, 0), Shifted(m, 1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, -1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, -1))
+AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
+m.LoadFile("/home/wujiale/.config/superpowers/worktrees/Hopfion/codex-hopfion-eigenmode-mechanism-20260612/hopfion_eigenmode_mechanism_20260612/mx3/equilibrate_open_boundary.out/equilibrated_open_boundary.ovf")
+B0 := 0.0
+fc := 2000e9
+t0 := 2.37e-12
+pulse := B0 * sin(2*pi*fc*(t-t0)) / (2*pi*fc*(t-t0) + 1e-30)
+B_ext = Vector(0, 0, pulse)
+tableautosave(0.05e-12)
+TableAdd(E_Total)
+run(0.5e-9)

@@ -1,0 +1,17 @@
+{
+  "target_frequency_ghz": 173.66,
+  "common_t_end_s": 5e-10,
+  "raw_mz_lockin_amplitudes": {
+    "control_0mT": 1.5673120641810304e-07,
+    "one_mT": 1.5601609025859174e-07,
+    "five_mT": 1.5481164299214792e-07
+  },
+  "control_to_1mt_ratio": 1.004583605180248,
+  "raw_amplitude_exponent_1_to_5mt": -0.004815329065675928,
+  "quench_dominated": true,
+  "criteria": {
+    "control_to_1mt_ratio": ">= 0.5",
+    "raw_amplitude_exponent_1_to_5mt": "< 0.5",
+    "combination": "either"
+  }
+}

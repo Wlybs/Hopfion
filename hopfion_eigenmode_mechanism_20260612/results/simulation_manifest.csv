@@ -1,0 +1,8 @@
+name,kind,b0_t,run_ns,initial_state,spatial,handedness,mx3
+linear_Bz_1mT_05ns,sinc,0.001,0.5,hopfion,False,,mx3/linear_Bz_1mT_05ns.mx3
+linear_Bz_2mT_05ns,sinc,0.002,0.5,hopfion,False,,mx3/linear_Bz_2mT_05ns.mx3
+linewidth_Bz_1mT_10ns,sinc,0.001,1.0,hopfion,False,,mx3/linewidth_Bz_1mT_10ns.mx3
+spatial_hopfion_Bz,sinc,0.005,0.3,hopfion,True,,mx3/spatial_hopfion_Bz.mx3
+spatial_uniform_Bz,sinc,0.005,0.3,uniform_z,True,,mx3/spatial_uniform_Bz.mx3
+circular_plus_2mT,circular,0.002,0.5,hopfion,False,1,mx3/circular_plus_2mT.mx3
+circular_minus_2mT,circular,0.002,0.5,hopfion,False,-1,mx3/circular_minus_2mT.mx3
