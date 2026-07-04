@@ -1,0 +1,50 @@
+Phase 1 V2: Gradient Ku Verification — Results Report
+=====================================================
+
+Simulation Parameters:
+  Grid: 100x100x100, CellSize: 0.5nm
+  Drive: srcZ @ 100GHz, B=1T, 0-0.3ns
+  Release: OFF, 0.3ns-1.36ns
+  Gradient Ku: 10 regions, 10000→5500 J/m³ (dKu=500/region)
+  Uniform Ku: 10000 J/m³ everywhere
+
+Data Coverage:
+  Gradient: 92 sampled frames, t_max = 1.360 ns
+  Uniform:  97 sampled frames, t_max = 1.440 ns
+
+Drive Phase (0 - 0.3ns):
+  Gradient dz at drive end: +4.51 nm
+  Uniform  dz at drive end: +4.32 nm
+  -> Nearly identical drive response (gradient Ku negligible during active drive)
+
+Peak Displacement:
+  Gradient: dz = +14.51 nm at t = 420ps
+  Uniform:  dz = +16.01 nm at t = 480ps
+  -> Gradient Ku reduced peak by 1.5 nm (restoring force during coast)
+
+Release Phase Dynamics:
+  Gradient: damped oscillation around dz ≈ +7.8 nm (low amplitude, near-critical damping)
+  Uniform:  large oscillation through origin (underdamped, overshoots to dz < 0)
+
+Equilibrium Position (last 20% average):
+  Gradient: dz ≈ +7.75 nm (shifted toward LOW Ku region)
+  Uniform:  dz ≈ -4.16 nm
+
+Hopfion Survival:
+  Gradient: core_count range [735, 1249] — ALIVE
+  Uniform:  core_count range [771, 1183] — ALIVE
+
+KEY FINDINGS:
+1. Gradient Ku restoring force CONFIRMED — reduces peak displacement and damps oscillation
+2. Hopfion equilibrium shifts toward LOW Ku (NOT high Ku as initially assumed)
+3. Gradient provides damping-like behavior: near-critical damping vs underdamped uniform
+4. Absorbing boundaries at z=47.5nm contribute to rebound in both groups
+
+VERDICT: PASS — Gradient Ku creates measurable restoring force.
+Direction correction needed for Phase 2: Hopfion prefers LOW Ku as rest position.
+
+IMPLICATION FOR LIF DESIGN:
+  - Set LOW Ku as "start" (rest position)
+  - Spin wave drives Hopfion toward HIGH Ku (unstable end)
+  - After drive stops, Hopfion leaks back to LOW Ku start → LEAKY mechanism
+  - OR: keep current gradient, use 1100GHz (drives toward -z/high Ku) for Integrate

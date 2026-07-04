@@ -1,0 +1,24 @@
+LIF Neuron Cycle — Phase 2 Report
+============================================================
+
+[F1 supra-threshold (B=1.0T)]
+  z range : +8.065 .. +25.129 nm   (peak excursion 17.064 nm)
+  Phase       t0-t1 (ns)     kind         z_start     z_end        dz
+  Pulse 1     0.00-0.15       integrate    +25.050   +23.206    -1.845
+  Leak 1      0.15-0.40       leak         +23.206   +11.808   -11.398
+  Pulse 2     0.40-0.55       integrate    +11.808   +10.976    -0.832
+  Leak 2      0.55-0.80       leak         +10.976   +11.077    +0.101
+  Pulse 3     0.80-0.95       integrate    +11.077   +14.093    +3.016
+  Leak 3      0.95-1.20       leak         +14.012    +8.065    -5.947
+  Pulse 4     1.20-1.35       integrate         --        --        --
+  Fire+Reset  1.35-1.85       fire              --        --        --
+  Refractory  1.85-2.15       refractory        --        --        --
+
+[F3 sub-threshold (B=0.1T)]  NOT AVAILABLE
+
+Verdict (F1):
+  Total integrate dz (sum of 4 pulses) : +0.339 nm
+  Fire+Reset dz                        : N/A
+  Criterion: sum integrate dz < -2 nm : FAIL
+  Criterion: fire/reset dz > +2 nm     : FAIL
+  OVERALL: FAIL

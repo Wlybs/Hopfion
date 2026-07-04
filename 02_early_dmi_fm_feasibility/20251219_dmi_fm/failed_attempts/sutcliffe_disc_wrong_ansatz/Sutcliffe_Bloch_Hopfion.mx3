@@ -1,0 +1,38 @@
+
+// --- 1. 网格与几何 ---
+Nx := 105
+Ny := 105
+Nz := 35
+SetGridSize(Nx, Ny, Nz)
+SetCellSize(2e-09, 2e-09, 2e-09)
+
+Diameter := 2.1e-07
+Height   := 7e-08
+Cyl      := Cylinder(Diameter, Height)
+SetGeom(Cyl)
+
+// --- 2. 材料参数 ---
+Msat  = 384e3  // Msat 在这里定义，OVF 里只存方向
+Aex   = 8.78e-12
+Dbulk = 0.0015761819142010504
+Ku1   = 0
+EnableDemag = false 
+
+// --- 3. 边界条件 ---
+LayerThick := 2e-09
+TopLayer    := Layer(Nz-1)
+BottomLayer := Layer(0)
+Caps        := TopLayer.add(BottomLayer)
+defRegion(1, Caps)
+frozenspins.setRegion(1, 1)
+
+// --- 4. 初始状态 ---
+LoadFile("init_hopfion.ovf")
+// 此时加载的是单位矢量场，Mumax3 会自动将其应用到 Msat
+
+// --- 5. 弛豫 ---
+TableAutoSave(1e-11)
+alpha = 0.5
+Run(1e-9)
+
+saveas(m, "hopfion_final")

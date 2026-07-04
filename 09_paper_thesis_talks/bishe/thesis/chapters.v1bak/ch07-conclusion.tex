@@ -1,0 +1,43 @@
+% 第六章 总结与展望
+\chapter{总结与展望}
+
+\section{主要结论}
+
+本文利用微磁学模拟软件 Mumax3，研究了磁性霍普夫子（Hopfion）在不同体系中的稳定性条件和动力学调控机制。
+
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{构型构建脚本开发}：基于前人建立的局域旋转矩阵与环面坐标系理论框架，本文编写了支持任意拓扑荷及反铁磁交替背景的 Hopfion 初始态生成脚本。同时利用自编的三维可视化解调脚本实现了拓扑构型的渲染验证，为后续的微磁学仿真提供了灵活的基础工具。
+
+  \item \textbf{DMI 铁磁体系的稳定性}：在 FeGe 手性磁体参数下，确定了 Hopfion 稳定存在的三个必要条件——解析初始态构造、边界层冻结和退磁场效应。在直径 $3\lambda$、高度 $\lambda$ 的圆柱模型中，Hopfion 可稳定存在至少 \SI{2}{ns}。
+
+  \item \textbf{竞争交换体系的稳定性}：本文发现了 Hopfion 的固有尺寸吸引子（$R_{\text{eq}} = \SI{2.60}{nm}$, $r_{\text{eq}} = \SI{2.16}{nm}$）。控制变量的对比实验证明背景磁化方向对 Hopfion 漂移行为没有影响，所有配置都表现为一次性格点弛豫后完全钉扎。各向异性参数扫描确定了临界稳定阈值 $K_{u1,c} \in (\num{52e3}, \num{55e3}) \, \si{J/m^3}$。
+
+  \item \textbf{自旋波驱动的方向选择性与频率响应}：本文发现只有面内振荡（vibX）的自旋波能有效驱动 Hopfion，面外振荡（vibZ）无效。面内传播（srcX）在 \SI{1000}{GHz} 响应最强，轴向传播（srcZ）在 \SI{1100}{GHz} 响应最强（$|\Delta r| = \SI{18.1}{nm}$）。两种传播方向驱动 Hopfion 的运动方向相反（$+z$ vs $-z$），并且存在明显的死区频段。
+
+  \item \textbf{幅度标度律与拓扑 Hall 效应}：Hopfion 运动速度与自旋波幅度满足 $v \propto B_0^{1.99}$（$R^2 = 0.998$），与二维 Skyrmion 的 $v \propto B^2$ 一致。面内传播驱动产生 $\theta_{\text{H}} \approx \ang{87}$--$\ang{90}$ 的拓扑 Hall 角，在不同频率、幅度和激励几何（平面源/点源）下都很稳定。这一结果首次在微磁学层面定量验证了 Hopfion 的磁振子 Hall 效应。
+
+  \item \textbf{双向轴向控制}：本文利用 srcX 和 srcZ 的方向互补性，以及 srcZ 在不同频率下的方向异常，设计并验证了单一 srcZ 源通过频率切换（$\SI{100}{GHz} \to +z$，$\SI{1100}{GHz} \to -z$）实现 Hopfion $z$ 轴双向运动的方案。平衡时序实验中 Phase~1 达到 $+\SI{17.6}{nm}$，Phase~2 成功反转至 $-\SI{12.9}{nm}$。同时本文发现强驱动下 Hopfion 的寿命是有限的（$\sim\SI{0.41}{ns}$），说明实际应用需要兼顾驱动强度和拓扑稳定性。
+\end{enumerate}
+
+
+\section{创新点}
+
+\begin{enumerate}[label=(\arabic*)]
+  \item 本文在竞争交换铁磁体系中首次研究了自旋波驱动 Hopfion 的动力学行为，发现了振荡方向选择性和多峰共振谱等新现象。
+  \item 本文定量表征了 Hopfion 的磁振子拓扑 Hall 效应（$\theta_{\text{H}} \approx \ang{90}$），为 Saji 等人的理论预测提供了微磁学层面的数值验证。
+  \item 本文提出了基于自旋波频率切换实现 Hopfion 双向轴向控制的方案，为磁性拓扑结构的精准操控提供了新思路。
+  \item 本文通过控制变量实验推翻了此前关于 Hopfion 漂移方向依赖性的结论，建立了更可靠的稳定性认识。
+\end{enumerate}
+
+
+\section{展望}
+
+本文的研究还存在一些不足，以下是未来值得深入的方向：
+
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{材料体系扩展}：当前竞争交换体系中 Hopfion 的特征尺寸仅 $\sim\SI{2}{nm}$，实验观测和器件加工面临挑战。寻找具有更大特征尺寸的材料体系（如调控竞争交换比例）是未来的重要方向。
+  \item \textbf{高阶拓扑荷}：本文所有实验均基于 $Q_H = 1$ 的 Hopfion。$Q_H = 2$ 或更高阶 Hopfion 是否能在竞争交换体系中稳定存在，以及其 Hall 角是否与 $Q_H$ 成正比，是验证拓扑保护性质的关键问题。
+  \item \textbf{热效应与有限温度}：微磁学模拟在零温下进行，有限温度下的热涨落可能改变 Hopfion 的稳定性和动力学行为。纳入随机热场的朗之万动力学模拟是必要的扩展。
+  \item \textbf{多 Hopfion 相互作用}：单 Hopfion 动力学已初步清晰，但多个 Hopfion 之间的自旋波介导相互作用、碰撞与湮灭等集体行为尚未研究。这些行为是构建神经形态计算网络的物理基础。
+  \item \textbf{实验验证}：结合电子全息术和微波天线技术，在 FeGe 等已能观测 Hopfion 的材料中验证自旋波驱动效应，是将仿真结果推向实际应用的必要步骤。
+\end{enumerate}

@@ -1,0 +1,42 @@
+//mumax 3.11.1 [linux_amd64 go1.24.0(gc) CUDA-12.8]
+//commit hash: 549d2a52
+//CPU info: Intel(R) Core(TM) i7-14650HX, Cores: 12, MHz: 2419.209
+//GPU info: NVIDIA GeForce RTX 5070 Ti Laptop GPU(12226MB), CUDA Driver 12.8, cc=12.0, using cc=120 PTX
+//OS  info: Ubuntu 24.04.4 LTS, Hostname: wjl-5070ti-laptop
+//Timestamp: 2026-03-10 17:41:01
+//(c) Arne Vansteenkiste, Dynamat LAB, Ghent University, Belgium
+//This is free software without any warranty. See license.txt
+//********************************************************************//
+//  If you use mumax in any work or publication,                      //
+//  we kindly ask you to cite the references in references.bib        //
+//********************************************************************//
+//output directory: run_10lambda_disc.out/
+//starting GUI at http://127.0.0.1:35367
+Nx := 350
+Ny := 350
+Nz := 35
+SetGridSize(Nx, Ny, Nz)
+SetCellSize(2e-9, 2e-9, 2e-9)
+SetGeom(Cylinder(7e-7, 7e-8))
+// Initializing geometry 0 %
+// Initializing geometry 100 %
+Msat = 384e3
+Aex = 8.78e-12
+Dbulk = 1.58e-3
+Ku1 = 0
+defRegion(1, Layer(Nz-1).add(Layer(0)))
+frozenspins.setRegion(1, 1)
+m.LoadFile("hopfion_10lambda_init.ovf")
+TableAdd(E_Total)
+TableAdd(E_demag)
+tableautosave(1e-11)
+alpha = 0.5
+Relax()
+//Did not use cached kernel: open /tmp/mumax3kernel_[350 350 35]_[0 0 0]_[2e-09 2e-09 2e-09]_6_0 0.ovf: no such file or directory
+// Calculating demag kernel 0 %
+// Calculating demag kernel 100 %
+//Cached kernel: /tmp/mumax3kernel_[350 350 35]_[0 0 0]_[2e-09 2e-09 2e-09]_6_
+saveas(m, "hopfion_5lambda_relax")
+alpha = 0.02
+autosave(m, 2e-10)
+Run(2e-9)

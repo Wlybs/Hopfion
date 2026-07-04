@@ -1,0 +1,33 @@
+Unified Drift Experiment v2 — Controlled-Variable Rerun
+Parameters: alpha=0.2, Ku1=0, R3r2 initial, 100^3, PBC(1,1,1), 2ns
+===========================================================================
+
+Config                 Duration   |dr|_max      v_drift       dx       dy       dz     Status
+---------------------------------------------------------------------------
+bg=mz, axis=z             2.0ns     5.750nm     0.234nm/ns  -0.000  +0.000  +4.750   MARGINAL
+bg=mz, axis=x             2.0ns     5.750nm     0.234nm/ns  +4.750  +0.000  +0.000   MARGINAL
+bg=my, axis=y             1.9ns     5.750nm     0.274nm/ns  -0.000  +4.750  +0.000   MARGINAL
+bg=mx, axis=x             2.0ns     5.750nm     0.234nm/ns  +4.750  +0.000  +0.000   MARGINAL
+---------------------------------------------------------------------------
+
+Findings:
+  bg=mz group max |dr|: 5.750 nm
+  bg=mx/my group max |dr|: 5.750 nm
+  Ratio: 1.0x
+
+  bg=mz, axis=z:
+    Drift velocity: 0.234 nm/ns
+    Max |dr|: 5.750 nm
+    Final (dx,dy,dz): (-0.000, +0.000, +4.750) nm
+  bg=mz, axis=x:
+    Drift velocity: 0.234 nm/ns
+    Max |dr|: 5.750 nm
+    Final (dx,dy,dz): (+4.750, +0.000, +0.000) nm
+  bg=my, axis=y:
+    Drift velocity: 0.274 nm/ns
+    Max |dr|: 5.750 nm
+    Final (dx,dy,dz): (-0.000, +4.750, +0.000) nm
+  bg=mx, axis=x:
+    Drift velocity: 0.234 nm/ns
+    Max |dr|: 5.750 nm
+    Final (dx,dy,dz): (+4.750, +0.000, +0.000) nm

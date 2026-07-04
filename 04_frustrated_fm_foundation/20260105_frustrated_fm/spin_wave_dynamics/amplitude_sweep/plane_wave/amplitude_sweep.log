@@ -1,0 +1,55 @@
+[2026-03-21 22:01:18] === Amplitude Sweep: 440 GHz, srcX_vibX ===
+[2026-03-21 22:01:18] B = 0.05 / 0.1 / 0.2 / 0.5 / 1.0 / 2.0 T
+[2026-03-21 22:01:18] Init OVF : E:/magnon-hopfion-main/3d-motion_1/1/m000020.ovf
+[2026-03-21 22:01:18] Mumax3   : mumax3
+[2026-03-21 22:01:18] >>> B=0.05 T start
+[2026-03-21 22:01:19] //********************************************************************//
+[2026-03-21 22:01:19] //output directory: E:\magnon-hopfion-main\3d-motion_1\1\sw_B0p05T.out/
+[2026-03-21 22:01:19] C:/Users/jromaes/go/src/github.com/mumax/3/cmd/mumax3/main.go:114 script line 2:1: illegal byte order mark (and 1 more errors): 
+[2026-03-21 22:01:19] <<< B=0.05 T done (exit=1)
+[2026-03-21 22:01:19] >>> B=0.1 T start
+[2026-03-21 22:01:20] //********************************************************************//
+[2026-03-21 22:01:20] //output directory: E:\magnon-hopfion-main\3d-motion_1\1\sw_B0p1T.out/
+[2026-03-21 22:01:20] C:/Users/jromaes/go/src/github.com/mumax/3/cmd/mumax3/main.go:114 script line 2:1: illegal byte order mark (and 1 more errors): 
+[2026-03-21 22:01:20] <<< B=0.1 T done (exit=1)
+[2026-03-21 22:01:20] >>> B=0.2 T start
+[2026-03-21 22:01:20] //********************************************************************//
+[2026-03-21 22:01:20] //output directory: E:\magnon-hopfion-main\3d-motion_1\1\sw_B0p2T.out/
+[2026-03-21 22:01:20] C:/Users/jromaes/go/src/github.com/mumax/3/cmd/mumax3/main.go:114 script line 2:1: illegal byte order mark (and 1 more errors): 
+[2026-03-21 22:01:20] <<< B=0.2 T done (exit=1)
+[2026-03-21 22:01:20] >>> B=0.5 T start
+[2026-03-21 22:01:21] //********************************************************************//
+[2026-03-21 22:01:21] //output directory: E:\magnon-hopfion-main\3d-motion_1\1\sw_B0p5T.out/
+[2026-03-21 22:01:21] C:/Users/jromaes/go/src/github.com/mumax/3/cmd/mumax3/main.go:114 script line 2:1: illegal byte order mark (and 1 more errors): 
+[2026-03-21 22:01:21] <<< B=0.5 T done (exit=1)
+[2026-03-21 22:01:21] >>> B=1.0 T start
+[2026-03-21 22:01:21] //********************************************************************//
+[2026-03-21 22:01:21] //output directory: E:\magnon-hopfion-main\3d-motion_1\1\sw_B1p0T.out/
+[2026-03-21 22:01:21] C:/Users/jromaes/go/src/github.com/mumax/3/cmd/mumax3/main.go:114 script line 2:1: illegal byte order mark (and 1 more errors): 
+[2026-03-21 22:01:21] <<< B=1.0 T done (exit=1)
+[2026-03-21 22:01:21] >>> B=2.0 T start
+[2026-03-21 22:01:22] //********************************************************************//
+[2026-03-21 22:01:22] //output directory: E:\magnon-hopfion-main\3d-motion_1\1\sw_B2p0T.out/
+[2026-03-21 22:01:22] C:/Users/jromaes/go/src/github.com/mumax/3/cmd/mumax3/main.go:114 script line 2:1: illegal byte order mark (and 1 more errors): 
+[2026-03-21 22:01:22] <<< B=2.0 T done (exit=1)
+[2026-03-21 22:01:22] === All done ===
+[2026-03-21 22:05:13] === Amplitude Sweep: 440 GHz, srcX_vibX ===
+[2026-03-21 22:05:13] B = 0.05 / 0.1 / 0.2 / 0.5 / 1.0 / 2.0 T
+[2026-03-21 22:05:13] Init OVF : E:/magnon-hopfion-main/3d-motion_1/1/m000020.ovf
+[2026-03-21 22:05:13] Mumax3   : mumax3
+[2026-03-21 22:05:13] >>> B=0.05 T start
+[2026-03-22 10:36:06] //See bibtex file in output folder for justification.                 //
+[2026-03-22 10:36:06] //********************************************************************//
+[2026-03-22 10:36:06] //   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+[2026-03-22 10:36:06] <<< B=0.05 T done (exit=0)
+[2026-03-22 10:36:06] >>> B=0.1 T start
+[2026-03-23 01:42:21] //See bibtex file in output folder for justification.                 //
+[2026-03-23 01:42:21] //********************************************************************//
+[2026-03-23 01:42:21] //   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+[2026-03-23 01:42:21] <<< B=0.1 T done (exit=0)
+[2026-03-23 01:42:21] >>> B=0.2 T start
+[2026-03-23 15:31:15] //See bibtex file in output folder for justification.                 //
+[2026-03-23 15:31:15] //********************************************************************//
+[2026-03-23 15:31:15] //   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+[2026-03-23 15:31:15] <<< B=0.2 T done (exit=0)
+[2026-03-23 15:31:15] >>> B=0.5 T start

@@ -1,0 +1,984 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\graphicspath{{figures/}{./figures/}{/mnt/d/Research/Hopfion/09_paper_thesis_talks/bishe/thesis_v2/figures/}}
+\begin{document}
+
+
+
+
+% ============================================================
+%                      中 文 摘 要
+% ============================================================
+\section*{摘\quad 要}
+
+作为一种承载纽结型自旋纹理的三维拓扑准粒子，磁性霍普夫子（Hopfion）兼具稳健的拓扑保护与丰富的运动自由度，被视为高密度信息存储与类脑计算器件的候选载体。本研究借助微磁学仿真平台 Mumax3，围绕 Hopfion 在几类代表性磁体中的稳态存在条件，以及磁振子激励下的输运规律，开展系统考察。
+
+就拓扑稳定性而言，本文以局域旋转矩阵结合环面坐标映射为数学框架，实现了任意拓扑荷数与反铁磁交替背景下 Hopfion 自旋态的解析化生成及三维可视化工具链。对以 FeGe 为代表、含体积型 Dzyaloshinskii-Moriya 相互作用（DMI）的铁磁体系，仿真结果归纳出维持 Hopfion 稳态需同时满足的三项要件——解析初始构型、边界层冻结处理以及退磁场纳入。当切换至竞争交换作用铁磁体系时，观测到 Hopfion 收敛至一个固有尺寸吸引子，对应大半径 $R_{\text{eq}} = 2.60\,\mathrm{nm}$；通过控制变量式数值实验可以排除背景磁化取向对漂移行为的作用。针对各向异性参数的精细化扫描将临界失稳阈值定位于 $K_{u1,c} \in (52\times10^{3}, 55\times10^{3}) \, \mathrm{J/m^3}$ 区间。
+
+进一步地，本研究在同一竞争交换模型中系统分析了 Hopfion 受自旋波激励后的响应规律。数值证据表明，仅当磁振子沿面内方向极化时，Hopfion 才会被有效驱动；面外极化分量对平动几乎毫无贡献。从频谱扫描结果看，轴向传播模式下出现多个共振峰，其中 $1100\,\mathrm{GHz}$ 附近响应最为强烈，对应位移 $18.1\,\mathrm{nm}$；漂移速度随激励幅度近似呈 $v \propto B_0^{1.99}$ 的幂律关系。而面内传播激励则驱使 Hopfion 以接近 $90°$ 的拓扑霍尔角偏移，该偏转角度在改变频率、强度与激励几何后依然稳健。需要指出的是，上述观测在微磁学尺度上首次定量刻画了 Hopfion 的磁振子霍尔效应。本文据此挖掘面内与轴向两种传播模式的方向互补特性，设计并通过仿真验证了借助频率切换实现 Hopfion 轴向双向可逆输运的调控策略。
+
+在上述结果基础上，本文凝练出 Hopfion 所具备的激发阈值、频率选择响应以及方向编码能力等动力学指纹，将之与生物神经元的关键功能进行映射，进而勾勒出一种以自旋波为输入媒介的 Hopfion 类脑器件概念架构。
+
+
+
+\textbf{关键词：} 霍普夫子, 微磁学模拟, 拓扑稳定性, 自旋波驱动, 磁振子霍尔效应, 神经形态计算
+
+
+% ============================================================
+%                    英 文 摘 要
+% ============================================================
+\section*{ABSTRACT}
+
+Magnetic hopfions are 3D topological magnetic quasi-particles with knot-like spin configurations, exhibiting strong topological stability and multiple dynamical modes. They hold great promise for high-density storage and neuromorphic computing. Using Mumax3, we investigated the stability conditions and spin-wave-driven dynamics of hopfions in different magnetic systems.
+
+First, based on existing toroidal coordinate mapping theories, we developed a programmatic initialization script and 3D visualization tools for hopfions with arbitrary topological charges and antiferromagnetic backgrounds. In a FeGe-based ferromagnetic system with bulk Dzyaloshinskii-Moriya interaction (DMI), we identified three necessary conditions for hopfion stability: analytical initial state, boundary layer freezing, and demagnetization effects. In a frustrated ferromagnetic system, we found an intrinsic size attractor ($R_{\text{eq}} = 2.60\,\mathrm{nm}$). Background magnetization orientation showed no influence on hopfion drift. The critical anisotropy threshold was determined as $K_{u1,c} \in (52\times10^{3}, 55\times10^{3}) \, \mathrm{J/m^3}$.
+
+Second, we studied spin-wave-driven hopfion dynamics in the frustrated exchange system. Only in-plane oscillating spin waves effectively drive hopfions. Frequency sweeps revealed a multi-peak resonance spectrum, with the strongest response at $1100\,\mathrm{GHz}$ under axial propagation. The velocity scales as $v \propto B_0^{1.99}$ with driving amplitude. In-plane propagation produces a stable topological Hall angle of $\sim 90°$, providing the first micromagnetic quantitative verification of the magnonic Hall effect for hopfions. Additionally, we proposed a bidirectional axial control scheme via spin-wave frequency switching.
+
+Finally, exploiting the threshold effect, frequency selectivity, and directional encoding of hopfion dynamics, we mapped these behaviors to neuron functionalities and proposed a conceptual spin-wave-based hopfion neuromorphic device.
+
+
+
+\textbf{Key words: } hopfion, micromagnetic simulation, topological stability, spin-wave driving, magnonic Hall effect, neuromorphic computing
+
+
+% ============================================================
+%                        目 录
+% ============================================================
+
+
+% ============================================================
+%                        正 文
+% ============================================================
+% 第一章 引言
+\chapter{引言}
+
+\section{选题背景与意义}
+
+伴随后摩尔时代的到来，冯·诺依曼架构因存储单元与运算单元相互分离而陷入访存瓶颈，由此派生出的延迟与功耗代价已难以通过工艺尺寸进一步缩减来化解。为绕开这一体系结构层面的约束，存算一体以及神经形态计算路线近年来成为学界与产业界共同关注的焦点。就硬件载体而言，磁性拓扑结构凭借非易失、低耗散以及与 CMOS 工艺相对兼容等物理属性，被认为是承载上述新型计算范式的有力候选。
+
+在二维层面，斯格明子（Skyrmion）的构建、稳定及其操控已积累了系统的研究基础。相较之下，三维磁性拓扑准粒子霍普夫子（Hopfion）由于具备更高的空间存储密度，并可沿多条自由度方向被驱动\cite{gobel2021beyond}，所能提供的信息承载维度显著扩展。从构型上看，Hopfion 的自旋分布呈现类似三维纽结的拓扑缠绕形态,其整体拓扑特征由 Hopf 指数 $Q_H$ 刻画。当 $Q_H$ 取非零整数时,该结构在涨落、热扰动以及复杂外场耦合下仍可维持几何完整性,这一拓扑保护效应被视作其承担类脑计算功能的物理前提\cite{guslienko2024review}。
+
+然而，就本文关心的核心议题而言，Hopfion 在自旋波激励下的动力学图像目前仍缺乏系统刻画，相关运动规律亦未形成明晰的物理共识。围绕上述空白，本研究借助微磁学数值方法，针对不同磁性体系中 Hopfion 的稳定性边界及其动力学调控机制展开剖析，并进一步评估其在神经形态计算场景下的可行实现路径。
+
+
+\section{国内外研究动态}
+
+\subsubsection*{理论预测与实验观测}
+就理论脉络而言，Hopfion 的研究线索可上溯至拓扑学中的 Hopf 映射。针对非中心对称磁性纳米结构中静态 Hopf 孤子的存在性，Tai 与 Smalyukh 给出了较早的理论论证\cite{tai2018static}，由此在固态磁性材料中确立了该结构的可实现性。其后，Kent 等人借助磁性多层膜体系完成了 Hopfion 的构建与观测\cite{kent2021creation}。至 2023 年，立方手性磁体中稳定 Hopfion 环结构的直接成像由 Zheng 团队借助电子全息术得以实现\cite{zheng2023hopfion}，这一结果被视为实验层面具有标志意义的进展。与之相关，螺旋磁体 FeGe 中分数 Hopfion 及其集合体的现象由 Yu 等人率先报道，电流驱动下的运动行为也在同一工作中得到讨论\cite{yu2023realization}。
+
+\subsubsection*{稳定性研究}
+Hopfion 若要走向器件落地，稳定性问题便无法回避。针对圆柱形样品体系，Guslienko 的综述系统梳理了 Hopfion 的稳定条件与边界效应\cite{guslienko2024review}。Sallermann 等人则从理论计算角度指出，体块磁体中 Hopfion 的稳定化可由竞争交换相互作用（frustrated exchange）提供有效途径\cite{sallermann2023stability}。
+
+几何限域构成另一条主流的稳定化思路。就手性磁体纳米盘而言，Liu 等人证实其具备束缚 Hopfion 的能力\cite{liu2018binding}；环形纳米环曲率效应的利用路径，则由 Corona 等人以方案形式提出\cite{corona2023curvature}。除此之外，Hopfion 与 Skyrmion 之间的拓扑相变\cite{gao2024topological,souza2025topological}以及所谓时空编织机制\cite{knapman2024spacetime}，亦在近期成为研究关注的焦点。
+
+\subsubsection*{动力学调控}
+对 Hopfion 施以精准操控，是其迈向器件应用的关键环节。就电流驱动方向的工作进展来看,铁磁体中 Bloch 型与 N\'{e}el 型 Hopfion 在 STT 作用下的动力学行为，由 Wang 等人给出了首次系统性分析\cite{wang2019current}；其中，轴对称 Hopfion 的回旋矢量满足 $\mathbf{G} = 0$，由此沿电流方向做无霍尔偏转的直线运动。在此基础上，Liu 等人针对三维 Hopfion 在 STT 驱动下的完整动力学作了进一步考察，并厘清了回旋矢量与 Hopf 指数之间的对应关系\cite{liu2020three}。此外，Hopfion 所涌现的磁多极矩结构及其非线性响应特性，亦在 Liu 等人的后续工作中被揭示\cite{liu2022emergent}。
+
+自旋波（Magnon）驱动与电流驱动相比，在热耗散层面具有明显优势。就二维体系而言，自旋波对 Skyrmion 的驱动行为已得到较为充分的考察：Ding 等人关注的是传播自旋波驱动磁性 Skyrmion 的运动规律\cite{ding2015motion}；瞬态逆行运动这一现象，由 Huang 等人在自旋波驱动 Skyrmion 的情形下首次报道\cite{huang2023transient}；对于回旋矢量为零的 Skyrmionium，Shen 等人证明其同样可被自旋波有效驱动\cite{shen2018skyrmionium}。进入三维 Hopfion 体系后，Hopfion 所诱导的磁振子霍尔效应以及磁振子聚焦现象，由 Saji 等人以理论预测的形式给出\cite{saji2023magnonic}。反铁磁体系中 Hopfion 调节自旋波散射特性这一图像，则由 Zhang 等人提出并指出其在元学习方向的应用潜力\cite{zhang2023magnon}。电子在 Hopfion 上散射特性的数值计算，见于 Pershoguba 等人的工作\cite{pershoguba2021electronic}。更进一步的工作来自 Souza 等人：自旋波不仅可以驱动 Hopfion 运动，还可诱导其发生拓扑转变\cite{souza2025topological}，由此为器件设计拓出了新的思路。
+
+
+\section{本文的研究内容与章节安排}
+
+纵览上述脉络可见，Hopfion 的静态构型已在实验层面获得确认，而自旋波驱动下的动力学机制连同神经形态器件的适配方案，目前仍缺乏深入的系统考察。本文依托微磁学模拟软件 Mumax3，围绕如下若干问题展开：
+
+\begin{enumerate}[label=(\arabic*)]
+  \item 构型构建：如何搭建支持任意拓扑荷及反铁磁交替背景的 Hopfion，并同步实现有效的拓扑三维可视化？
+  \item 稳定性：就 DMI 铁磁体系以及竞争交换铁磁体系而言，Hopfion 得以稳定存在的参数条件应如何界定？
+  \item 动力学调控：自旋波驱动 Hopfion 的运动规律何在？尤其是在铁磁条件下，自旋波激励所诱发的响应特征。
+  \item 应用探索：Hopfion 的运动规律能否用于模拟神经元功能？
+\end{enumerate}
+
+就章节组织而言，本文安排如下：
+
+第一章为引言，涉及选题背景、国内外研究动态以及本文研究内容的整体介绍。
+
+第二章为理论基础，依次介绍微磁学模型、Hopfion 的拓扑性质、DMI 与竞争交换相互作用、以及 Thiele 集体坐标方程。
+
+第三章为任意构型 Hopfion 的程序化构建，内容在于将前人提出的高阶拓扑理论模型，转化为可直接用于微磁学模拟的初始态生成脚本与可视化工具。
+
+第四章为 Hopfion 稳定性研究，分别就 DMI 铁磁（FeGe）体系与竞争交换铁磁体系，考察 Hopfion 的稳定条件及其参数相图。
+
+第五章为 Hopfion 动力学调控，围绕自旋波驱动下 Hopfion 的方向选择性、频率响应谱、幅度标度律以及拓扑 Hall 效应展开分析，同时探讨双向轴向控制方案的可行性。
+
+第六章为神经形态计算初步探索，依托 Hopfion 动力学特征评估其作为神经元功能载体的物理可行性，并给出概念器件的设计方案。
+
+第七章为总结与展望，汇总全文主要结论与创新点，并就未来研究方向加以展望。
+
+% 第二章 理论基础
+\chapter{理论基础}
+
+\section{微磁学模型}
+
+\subsubsection*{连续介质近似}
+针对纳米尺度磁性材料中的磁化动力学问题，微磁学（Micromagnetics）提供了一套基础性的理论描述框架。在连续介质近似下，局域磁化矢量 $\mathbf{M}(\mathbf{r}, t)$ 的模为饱和磁化强度 $M_s$，方向由单位矢量 $\mathbf{m}(\mathbf{r}, t) = \mathbf{M}/M_s$ 描述，其中 $|\mathbf{m}| = 1$。
+
+系统的总自由能 $E_{\text{total}}$ 由多种能量贡献组成：
+\begin{equation}
+  E_{\text{total}} = E_{\text{ex}} + E_{\text{DMI}} + E_{\text{anis}} + E_{\text{demag}} + E_{\text{Zeeman}}
+  \label{eq:total-energy}
+\end{equation}
+其中各项分别为交换能、Dzyaloshinskii-Moriya 相互作用（DMI）能、磁晶各向异性能、退磁能和塞曼能。
+
+\subsubsection*{交换相互作用}
+海森堡交换相互作用的倾向在于驱使相邻磁矩朝平行方向排列，写为连续介质形式后读作：
+\begin{equation}
+  E_{\text{ex}} = \int A_{\text{ex}} \left[ (\nabla m_x)^2 + (\nabla m_y)^2 + (\nabla m_z)^2 \right] \, dV
+  \label{eq:exchange}
+\end{equation}
+其中 $A_{\text{ex}}$ 为交换刚度常数，单位为 $\mathrm{J/m}$。
+
+对于竞争交换体系而言，最近邻铁磁交换 $J_1 > 0$ 之外，还并存着次近邻反铁磁交换 $J_2 < 0$ 与第四近邻反铁磁交换 $J_4 < 0$；文献\cite{sallermann2023stability}指出，这类"受挫"相互作用可为三维拓扑结构的稳定提供支撑。
+
+\subsubsection*{Dzyaloshinskii-Moriya 相互作用}
+作为一类反对称交换相互作用，DMI 的物理起源在于自旋-轨道耦合与空间反演对称性破缺的叠加效应。相邻磁矩因此倾向于垂直排列，手性磁性拓扑结构的形成也正依赖于此。
+
+对于体积型（Bulk）DMI，能量密度为：
+\begin{equation}
+  \varepsilon_{\text{DMI}}^{\text{bulk}} = D_{\text{bulk}} \, \mathbf{m} \cdot (\nabla \times \mathbf{m})
+  \label{eq:dmi-bulk}
+\end{equation}
+其中 $D_{\text{bulk}}$ 为体积型 DMI 常数。此类 DMI 常见于手性磁体如 FeGe、MnSi 等 B20 型晶体结构中。
+
+对于界面型（Interfacial）DMI，能量密度为：
+\begin{equation}
+  \varepsilon_{\text{DMI}}^{\text{int}} = D_{\text{int}} \left( m_z \nabla \cdot \mathbf{m} - (\mathbf{m} \cdot \nabla) m_z \right)
+  \label{eq:dmi-int}
+\end{equation}
+两类 DMI 所支撑的拓扑构型存在差异：Bloch 型 Hopfion 由体积型 DMI 孕育，而 N\'{e}el 型 Hopfion 则对应界面型 DMI。
+
+\subsubsection*{磁晶各向异性}
+单轴磁晶各向异性能量密度为：
+\begin{equation}
+  \varepsilon_{\text{anis}} = K_{u1} (1 - m_z^2)
+  \label{eq:anisotropy}
+\end{equation}
+其中 $K_{u1}$ 为一阶各向异性常数。$K_{u1} > 0$ 对应易轴各向异性（沿 $z$ 轴），均匀背景磁化的维持因此得到保障；然而，需要指出的是，一旦各向异性过强，Hopfion 将被压缩乃至消解。
+
+\subsubsection*{退磁场}
+样品有限尺寸所诱发的磁荷分布是退磁场 $\mathbf{H}_{\text{demag}}$ 的起因，其求解依托于磁静力学方程：
+\begin{equation}
+  \nabla \cdot \mathbf{H}_{\text{demag}} = -\nabla \cdot \mathbf{M}
+  \label{eq:demag}
+\end{equation}
+在微磁学模拟中，退磁场的求解通常是耗时占比最高的环节；为此，Mumax3 借助快速傅里叶变换（FFT）实现加速。从仿真结果来看，有限尺寸样品中 Hopfion 的稳定亦高度依赖退磁效应。
+
+
+\section{Landau-Lifshitz-Gilbert 方程}
+
+磁化随时间的演化由 Landau-Lifshitz-Gilbert（LLG）方程所刻画：
+\begin{equation}
+  \frac{\partial \mathbf{m}}{\partial t} = -\gamma_0 \, \mathbf{m} \times \mathbf{H}_{\text{eff}} + \alpha \, \mathbf{m} \times \frac{\partial \mathbf{m}}{\partial t}
+  \label{eq:llg}
+\end{equation}
+其中 $\gamma_0 = \mu_0 |\gamma_e|$ 为旋磁比（$\gamma_e$ 为电子旋磁比），$\alpha$ 为 Gilbert 阻尼常数，$\mathbf{H}_{\text{eff}} = -\frac{1}{\mu_0 M_s}\frac{\delta E_{\text{total}}}{\delta \mathbf{m}}$ 为有效场。
+
+LLG 方程描述了两种基本运动模式：进动项 $\mathbf{m} \times \mathbf{H}_{\text{eff}}$ 使磁化绕有效场旋转；阻尼项使磁化趋向有效场方向。在微磁学模拟实践中，弛豫（Relax）过程等价于 $\alpha \to \infty$ 极限下的近似处理，从而令系统得以迅速收敛至能量极小值。
+
+\subsubsection*{自旋转移力矩}
+自旋极化电流穿过磁性材料的过程中，传导电子所携带的自旋角动量会向局域磁矩发生转移，由此诱发自旋转移力矩（STT）。在 Zhang-Li 模型的框架下，STT 被拆解为绝热与非绝热两部分：
+\begin{equation}
+  \mathbf{T}_{\text{STT}} = -(\mathbf{u} \cdot \nabla)\mathbf{m} + \beta \, \mathbf{m} \times [(\mathbf{u} \cdot \nabla)\mathbf{m}]
+  \label{eq:stt}
+\end{equation}
+其中 $\mathbf{u} = \frac{P j_e \mu_B}{e M_s}$ 为与电流密度成正比的速度矢量，$P$ 为自旋极化率，$\beta$ 为非绝热系数。
+
+
+\subsubsection*{自旋波与磁振子}
+铁磁体处于平衡态时，各磁矩保持平行取向。一旦出现局域扰动，相邻磁矩便偏离平衡方向，并借交换作用彼此耦合、协同进动，由此形成空间周期性的集体振荡模式——自旋波（spin wave）；其对应的能量量子即为磁振子（magnon）。
+
+就零偏置场铁磁体而言，由交换作用主导的自旋波色散关系为：
+\begin{equation}
+  \omega_k = \gamma_0 \frac{2A_{\text{ex}}}{M_s} k^2
+  \label{eq:sw-dispersion}
+\end{equation}
+其中 $k = |\mathbf{k}|$ 为波矢幅值，$2A_{\text{ex}}/M_s$ 为交换刚度参数。从抛物型色散可见，波矢越大自旋波频率越高，短波磁振子因此承载更高能量。
+
+在竞争交换铁磁体系中，次近邻（$J_2 < 0$）与第四近邻（$J_4 < 0$）反铁磁交换会对上述色散关系带来实质性修正。当处于长波极限（$k \to 0$）时，铁磁 $J_1$ 仍占据主导地位，抛物型特征得以保留；但在短波区域，竞争交换则驱使色散曲线偏离原抛物线形态，并于特定波矢 $k^*$ 处凹陷出极小值：
+\begin{equation}
+  k^* \approx \left(\frac{|J_2|}{J_1}\right)^{1/2} \frac{1}{a}
+  \label{eq:sw-kstar}
+\end{equation}
+其中 $a$ 为格点间距。$k^*$ 处的磁振子软化与体系螺旋不稳定性直接关联，Hopfion 的特征尺寸正由此锚定。
+
+在微磁学仿真层面，自旋波的激发是通过对局域薄片区域施加时变磁场来实现的：
+\begin{equation}
+  \mathbf{B}_{\text{sw}}(\mathbf{r}, t) = B_0 \sin(2\pi f_{\text{sw}} t) \cdot \hat{e} \cdot \chi(\mathbf{r})
+  \label{eq:sw-excitation}
+\end{equation}
+其中 $B_0$ 为激发振幅，$f_{\text{sw}}$ 为驱动频率，$\hat{e}$ 为振荡极化方向，$\chi(\mathbf{r})$ 为源区域空间窗函数（取值 0 或 1）。为避免反射波对仿真结果的污染，边界处设置吸收层（高阻尼区域），以等效模拟半无限介质内自旋波的单向传播。
+
+Liu 等人\cite{liu2020three}指出，自旋波与磁性拓扑结构的相互作用近年已成为备受关注的研究前沿。自旋波入射至 Hopfion 时，可依托如下机制驱动其运动：散射截面的不对称性诱发辐射压力；拓扑磁荷与自旋波角动量之间则存在直接耦合。本文认为，耦合效率取决于激发频率与振幅的选择，而这也正是第四章动力学调控研究的核心参数空间。
+
+
+\section{磁性霍普夫子的拓扑性质}
+
+\subsubsection*{Hopf 映射与 Hopf 指数}
+Hopfion 的拓扑属性根植于 Hopf 映射 $S^3 \to S^2$。磁化场 $\mathbf{m}(\mathbf{r})$ 把三维空间（紧致化之后与 $S^3$ 等价）映射至磁化方向空间 $S^2$。Hopf 指数的定义式为：
+\begin{equation}
+  Q_H = -\frac{1}{4\pi^2} \int \mathbf{F} \cdot \mathbf{A} \, d^3r
+  \label{eq:hopf-index}
+\end{equation}
+其中 $\mathbf{F}$ 为涌现电磁场张量，$\mathbf{A}$ 为对应的矢量势。$Q_H$ 是整数拓扑不变量，$Q_H = 1$ 对应最简单的 Hopfion。
+
+\subsubsection*{Preimage 结构}
+理解 Hopfion 最为直接的切入点在于"preimage"（原像）概念：$S^2$ 上任一点所对应的 preimage，即三维空间中磁化方向与该点重合的全部位置集合，本身构成一条闭合曲线；不同磁化方向的 preimage 曲线彼此相互缠绕，其链接数恰等于 Hopf 指数 $Q_H$。
+
+以 $Q_H = 1$ 的 Hopfion 为例，其核心结构可做如下解读：沿 $z$ 轴方向存在一根反向磁化管（对应 $m_z = -1$ 的 preimage），外部由均匀背景（$m_z = +1$）所包围；在两者之间的过渡区域，磁化矢量沿环面连续旋转，最终形成具有甜甜圈几何特征的纽结构型。
+
+
+\section{Thiele 集体坐标方程}
+
+针对做刚性运动的磁性拓扑结构，Thiele 方程可将 LLG 方程约化成描述质心运动的方程：
+\begin{equation}
+  \mathbf{G} \times \mathbf{v} + \mathcal{D} \cdot \mathbf{v} = \mathbf{F}
+  \label{eq:thiele}
+\end{equation}
+其中 $\mathbf{v}$ 为 Hopfion 质心速度，$\mathbf{F}$ 为外部驱动力，$\mathcal{D}$ 为耗散张量，$\mathbf{G}$ 为回旋矢量。
+
+对于 Hopfion，回旋矢量 $\mathbf{G}$ 与 Hopf 指数的关系为\cite{liu2020three}：
+\begin{equation}
+  G_i = \frac{\mu_0 M_s}{\gamma_0} \int \epsilon_{ijk} \, \mathbf{m} \cdot \left( \frac{\partial \mathbf{m}}{\partial x_j} \times \frac{\partial \mathbf{m}}{\partial x_k} \right) d^3r
+  \label{eq:gyrovector}
+\end{equation}
+
+需要指出的是，Wang 等人\cite{wang2019current}与 Liu 等人\cite{liu2020three}就轴对称 Hopfion 的独立推导均给出 $\mathbf{G} = 0$ 的理论预言；换言之，在 STT 驱动之下 Hopfion 不会表现出霍尔偏转——这与二维 Skyrmion 的动力学行为形成鲜明对照。
+
+
+\section{Mumax3 仿真平台}
+
+作为一款开源的微磁学模拟软件\cite{vansteenkiste2014design}，Mumax3 以 GPU 加速作为主要卖点，通过有限差分方法在均匀网格之上求解 LLG 方程。其核心优势可归纳如下：
+
+\begin{enumerate}[label=(\arabic*)]
+  \item GPU 并行加速：依托 CUDA 平台执行大规模并行运算，相较传统 CPU 求解器可取得数十倍的加速比。
+  \item FFT 退磁场计算：借助快速傅里叶变换完成退磁场的高效求解，适合承担大规模三维模拟任务。
+  \item 灵活的脚本接口：通过类 Go 语言风格的脚本完成参数设定与仿真流程控制。
+\end{enumerate}
+
+本研究涉及的全部微磁学模拟工作，分别在两套硬件平台上借助 Mumax3 v3.11.1 软件协同完成：其一为搭载 NVIDIA RTX 5070 Ti Laptop GPU 的本地笔记本电脑；其二为位于杭州电子科技大学第三教学楼 519 实验室、配置 NVIDIA GeForce RTX 2080 Ti GPU 的工作站。
+
+% 第三章 任意构型 Hopfion 的理论模型与构建
+\chapter{任意构型 Hopfion 的理论模型与程序化构建}
+
+\section{Hopfion 理论模型回顾}
+
+微磁学模拟对初始磁化分布的质量极为敏感,这一点在探究磁性 Hopfion 的稳定性与动力学时尤为突出。对于拓扑荷 $Q_H=1$ 这类较为基础的情形,Sutcliffe 模型给出的解析解已能提供可靠的起始态;然而一旦涉及更高阶拓扑荷或空间取向更为复杂的结构,则需依赖于基于环面坐标系的理论框架\cite{guslienko2025magnetic}。本文的定位并非提出新的解析解,而是将前人建立的局域旋转矩阵与环面坐标映射理论——原本停留在纯数学描述层面——转译为可被微磁学仿真直接调用的代码工具。围绕这一目标,本章介绍一套面向任意拓扑荷、同时兼容反铁磁(AFM)交替背景的初始态生成脚本的实现思路,并在此基础上给出配套的三维可视化解调方法,为后续仿真研究铺设基础。
+
+\subsubsection*{磁化场的旋转矩阵表示}
+从连续场理论的视角看,Hopfion 本质上是嵌入于均匀磁化背景中的一类三维拓扑孤子。取均匀背景磁化为 $\mathbf{m}_0 = \hat{z}$,则任意复杂构型 $\mathbf{m}(\mathbf{r})$ 都可以通过一个与坐标相关的局部旋转矩阵 $\hat{R}(\mathbf{r})$ 作用于该背景获得,即 $\mathbf{m}(\mathbf{r}) = \hat{R}(\mathbf{r}) \mathbf{m}_0$。
+
+超球面 $S^3$ 的四元数参数化引入向量 $n_\alpha = (n_1, n_2, n_3, n_4)$,满足归一化条件 $\sum n_\alpha^2 = 1$。由 $n_\alpha$ 的各分量可构造出局部旋转矩阵:
+\begin{equation}
+    R_{ik} = \delta_{ik} + 2(n_i n_k - n^2 \delta_{ik}) - 2\varepsilon_{ikl} n_l n_4
+\end{equation}
+其中,下标 $i, k, l \in \{1,2,3\}$,$\mathbf{n} = (n_1, n_2, n_3)$,$n^2 = n_1^2 + n_2^2 + n_3^2$,$\varepsilon_{ikl}$ 为完全反对称张量。由此,三维空间中的磁化场分量可化简写为:
+\begin{equation}
+    \mathbf{m} = (1 - 2n^2)\hat{z} + 2n_z \mathbf{n} + 2n_4(\mathbf{n} \times \hat{z})
+    \label{eq:hopf_magnetization}
+\end{equation}
+
+\subsubsection*{环面坐标下的参数化}
+在直角坐标系 $(x,y,z)$ 中直接刻画 Hopfion 的核心形貌,往往需要处理冗杂的几何条件。若切换至环面坐标系 $(\eta, \beta, \phi)$,$R^3$ 空间到超球面 $S^3$ 的映射则可更为自然地建立。两套坐标之间的转换关系为:
+\begin{equation}
+    \rho = \frac{a \sinh \eta}{\tau}, \quad z = \frac{a \sin \beta}{\tau}, \quad \phi = \arctan(y/x)
+\end{equation}
+其中 $\rho = \sqrt{x^2+y^2}$,$\tau = \cosh \eta - \cos \beta$,$a$ 为 Hopfion 核心环($m_z=-1$ 所在的圆环)的特征大半径。
+
+在该坐标系下,为了满足非平凡的 Hopf 映射,定义如下复函数形式:
+\begin{align}
+    Z_1 &= n_4 - i n_3 = e^{-im\beta} \cos \zeta(\eta) \\
+    Z_2 &= n_2 - i n_1 = e^{in\phi} \sin \zeta(\eta)
+\end{align}
+结合公式~\eqref{eq:hopf_magnetization},磁化矢量的面外($z$)和面内($x-y$)分量可化简为:
+\begin{align}
+    m_z(\eta, \beta, \phi) &= \cos(2\zeta(\eta)) \\
+    m_x + i m_y &= \sin(2\zeta(\eta)) e^{i(n\phi + m\beta)}
+\end{align}
+其中整数 $p=m$ 和 $q=n$ 分别代表极向(Poloidal)与方位向(Azimuthal)的缠绕数,系统的总 Hopf 指数则由两者之积给出,即 $Q_H = p \times q$。衰减函数 $\zeta(\eta)$ 描述了从核心到边界的径向过渡行为,并需服从特定的边界条件,以便约束磁化在中心区与远场的渐进形态。这一类前人建立的理论模型,把复杂拓扑构型的描述压缩到了寥寥几个整数参数上。吃透这些核心公式后,本文接下来的重点是将其落地为三维空间中的离散化程序。
+
+\section{离散化生成脚本与反铁磁拓展}
+
+\subsubsection*{程序化离散与网格构建}
+延续上节给出的解析表达,本文基于 Python 语言实现了磁化场初始态生成程序(完整源码参见附录或代码库 \texttt{create\_hopfion\_AFM\_v2.py})。程序的执行路径为:先在指定的三维计算域内建立均匀离散网格,从而得到坐标矩阵 $(x_i, y_j, z_k)$;经过中心偏移与平移调整,将直角坐标映射为有效的局部环面坐标;进而在每个格点上逐一计算磁化分量 $\mathbf{m}(x_i, y_j, z_k)$。
+
+Hopfion 核心环所在的平面可通过参数开关进行切换,默认的 $x-y$ 平面可被替换为 $x-z$ 或 $y-z$ 平面,其实现依赖于坐标轮换变换。此种设计让拓扑结构在任意维度上灵活旋转成为可能,能够契合后续驱动实验里对初始磁化位向和传播方向的不同需求。生成的磁化数据最终以 OOMMF OVF 2.0 格式的二进制文件落地,便于 Mumax3 等微磁学软件直接将其作为初始态读入。
+
+\subsubsection*{反铁磁交替背景}
+近年来受挫磁体以及具备反铁磁交换作用的复杂磁体系正成为研究焦点,为此本文在生成脚本中配套引入了自适应的反铁磁(AFM)背景生成模块。具体做法是在不同空间维度上叠加符号交替矩阵——三维 checkerboard 棋盘格或沿特定轴向的 layer 分层模式都属于可选方案——以便把多样化的反铁磁序背景施加在已生成的纯铁磁 Hopfion 之上。与此配套,\texttt{afm\_outside\_only} 这一开关参数使得交替扰动既可被限制在 Hopfion 核心区域以外,也可作用于整个计算域实现全局交错。
+
+\section{Hopfion 构型的可视化}
+
+为验证构造算法的正确性并直观展示三维拓扑特征,本文进一步编写了基于等值面提取和三维渲染的可视化分析脚本(\texttt{draw\_afm\_new.py})。
+
+该脚本利用 Marching Cubes 算法从离散的网格数据中提取出 $m_z=0$ 的三维等值面,并根据该面上的面内磁化相位角 $\Phi = \arctan(m_y/m_x)$ 为其顶点赋予相应的颜色值。借助色相映射(Hue Map),几何面片之上磁化矢量的连续扭转便能够清晰地被呈现出来。
+
+需要指出的是,当结构文件带有 AFM 交替背景时,网格级的正负交替会使常规等值面提取失效;为此,可视化脚本中内嵌了自动信号解调(Demodulation)功能。算法先通过相邻格点的平均点积,把反铁磁的分布模式与相位偏移识别出来;随后,在提取等值面之前,对局部反向磁矩进行预先翻转,使场分布被"解调"回连续的铁磁形式。经过这一步后,等值面渲染得以顺利完成,核心大半径 $R$ 与管半径 $r$ 也可随之被提取。
+
+图~\ref{fig:hopfion_vis} 清楚地呈现了生成磁化场的典型扭结拓扑结构,面内相位的色彩沿表面平滑过渡,显示出连续的梯度分布。几何形态与向量场分布两条线索相互印证,为环面坐标理论模型及其离散化构建程序的有效性提供了双重支撑。
+
+\begin{figure}[htbp]
+    \centering
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/hopfion_Qh1_p1q1_strategy1.png}
+        \caption*{(a) $Q_H=1$ ($p=1, q=1$)}
+    \end{minipage}\hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/hopfion_Qh2_p2q1_strategy1.png}
+        \caption*{(b) $Q_H=2$ ($p=2, q=1$)}
+    \end{minipage}
+
+    \vspace{0.5cm}
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/hopfion_Qh2_p1q2_strategy1.png}
+        \caption*{(c) $Q_H=2$ ($p=1, q=2$)}
+    \end{minipage}\hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/hopfion_Qh4_p2q2_strategy1.png}
+        \caption*{(d) $Q_H=4$ ($p=2, q=2$)}
+    \end{minipage}
+    \caption{由本文自主开发的离散化生成脚本所构建的不同拓扑荷($Q_H=1, 2, 4$)Hopfion 的三维等值面及其面内相位着色对照。为便于横向比较,四者的理论特征尺寸被统一设定为 $R=12\,\mathrm{nm}, r=6\,\mathrm{nm}$。}
+    \label{fig:hopfion_vis}
+\end{figure}
+
+围绕任意拓扑荷 Hopfion 的初始态构造问题，本章完成了一条从解析框架到可执行工具的完整翻译。理论侧，四元数参数化与环面坐标映射两套既有体系被系统梳理为可编程对象；实现侧，据此落地的 OVF 离散化生成脚本兼容任意 $(p,q)$ 缠绕数，也把反铁磁交替背景纳入可配置项。配套的等值面可视化脚本则凭借自动 AFM 解调与面内相位着色，在几何形貌与矢量分布两个维度上完成了对生成结果的交叉校核。相较于仅能覆盖单一 $Q_H=1$ 构型的传统解析解，本文所构建的这套组合在普适性与灵活性上表现出更明显的优势，为后续章节在稳定性判据与自旋波动力学方面的仿真研究，提供了可直接调用的初始化与分析配套。
+
+% 第三章 Hopfion 稳定性研究
+\chapter{Hopfion 稳定性研究}
+
+本章聚焦两类磁性介质中 Hopfion 的存活条件：含体积型 DMI 的铁磁体（以 FeGe 为代表材料）与竞争交换铁磁体。借助微磁学仿真，本文逐一勘定两套体系中 Hopfion 得以维持的必要前提及可行参数窗口。
+
+
+\section{DMI 铁磁体系中的 Hopfion 稳定性}
+
+\subsubsection*{FeGe 材料参数与模型设置}
+研究对象选为手性磁体 FeGe，其材料参数见\ref{tab:fege-params}。由 $\lambda = 4\pi A_{\text{ex}} / |D_{\text{bulk}}| \approx 70\,\mathrm{nm}$ 给出的螺旋周期构成体系固有的空间标度，模型几何尺寸的选取也以此为基准。
+
+\begin{table}[htbp]
+  \centering
+  \caption{FeGe 材料参数}
+  \label{tab:fege-params}
+  \begin{tabular}{lll}
+    \toprule
+    参数 & 符号 & 数值 \\
+    \midrule
+    饱和磁化强度 & $M_s$ & $384e3\,\mathrm{A/m}$ \\
+    交换刚度 & $A_{\text{ex}}$ & $8.78e-12\,\mathrm{J/m}$ \\
+    体积型 DMI 常数 & $D_{\text{bulk}}$ & $1.58e-3\,\mathrm{J/m^2}$ \\
+    螺旋周期 & $\lambda$ & $70\,\mathrm{nm}$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+几何上取圆柱体，直径 $d = 210\,\mathrm{nm} = 3\lambda$，厚度 $h = 70\,\mathrm{nm} = \lambda$。离散网格取 $1\,\mathrm{nm} \times 1\,\mathrm{nm} \times 1\,\mathrm{nm}$，足以分辨该材料的交换长度。
+
+\subsubsection*{初始态构造：Sutcliffe 解析解}
+Hopfion 的初始磁化构型依据 Sutcliffe 给出的解析形式\cite{sutcliffe2018hopfions}生成。该解建立在有理映射近似之上，可直接给出拓扑荷 $Q_H = 1$ 的磁化分布。具体流程是用 Python 脚本计算该解析构型，导出为 OVF 文件，再交由 Mumax3 读入。
+
+进入 Hopfion 的核心区域后，$m_z$ 的走向为：中心管内 $-1$（反向磁化通道），向外渐变至 $+1$（均匀背景），中间环形过渡区呈现旋转结构。
+
+\subsubsection*{稳定性的三个必要条件}
+通过对比实验，本文梳理出 FeGe 体系里 Hopfion 能够稳定存在的三条必要条件：
+
+条件一：解析初始态。 随机初始化或简单的环形（torus）初始化均无法让系统落入 Hopfion 亚稳态。只有当起点取自 Sutcliffe 解析构型，磁化分布才位于 Hopfion 能量盆地的吸引域以内。
+
+条件二：边界层冻结。 圆柱模型顶面与底面的边界层磁化被固定在 $\mathbf{m} = \hat{z}$，由 Mumax3 的 \texttt{frozenspins} 特性实现。一旦放开这层约束，DMI 往往会在边界处诱发螺旋态，使 Hopfion 所依赖的均匀背景无法维持。
+
+条件三：退磁场效应。 退磁场计算（\texttt{EnableDemag = true}）必须开启。该项贡献一份额外的形状各向异性，有助于稳住 $m_z = +1$ 背景，从而支撑起 Hopfion 的空间构型。
+
+各条件组合下的仿真结果汇总于\ref{tab:fege-conditions}。
+
+\begin{table}[htbp]
+  \centering
+  \caption{FeGe 体系中 Hopfion 稳定条件的对比实验}
+  \label{tab:fege-conditions}
+  \begin{tabular}{cccc}
+    \toprule
+    解析初始态 & 边界冻结 & 退磁场 & 结果 \\
+    \midrule
+    \checkmark & \checkmark & \checkmark & 稳定（2 ns） \\
+    \checkmark & \checkmark & $\times$   & 螺旋态 \\
+    \checkmark & $\times$   & \checkmark & 螺旋态 \\
+    $\times$   & \checkmark & \checkmark & 不收敛 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsubsection*{弛豫与演化结果}
+在三条必要条件同时满足的前提下，本文先以 $\alpha = 0.5$ 的高阻尼做 Relax 弛豫，把初始态推入局部能量极小值；再切换到 $\alpha = 0.02$ 做 2\,\mathrm{ns} 时间演化。仿真显示 Hopfion 持续稳定，$\langle m_z \rangle = 0.376$，核心半径约 50\,\mathrm{nm}。
+
+\ref{fig:fege-stable}给出弛豫完成后 Hopfion 的稳态形貌。左图为 $z = 0$ 中平面的 $m_z$ 分布，可清晰辨认出中心反向磁化区（$m_z = -1$，深蓝色）与环形过渡层；中图取 $y = 0$ 截面，呈现 Hopfion 沿 $z$ 轴延伸的管状核心；右图展示面内磁化分量，呈现出 Bloch 型的旋转特征。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig3-1_fege_hopfion_stable.png}
+  \caption{FeGe 体系中 Bloch 型 Hopfion 经弛豫和 2\,\mathrm{ns} 时间演化后的稳态结构。左：$z = 0$ 中平面 $m_z$ 分布（$\langle m_z \rangle = 0.376$）；中：$y = 0$ 截面；右：面内磁化分量}
+  \label{fig:fege-stable}
+\end{figure}
+
+
+\section{竞争交换铁磁体系中的 Hopfion 稳定性}
+
+\subsubsection*{模型设置}
+竞争交换铁磁体系的切入点来自 Sallermann 等的理论研究\cite{sallermann2023stability}。沿着该线索，Lobanov 与 Uzdin 剖析了此类体系中 Hopfion 的寿命、坍塌通道和逃逸机制\cite{lobanov2023lifetime}。模型所用参数列于\ref{tab:frustrated-params}。
+
+\begin{table}[htbp]
+  \centering
+  \caption{竞争交换铁磁体系参数}
+  \label{tab:frustrated-params}
+  \begin{tabular}{lll}
+    \toprule
+    参数 & 符号 & 数值 \\
+    \midrule
+    饱和磁化强度 & $M_s$ & $1.5e5\,\mathrm{A/m}$ \\
+    最近邻交换刚度 & $A_{\text{ex}}$ ($J_1$) & $5e-12\,\mathrm{J/m}$ \\
+    次近邻交换 & $J_2$ & $-0.164 \, J_1$ \\
+    第四近邻交换 & $J_4$ & $-0.082 \, J_1$ \\
+    模型尺寸 & — & $50\,\mathrm{nm} \times 50\,\mathrm{nm} \times 50\,\mathrm{nm}$ \\
+    网格 & — & $100 \times 100 \times 100$ \\
+    格点间距 & — & $0.5\,\mathrm{nm}$ \\
+    边界条件 & — & 三维周期性边界 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+相较 DMI 体系，此处关掉了 DMI、磁晶各向异性与退磁场三项，Hopfion 的存活只靠竞争交换一项支撑。为模拟无限大体块材料，本文启用三维周期性边界条件（PBC）。
+
+\subsubsection*{漂移稳定性分析}
+均匀背景中的 Hopfion 是否会自发漂移，直接关系到其作为器件载体的可行性。为此本文在严格控制变量的条件下（统一 $\alpha = 0.2$、$K_{u1} = 0$、相同初始尺寸 $R = 3\,\mathrm{nm}$, $r = 2\,\mathrm{nm}$、运行时长 2\,\mathrm{ns}）组织了四组对照实验，覆盖不同背景磁化方向（$m_z$、$m_x$、$m_y$）与 Hopfion 轴向（$z$、$x$、$y$ 三轴）的搭配。
+
+漂移实验的数据汇总见\ref{tab:drift-results}。从仿真结果看，四组配置表现出高度一致的行为：Hopfion 质心在最初 $\sim1\,\mathrm{ns}$ 内沿环面轴向完成 $\approx 4.75\,\mathrm{nm}$ 的一次性位移，之后即告钉扎；任何垂直于该轴向的分量始终为零。由此判断，背景磁化的取向对 Hopfion 漂移模式并无影响。
+
+\begin{table}[htbp]
+  \centering
+  \caption{控制变量漂移实验结果汇总（统一参数：$\alpha = 0.2$, $K_{u1} = 0$, $R_0 = 3\,\mathrm{nm}$, $r_0 = 2\,\mathrm{nm}$）}
+  \label{tab:drift-results}
+  \begin{tabular}{ccccc}
+    \toprule
+    配置 & 背景方向 & Hopfion 轴向 & 轴向位移 & 横向位移 \\
+    \midrule
+    bg=$m_z$, axis=$z$ & $m_z = +1$ & $z$ & $+4.75\,\mathrm{nm}$ ($z$) & $0\,\mathrm{nm}$ \\
+    bg=$m_z$, axis=$x$ & $m_z = +1$ & $x$ & $+4.75\,\mathrm{nm}$ ($x$) & $0\,\mathrm{nm}$ \\
+    bg=$m_y$, axis=$y$ & $m_y = +1$ & $y$ & $+4.75\,\mathrm{nm}$ ($y$) & $0\,\mathrm{nm}$ \\
+    bg=$m_x$, axis=$x$ & $m_x = +1$ & $x$ & $+4.75\,\mathrm{nm}$ ($x$) & $0\,\mathrm{nm}$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+需要指出，这个 4.75\,\mathrm{nm} 轴向位移来源于初始态在离散格点上的弛豫过程。连续的解析 ansatz 落到格点体系后，质心需要滑移到最近的格点势极小处；这一迁移在约 1\,\mathrm{ns} 内结束，随后格点势将 Hopfion 牢牢锁住。位移之所以严格沿环面轴向，是因为该方向的势垒较浅，而环面平面内的钉扎势深度明显更大。
+
+四组实验的总漂移距离对比参见\ref{fig:drift-comparison}。曲线在误差范围内几乎完全重合，再次印证了前述结论。本文选取 $m_x = +1$ 背景作 10\,\mathrm{ns} 长时验证（\ref{fig:drift-10ns}）：Hopfion 在完成初始弛豫后的 9\,\mathrm{ns} 内质心完全静止，$y$、$z$ 两方向全程零漂移，长时稳定性得到进一步确认。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig3-4_drift_comparison.png}
+  \caption{四组配置的总漂移距离 $|\Delta r|$ 随时间的演化。所有曲线完全重合：前 $\sim1\,\mathrm{ns}$ 内质心因格点弛豫沿轴向位移 $\approx4.75\,\mathrm{nm}$，此后完全钉扎。背景磁化方向（$m_z$、$m_x$、$m_y$）对漂移行为无影响}
+  \label{fig:drift-comparison}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig3-4_drift_trajectory_10ns.png}
+  \caption{$m_x = +1$ 背景下 Hopfion 的 10\,\mathrm{ns} 质心轨迹。$x$ 方向（Hopfion 轴向）在前 1\,\mathrm{ns} 内发生 $\approx4.75\,\mathrm{nm}$ 一次性格点弛豫后完全钉扎；$y$、$z$ 方向全程零漂移}
+  \label{fig:drift-10ns}
+\end{figure}
+
+\subsubsection*{居中稳态验证}
+前述漂移分析中，所有 $m_z = +1$ 背景下的 Hopfion 质心都沿 $z$ 方向发生了一次性位移（参见 \ref{tab:drift-results}），弛豫后已经偏离了原本设定的几何中心。这种偏移会直接拖累后续的自旋波仿真：质心靠向吸收边界层，自旋波往往在尚未抵达 Hopfion 核心时就被衰减殆尽。
+
+为绕开这一问题，本研究采用周期性平移策略。借助三维 PBC 的平移不变性，把弛豫后的磁化构型沿 $z$ 轴整体移位，令质心回到盒子几何中心 $(25\,\mathrm{nm}, 25\,\mathrm{nm}, 25\,\mathrm{nm})$。操作由 NumPy 的 \texttt{np.roll} 完成，磁化分布形态丝毫未变，仅平移其在周期盒中的坐标。
+
+平移后的构型稳定性需要重新校核。本文挑选三组代表性配置（$K_{u1} = 0$、$10e3\,\mathrm{}$、$50e3\,\mathrm{J/m^3}$），在 $\alpha = 0.2$、PBC 条件下分别演化 1\,\mathrm{ns}，持续追踪 Hopfion 质心位置及核心细胞数（$m_z < 0$ 的格点数）。判定口径定在 $z$ 方向漂移 $|\Delta z| < 2\,\mathrm{nm}$。
+
+\ref{tab:centered-stability}给出验证结果。三组配置悉数通过稳态判据，最大漂移仅 $0.70\,\mathrm{nm}$（$K_{u1} = 0$）；$K_{u1} = 10e3\,\mathrm{J/m^3}$ 时漂移低至 $0.019\,\mathrm{nm}$，位置稳定性表现极为出色。
+
+\begin{table}[htbp]
+  \centering
+  \caption{居中 Hopfion 的 1\,\mathrm{ns} 稳态验证结果}
+  \label{tab:centered-stability}
+  \begin{tabular}{ccccc}
+    \toprule
+    $K_{u1}$ (J/m$^3$) & $z_0$ (nm) & $z_{\text{final}}$ (nm) & $\Delta z$ (nm) & 核心细胞数 \\
+    \midrule
+    0     & 28.44 & 29.15 & $+0.70$ & 1984 $\to$ 2128 \\
+    10000 & 25.07 & 25.05 & $-0.019$ & 920 $\to$ 908 \\
+    50000 & 25.13 & 25.19 & $+0.062$ & 388 $\to$ 404 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+三组配置的 $z$ 向漂移时间演化参见\ref{fig:centered-z-drift}。$K_{u1} = 0$ 会出现约 $1\,\mathrm{nm}$ 振幅的呼吸模式振荡，但长时均值仍在可控区间；$K_{u1} = 10e3\,\mathrm{}$ 及 $50e3\,\mathrm{J/m^3}$ 两组则近乎完全静止。\ref{fig:centered-core-count}呈现核心细胞数的时间演化：较高 $K_{u1}$ 的两组尺寸高度稳定，$K_{u1} = 0$ 的振荡则与其 $z$ 向呼吸模式节拍同步。
+
+综合上述各项指标，$K_{u1} = 10e3\,\mathrm{J/m^3}$ 的居中 Hopfion 在位置稳定性与结构保持两项上均拔得头筹，原先困扰本研究的漂移不确定性由此得以消除。此后本文以居中稳态为起点，考察各向异性参数对 Hopfion 的影响。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figures/fig3-8_centered_z_drift.png}
+  \caption{居中 Hopfion 的 $z$ 方向漂移随时间演化。虚线标记 $\pm2\,\mathrm{nm}$ 判定阈值。$K_{u1} = 0$ 表现为呼吸模式振荡，$K_{u1} = 10e3\,\mathrm{}$ 和 $50e3\,\mathrm{J/m^3}$ 几乎无漂移}
+  \label{fig:centered-z-drift}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figures/fig3-9_centered_core_count.png}
+  \caption{Hopfion 核心细胞数（$m_z < 0$）随时间演化。各向异性越强，核心越小但越稳定}
+  \label{fig:centered-core-count}
+\end{figure}
+
+
+\subsubsection*{各向异性对稳定性的影响}
+本文在竞争交换体系中引入沿 Hopfion 轴向的单轴磁晶各向异性 $K_{u1}$，考察其对已具备居中稳定性的 Hopfion 结构所起的作用。扫描跨度选在 $K_{u1} = 0 \sim 75e3\,\mathrm{J/m^3}$，其中 $50e3\text{--}58e3\,\mathrm{J/m^3}$ 区段加密至 $1e3\,\mathrm{J/m^3}$ 步长。每组实验以弛豫后的 $R = 8\,\mathrm{nm}$、$r = 4\,\mathrm{nm}$ 构型作为起点，$\alpha = 0.2$ 下各跑 1\,\mathrm{ns}。
+
+\ref{fig:anisotropy-time}给出各 $K_{u1}$ 取值下 Hopfion 环面半径 $R$ 与管径 $r$ 的时间曲线。从同一初始尺寸出发的所有构型在约 0.6\,\mathrm{ns} 内收敛到各自的平衡态。随 $K_{u1}$ 上升，平衡的 $R$ 与 $r$ 同步缩小，这反映了各向异性对 Hopfion 结构形成的压缩趋势。
+
+$t = 1\,\mathrm{ns}$ 时刻各组尺寸参数整理于\ref{tab:ku-sweep-large}。$K_{u1} = 52e3\,\mathrm{J/m^3}$ 时 Hopfion 尚能存活，核心体素数从初始的 20344 缩至 376，对应管径约 $1.2\,\mathrm{nm}$（约 2.4 个格点）。$K_{u1} = 55e3\,\mathrm{J/m^3}$ 时核心体素数归零，Hopfion 彻底坍缩为均匀态。$K_{u1} = 75e3\,\mathrm{J/m^3}$ 更为剧烈，仿真进行到 0.37\,\mathrm{ns} 便因数值失稳而中断。
+
+\begin{table}[htbp]
+  \centering
+  \caption{不同 $K_{u1}$ 下 Hopfion 弛豫 1\,\mathrm{ns} 后的尺寸参数}
+  \label{tab:ku-sweep-large}
+  \begin{tabular}{cccc}
+    \toprule
+    $K_{u1}$ (J/m$^3$) & $R$ (nm) & $r$ (nm) & 状态 \\
+    \midrule
+    0     & 2.63 & 2.22 & 稳定 \\
+    5000  & 2.35 & 1.85 & 稳定 \\
+    10000 & 2.17 & 1.64 & 稳定 \\
+    20000 & 1.82 & 1.54 & 稳定 \\
+    30000 & 1.82 & 1.38 & 稳定 \\
+    50000 & 1.56 & 1.24 & 稳定 \\
+    52000 & 1.50 & 1.20 & 稳定（临界） \\
+    55000 & —    & —    & 坍缩 \\
+    75000 & —    & —    & 坍缩 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+据此本文划定临界各向异性阈值：
+\begin{equation}
+  K_{u1,c} \in (52\times10^{3}, \, 55\times10^{3}) \, \mathrm{J/m^3}
+  \label{eq:ku-critical}
+\end{equation}
+
+这一临界行为，可从能量竞争的角度给出解释。Hopfion 的管径 $r$ 来自三条能量通道的平衡：交换能 $\sim A_{\text{ex}}/r^2$，作用是将管径撑开；竞争交换（$J_2$、$J_4$）施加的拓扑约束，把 $r$ 锚定在固有吸引子尺度附近；各向异性能 $\sim K_{u1} r^2 L$（$L$ 为管长），则沿相反方向挤压反向磁化体积，使管径收缩。
+
+$K_{u1}$ 较小时，拓扑约束与交换能之间的角力主导全局，$r$ 在吸引子附近稳稳停住。随 $K_{u1}$ 攀升，各向异性的收缩作用持续增强。一旦跨过 $K_{u1,c}$，收缩力压过了拓扑抗力，管径被挤到格点分辨率（$\sim 0.5\,\mathrm{nm}$）的量级，离散网格再也撑不起拓扑结构，Hopfion 就此坍缩。此结果与 Metlov 对螺旋磁体中 Hopfion 椭圆稳定性的理论分析在定性层面相吻合\cite{metlov2025elliptical}。\ref{fig:anisotropy-summary}呈现 $R$、$r$ 随 $K_{u1}$ 单调下降的走势和临界区间的位置。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig3-6_anisotropy_Rr_vs_time.png}
+  \caption{不同 $K_{u1}$ 下 Hopfion 尺寸参数 $R(t)$ 和 $r(t)$ 的时间演化。所有构型从 $R = 8\,\mathrm{nm}$, $r = 4\,\mathrm{nm}$ 出发，$K_{u1}$ 增大导致平衡尺寸持续缩小。$K_{u1} = 75e3\,\mathrm{J/m^3}$ 仅有前 3 帧数据，仿真因 Hopfion 坍缩而中断}
+  \label{fig:anisotropy-time}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{figures/fig3-7_anisotropy_summary.png}
+  \caption{$t = 1\,\mathrm{ns}$ 时 Hopfion 尺寸参数随 $K_{u1}$ 的变化。红色阴影区域标记临界阈值 $K_{u1,c} \in (52\times10^{3}, 55\times10^{3}) \, \mathrm{J/m^3}$，灰色叉号表示 Hopfion 已坍缩}
+  \label{fig:anisotropy-summary}
+\end{figure}
+
+\subsubsection*{固有尺寸吸引子}
+为判断 Hopfion 弛豫后的平衡尺寸是否受初始条件牵制，本文展开了尺寸收敛性测试。具体做法是以不同初始尺寸（环面半径 $R$ 和管径 $r$）构造若干 Hopfion 初始态，在 $\alpha = 5.0$ 的高阻尼下弛豫至稳态，然后用 Python 脚本提取弛豫后的几何参数。
+
+\ref{fig:size-convergence}呈现收敛测试的结果。不管初始尺寸怎样设置（$R = 3 \sim 12\,\mathrm{nm}$, $r = 2 \sim 5\,\mathrm{nm}$），弛豫后的 Hopfion 都汇聚到同一平衡尺寸：
+\begin{equation}
+  R_{\text{eq}} = 2.60\,\mathrm{nm}, \quad r_{\text{eq}} = 2.16\,\mathrm{nm}
+  \label{eq:attractor}
+\end{equation}
+
+这说明在本文所用参数下，系统确实拥有一个唯一的固有尺寸吸引子：Hopfion 的平衡几何由材料参数单独决定，与初始选取无关。这也解释了为何在某一固定的各向异性参数配套下，对应的稳态只会对应一种固定特征的 Hopfion 尺寸。整体权衡下来，$K_{u1} = 10e3\,\mathrm{J/m^3}$ 且处于居中位置的 Hopfion 在多个指标上均最为出色，本文即将其选作后续自旋波驱动仿真（第五章）的初始态。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig3-3_size_convergence.png}
+  \caption{尺寸收敛性测试。不同初始尺寸（$R = 8, 12\,\mathrm{nm}$）的 Hopfion 弛豫后均收敛至相同的平衡尺寸 $R_{\text{eq}} = 2.60\,\mathrm{nm}$, $r_{\text{eq}} = 2.16\,\mathrm{nm}$，证实固有尺寸吸引子的存在}
+  \label{fig:size-convergence}
+\end{figure}
+
+
+针对 Hopfion 的稳定边界问题，本章覆盖两类铁磁介质并给出四条可验证结论：
+
+\begin{enumerate}[label=(\arabic*)]
+  \item 对于 DMI 铁磁（FeGe）一路，Hopfion 的存活需要解析初始态、边界层冻结与退磁场效应三项条件同时满足；在此组合下，$d = 3\lambda$、$h = \lambda$ 的圆柱模型可稳定演化 2\,\mathrm{ns}。
+  \item 竞争交换铁磁体系下，控制变量组实验排除了一项此前的猜想——背景磁化取向与 Hopfion 漂移行为解耦，四组配置展现出一致的轴向初始漂移。
+  \item 在此判据基础上，本文先用周期性平移把 Hopfion 居中、再以 1\,\mathrm{ns} 二次验证，确认了 $m_z$ 背景下的位置稳定性；随后的细化扫描把临界各向异性阈值限定在 $K_{u1,c} \in (52\times10^{3}, 55\times10^{3}) \, \mathrm{J/m^3}$ 区间。
+  \item 最后一项结论涉及固有尺寸吸引子——Hopfion 的平衡几何由各向异性等材料参数唯一确定；从多组对比来看，$K_{u1} = 10e3\,\mathrm{J/m^3}$ 的居中构型表现最优（$\Delta z = 0.019\,\mathrm{nm}$），本文据此选定它作为第五章自旋波仿真的初始态。
+\end{enumerate}
+
+上述判据与参数组合为第五章的动力学调控研究提供了直接可用的起点——$K_{u1} = 10e3\,\mathrm{J/m^3}$ 与居中构型将沿用至自旋波驱动实验。
+
+% 第四章 Hopfion 动力学调控
+\chapter{Hopfion 动力学调控}
+
+本章围绕 Hopfion 的自旋波驱动与调控展开研究，并顺带梳理自旋转移力矩（STT）驱动的理论脉络。二维体系中，Skyrmion 在自旋波作用下的运动学已获得较充分的刻画\cite{ding2015motion,huang2023transient}，零回旋矢量的 Skyrmionium 同样能被自旋波显著驱动\cite{shen2018skyrmionium}。然而三维 Hopfion 在同类激励下的行为目前缺乏系统考察。从理论层面，Saji 等人预测了 Hopfion 所支撑的磁振子霍尔效应\cite{saji2023magnonic}；反铁磁体中，Zhang 等人则报道了 Hopfion 运动对自旋波散射的调制\cite{zhang2023magnon}。但就铁磁体系而言，自旋波直接驱动 Hopfion 的微磁学结果尚属空白。
+
+
+\section{自旋转移力矩驱动的理论背景}
+
+针对 STT 驱动下 Hopfion 的动力学，Wang 等人\cite{wang2019current}与 Liu 等人\cite{liu2020three}先后给出了系统分析。结论可归纳为一句话：轴对称 Hopfion 的回旋矢量 $\mathbf{G} = 0$，故电流作用下其沿流向做直线运动，并无霍尔偏转出现。这与二维 Skyrmion 所呈现的图像截然相反。Hopfion 的运动速度由 Thiele 方程\ref{eq:thiele}给出：
+\begin{equation}
+  v = \frac{u}{\alpha - \beta} \cdot \frac{\mathcal{D}_{xz}}{\mathcal{D}_{xx}}
+  \label{eq:hopfion-stt-velocity}
+\end{equation}
+其中 $u$ 为与电流密度成正比的速度参数，$\alpha$ 和 $\beta$ 分别为 Gilbert 阻尼和非绝热 STT 系数，$\mathcal{D}$ 为耗散张量。
+
+鉴于 $\mathbf{G} = 0$ 使 STT 驱动下的 Hopfion 呈现较为单一的直线运动模式，且相关理论与数值验证已相当充分\cite{wang2019current,liu2020three}，本文遂将动力学研究的重心转向新颖性更强的自旋波驱动路径。
+
+
+\section{自旋波驱动}
+
+作为非接触式的低热耗调控手段，自旋波驱动在能量效率上优于电流驱动。本节基于第三章确定的竞争交换铁磁体系，对自旋波传播方向与振荡方向的不同组合逐一考察其对 Hopfion 运动的影响。
+
+\subsubsection*{仿真模型与自旋波激发方案}
+仿真参数沿用第三章的竞争交换铁磁体系（\ref{tab:frustrated-params}），网格规模取 $100 \times 100 \times 100$，格点间距 $0.5\,\mathrm{nm}$。边界处理与第三章的周期性设置存在差异：此处改用吸收边界，即在六个面上各布置 5 格厚（约 $2.5\,\mathrm{nm}$）的高阻尼层，阻尼值设为 $\alpha = 100$，用以抑制反射并近似开放边界。体区阻尼则保持 $\alpha = 0.001$。
+
+自旋波源取为 $0.5\,\mathrm{nm}$ 厚的薄片层，其上施加正弦振荡外磁场 $\mathbf{B}_{\text{ext}} = B_0 \sin(2\pi f t) \, \hat{n}$，默认参数为频率 $f = 440\,\mathrm{GHz}$、振幅 $B_0 = 1\,\mathrm{T}$。初始磁化构型选自第三章各向异性扫描中 $K_{u1} = 10e3\,\mathrm{J/m^3}$ 对应的居中弛豫态。
+
+Hopfion 在 $xy$ 平面内具有旋转对称性，本文据此选取 4 种代表性组合来考察自旋波的方向依赖性，具体见\ref{tab:sw-combos}。
+
+\begin{table}[htbp]
+  \centering
+  \caption{自旋波驱动实验的4种组合}
+  \label{tab:sw-combos}
+  \begin{tabular}{cccl}
+    \toprule
+    编号 & 源位置 & 振荡方向 & 物理含义 \\
+    \midrule
+    1 & $x = -10\,\mathrm{nm}$ & $\hat{x}$ & 面内传播，面内振荡 \\
+    2 & $x = -10\,\mathrm{nm}$ & $\hat{z}$ & 面内传播，面外振荡 \\
+    3 & $z = -10\,\mathrm{nm}$ & $\hat{x}$ & 轴向传播，面内振荡 \\
+    4 & $z = -10\,\mathrm{nm}$ & $\hat{z}$ & 轴向传播，轴向振荡 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsubsection*{方向选择性}
+5 组仿真的结果汇总于\ref{tab:drive-selection}和\ref{fig:direction-selectivity}。取 $0.5\,\mathrm{ns}$ 时刻 Hopfion 质心的净位移 $|\Delta r|$ 为度量，可将驱动组合划为两类：
+
+\begin{enumerate}
+  \item 有效驱动（$|\Delta r| > 1\,\mathrm{nm}$）：srcX\_vibX、srcY\_vibX 与 srcZ\_vibX 三组均引发了可观测的 Hopfion 迁移，其中位移最大的是 srcZ\_vibX（$|\Delta r| = 6.71\,\mathrm{nm}$），srcX\_vibX（$2.36\,\mathrm{nm}$）与 srcY\_vibX（$2.31\,\mathrm{nm}$）次之；
+  \item 无效驱动（$|\Delta r| < 0.01\,\mathrm{nm}$）：srcX\_vibZ 与 srcZ\_vibZ 两组下 Hopfion 基本静止，位移停留在噪声量级（$< 0.006\,\mathrm{nm}$），相应的能量变化也仅 $\sim3e-21\,\mathrm{J}$，不足有效组合的 $1\%$。
+\end{enumerate}
+
+\begin{table}[htbp]
+  \centering
+  \caption{5 种自旋波组合的 Hopfion 驱动结果（$f = 440\,\mathrm{GHz}$, $B_0 = 1\,\mathrm{T}$, $t = 0.5\,\mathrm{ns}$）}
+  \label{tab:drive-selection}
+  \begin{tabular}{ccrrrc}
+    \toprule
+    组合 & 振荡方向 & $\Delta z$ (nm) & $|\Delta r|$ (nm) & $\Delta E$ (J) & 判定 \\
+    \midrule
+    srcX\_vibX & $\hat{x}$ & $+2.355$ & $2.358$ & $4.15 \times 10^{-19}$ & 有效 \\
+    srcX\_vibZ & $\hat{z}$ & $+0.005$ & $0.005$ & $3.38 \times 10^{-21}$ & 无效 \\
+    srcY\_vibX & $\hat{x}$ & $+2.307$ & $2.310$ & $4.20 \times 10^{-19}$ & 有效 \\
+    srcZ\_vibX & $\hat{x}$ & $-6.706$ & $6.706$ & $2.51 \times 10^{-19}$ & 有效 \\
+    srcZ\_vibZ & $\hat{z}$ & $-0.001$ & $0.001$ & $3.24 \times 10^{-21}$ & 无效 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-1_direction_selectivity.png}
+  \caption{5 种驱动组合下 Hopfion 质心坐标的时间演化。面内振荡（vibX）显著推动 Hopfion 运动，面外振荡（vibZ）则未见响应}
+  \label{fig:direction-selectivity}
+\end{figure}
+
+由上述结果可提炼出两点。（1）振荡方向选择性：真正能推动 Hopfion 的仅限于 $\hat{x}$ 方向的面内振荡，$\hat{z}$ 方向的面外振荡几乎不起作用。物理原因在于 $\hat{z}$ 振荡未破坏 Hopfion 的轴对称性，无法把能量注入到平动自由度；$\hat{x}$ 振荡则打破了面内对称，从而为平动提供线性动量。（2）面内等价性：srcX\_vibX 与 srcY\_vibX 的位移量级几近一致（$2.36$ 对 $2.31\,\mathrm{nm}$），再度印证了 Hopfion 面内传播的各向同性——这与其 $xy$ 面旋转不变性相符。
+
+从仿真结果来看，三个有效组合在方向上也呈现系统性分化。srcX\_vibX、srcY\_vibX 推动 Hopfion 朝 $+z$ 运动，方向与传播方向垂直；srcZ\_vibX 则驱使其沿 $-z$ 运动，与传播方向共线。此类方向对比正是后续双向轴向控制方案的物理基础。
+
+\subsubsection*{频率响应谱}
+既已锁定面内振荡（vibX）为有效驱动形式，本文随即对面内传播（srcX）与轴向传播（srcZ）分别开展频率扫描，以刻画 Hopfion 运动的频率依赖关系。
+
+\subsubsection{面内传播 srcX 的频率响应}
+
+采用 srcX\_vibX 组合，幅度固定为 $B_0 = 1\,\mathrm{T}$，在 $100\text{--}1000\,\mathrm{GHz}$ 区间内以 $100\,\mathrm{GHz}$ 为步长扫描 10 个频率点。各频率对应的 Hopfion 运动模式分类结果见\ref{fig:srcX-motion-mode}。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-2_srcX_motion_mode.png}
+  \caption{srcX 驱动下 10 个频率点的运动模式分类结果。蓝色实线给出 $z$ 方向位移 $\Delta z(t)$，红色虚线为相应运动模式的拟合曲线}
+  \label{fig:srcX-motion-mode}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-3_srcX_displacement.png}
+  \caption{srcX 驱动下 Hopfion 位移 $|\Delta r|$ 与平均速度 $\bar{v}$ 的频率依赖关系。最强响应出现在 $1000\,\mathrm{GHz}$，$400\text{--}600\,\mathrm{GHz}$ 为死区}
+  \label{fig:srcX-displacement}
+\end{figure}
+
+响应呈现出显著的频率选择性。低频段 $100\text{--}200\,\mathrm{GHz}$（$|\Delta r| = 1.94\text{--}2.51\,\mathrm{nm}$）与 $1000\,\mathrm{GHz}$（$|\Delta r| = 5.50\,\mathrm{nm}$，全频段峰值）共同构成有效驱动区。死区落在 $400\text{--}600\,\mathrm{GHz}$（$|\Delta r| < 0.15\,\mathrm{nm}$），Hopfion 近乎静止；$700\text{--}900\,\mathrm{GHz}$ 的中间段响应介于两者之间（$0.4\text{--}0.5\,\mathrm{nm}$）。需要指出的是，所有频率下 Hopfion 均沿 $+z$ 方向迁移，运动方向与频率无关。
+
+\subsubsection{轴向传播 srcZ 的频率响应}
+
+对于 srcZ 驱动，本文将频率扫描延伸至 $25\text{--}1500\,\mathrm{GHz}$，采取"粗扫+细化"的方式共覆盖 20 个点。相应的结果由\ref{fig:srcZ-freq-response}和\ref{fig:srcZ-direction-map}给出。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-4_srcZ_freq_response.png}
+  \caption{srcZ 驱动下 20 个频率点的 Hopfion 位移谱。全频段最强响应出现在 $1100\,\mathrm{GHz}$（$|\Delta r| = 18.1\,\mathrm{nm}$），$100\,\mathrm{GHz}$ 则是仅有的一个 $+z$ 异常点}
+  \label{fig:srcZ-freq-response}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-5_srcZ_direction_map.png}
+  \caption{srcZ 驱动的方向分布图。除 $100\,\mathrm{GHz}$ 以外，其余各频率下 Hopfion 均沿 $-z$ 方向运动}
+  \label{fig:srcZ-direction-map}
+\end{figure}
+
+srcZ 的频率响应与 srcX 形成鲜明对照，其特征可概括为三方面：（1）方向异常：$100\,\mathrm{GHz}$ 为唯一的 $+z$（朝向源）驱动频率（$\Delta z = +17.6\,\mathrm{nm}$），剩余 19 个频率点全部驱使 Hopfion 沿 $-z$（远离源）迁移。（2）共振谱多峰：全局最强共振出现在 $1100\,\mathrm{GHz}$（$|\Delta r| = 18.1\,\mathrm{nm}$，$\bar{v} = 56.3\,\mathrm{nm/ns}$），$100\,\mathrm{GHz}$（$17.6\,\mathrm{nm}$）与 $1000\,\mathrm{GHz}$（$15.4\,\mathrm{nm}$）构成次强峰；死区则分布于 $75\,\mathrm{GHz}$、$150\,\mathrm{GHz}$、$600\,\mathrm{GHz}$ 与 $1300\,\mathrm{GHz}$。（3）运动模式：强响应点以"steady"模式（匀速）运动为主，弱响应点则呈"accelerating"加速图像。
+
+srcX 与 srcZ 的响应差别折射出不同传播方向与 Hopfion 内模耦合通道的差异。面内传播的自旋波主要激活面内平动模式，从而产生 $+z$ 方向的 Hall 式迁移；轴向传播则直接耦合到轴向平动通道，对应 $-z$ 方向运动，二者的共振频率分布也因此互不相同。
+
+\subsubsection*{能量吸收谱}
+为从定量层面评估 Hopfion 与自旋波的耦合强度，本文从仿真记录的总能量 $E_{\text{total}}(t)$ 中提取能量吸收率 $\mathrm{d}E/\mathrm{d}t$。具体做法是在 $0.3T$–$T$ 时段（绕过初始瞬态）对能量曲线做线性拟合，所得斜率即对应频率点的平均吸收率。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-6_energy_absorption.png}
+  \caption{能量吸收谱 $\mathrm{d}E/\mathrm{d}t$ 随频率 $f$ 的变化。上图为 srcX（面内传播），峰值位于 $200\,\mathrm{GHz}$；下图为 srcZ（轴向传播），最强吸收出现在 $100\,\mathrm{GHz}$}
+  \label{fig:energy-absorption}
+\end{figure}
+
+由\ref{fig:energy-absorption}可见，srcX 的吸收谱呈现 $100\,\mathrm{GHz}$（$36.0\,\mathrm{nJ/s}$）与 $200\,\mathrm{GHz}$（$39.8\,\mathrm{nJ/s}$，$R^2 = 0.986$）的双峰结构，$300\text{--}800\,\mathrm{GHz}$ 吸收率近乎为零（$< 0.5\,\mathrm{nJ/s}$），与位移谱中的 $400\text{--}600\,\mathrm{GHz}$ 死区相吻合。srcZ 的谱线则呈现非对称的多峰形态，绝对值最大者位于 $100\,\mathrm{GHz}$（$-4.67\,\mathrm{nJ/s}$，负号表示能量由系统返还给驱动场）；$400\text{--}900\,\mathrm{GHz}$ 段维持较为稳定的吸收（$0.3\text{--}0.7\,\mathrm{nJ/s}$）。
+
+将吸收谱与位移谱放在一起比较，可得两点观察。其一，吸收高并不等于位移大：srcX@$200\,\mathrm{GHz}$ 的吸收率居首，但位移（$2.51\,\mathrm{nm}$）明显低于 $1000\,\mathrm{GHz}$ 的 $5.50\,\mathrm{nm}$，这表明 $1000\,\mathrm{GHz}$ 模式的能量-动能转换效率更高。其二，srcZ@$100\,\mathrm{GHz}$ 出现负吸收率，与该频率下 $+z$ 的异常运动方向相关，暗示此模式涉及的耦合机制或不同于其余频率。
+
+\subsubsection*{幅度标度律}
+本文将组合固定为 srcX\_vibX、频率锁定为 $f = 440\,\mathrm{GHz}$，在 $B_0 = 0.05\text{--}2.0\,\mathrm{T}$ 内选取 6 个幅度点开展扫描，以量化 Hopfion 运动速度对驱动幅度的依赖。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-7_amplitude_scaling.png}
+  \caption{log-log 坐标下 Hopfion 平均速度 $\bar{v}$ 对自旋波幅度 $B_0$ 的依赖关系。$B_0 \geq 0.5\,\mathrm{T}$ 的数据段拟合给出 $\bar{v} \propto B_0^{1.99}$，$R^2 = 0.998$}
+  \label{fig:amplitude-scaling}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-8_amplitude_trajectory.png}
+  \caption{不同驱动幅度下 Hopfion 质心轨迹的对比结果}
+  \label{fig:amplitude-trajectory}
+\end{figure}
+
+如\ref{fig:amplitude-scaling}所呈现，处于有效驱动窗口（$B_0 \geq 0.5\,\mathrm{T}$）时，速度与幅度之间遵循幂律形式：
+\begin{equation}
+  \bar{v} = A \cdot B_0^n, \quad n = 1.99 \pm 0.01, \quad R^2 = 0.998
+  \label{eq:amplitude-scaling}
+\end{equation}
+指数 $n \approx 2$ 具有清晰的物理含义：自旋波承载的线性动量密度正比于其能量密度 $\propto B_0^2$；Hopfion 的稳态速度由动量注入率与耗散率的平衡决定，故有 $v \propto B_0^2$。该标度律与 Skyrmion 自旋波驱动所得的 $v \propto B_0^2$ 一致\cite{ding2015motion}。
+
+进入弱驱动极限（$B_0 \leq 0.1\,\mathrm{T}$）后，Hopfion 位移跌至噪声量级（$|\Delta r| < 0.1\,\mathrm{nm}$），表明系统存在阈值效应。$B_0 = 0.05\text{--}0.1\,\mathrm{T}$ 甚至出现朝源方向的微弱反向位移，这可能与低幅度下 Hopfion 的弹性反弹行为有关。
+
+\subsubsection*{拓扑 Hall 效应}
+在 srcX 驱动下，Hopfion 并非沿自旋波传播方向（$+x$）移动，而是几乎垂直于传播方向、朝 $+z$ 方向推进。本文将拓扑 Hall 角定义为 $\theta_{\text{H}} = \arctan(v_\perp / v_\parallel)$：其中 $v_\perp$ 指垂直于源平面的速度分量，$v_\parallel$ 则平行于传播方向。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-9_hall_angle_freq.png}
+  \caption{拓扑 Hall 角 $\theta_{\text{H}}$ 的频率依赖曲线。有效驱动频率下 $\theta_{\text{H}} \approx 87^{\circ}$--$90^{\circ}$，呈现拓扑保护特征}
+  \label{fig:hall-angle-freq}
+\end{figure}
+
+从\ref{fig:hall-angle-freq}可见，对所有满足 $|\Delta r| > 0.3\,\mathrm{nm}$ 的有效驱动频率，srcX 所对应的 Hall 角均聚集于 $\theta_{\text{H}} \approx 87^{\circ}$--$90^{\circ}$，意味着 Hopfion 几乎完全沿传播方向的垂直分量前进。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-9b_hall_angle_amplitude.png}
+  \caption{$f = 440\,\mathrm{GHz}$ 固定下，拓扑 Hall 角（左）与垂直速度（右）对自旋波幅度的依赖。$B_0 \geq 0.5\,\mathrm{T}$ 区段 Hall 角锁定在 $87^{\circ}$--$90^{\circ}$，弱驱动下因位移接近噪声水平而出现偏离}
+  \label{fig:hall-angle-amplitude}
+\end{figure}
+
+\ref{fig:hall-angle-amplitude}进一步刻画了 Hall 角对驱动幅度的依赖。在有效驱动段（$B_0 \geq 0.5\,\mathrm{T}$）内，Hall 角稳定维持于 $87^{\circ}$--$90^{\circ}$，对幅度变化不敏感。此种稳定性同时覆盖频率与幅度两个维度，直接佐证了 Hopfion 磁振子 Hall 效应具有拓扑保护特性——Hall 角的取值受制于拓扑结构本身，而非驱动条件的局部细节。
+
+与之形成对照，srcZ 驱动推动 Hopfion 沿 $-z$（即传播方向）迁移，对应 $\theta_{\text{H}} \approx 1^{\circ}$，Hall 角几乎归零。两种驱动几何下 Hall 角的落差显著（srcX 的 $90^{\circ}$ 对 srcZ 的 $1^{\circ}$）。究其原因，面内自旋波经由动量转移在 Hopfion 势阱中产生等效横向力，其作用类似于二维 Skyrmion 中的 Magnus 力\cite{saji2023magnonic}；轴向自旋波则沿 Hopfion 对称轴施力，无法激发横向响应。
+
+\subsubsection*{双向轴向控制}
+综合前文数据可知，srcX 推动 $+z$、srcZ 推动 $-z$，对应的 Hall 角分别为 $90^{\circ}$ 与 $1^{\circ}$。换言之，只要切换自旋波的传播方向，即可在 $z$ 轴上实现 Hopfion 的双向可控迁移。此外，srcZ 在频率域上的方向异常（$100\,\mathrm{GHz}$ 对 $+z$，$1100\,\mathrm{GHz}$ 对 $-z$）还提示出另一条控制路径：保持单一 srcZ 源不变，仅通过频率切换便可触发方向反转。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-10_multisource_baseline.png}
+  \caption{三种单源基线的 Hopfion 轨迹对比。srcX（$200\,\mathrm{GHz}$）驱动 $+z$，srcZ（$200\,\mathrm{GHz}$）驱动 $-z$，二者对应的 Hall 角分别为 $87^{\circ}$ 与 $1^{\circ}$}
+  \label{fig:multisource-baseline}
+\end{figure}
+
+\ref{fig:multisource-baseline}对 srcX 与 srcZ 两类单源基线的运动轨迹作了定量对照，清晰呈现出两种驱动方向上的互补性。
+
+为验证频率切换这一方案，本文设置了分时序仿真实验（v3 平衡时序）：Phase~1（$0$--$0.50\,\mathrm{ns}$）施加 srcZ@$100\,\mathrm{GHz}$，驱动 $+z$ 方向迁移；Phase~2（$0.50\,\mathrm{}$--$1.00\,\mathrm{ns}$）切换到 srcZ@$1100\,\mathrm{GHz}$，对应 $-z$ 方向运动。
+
+从仿真结果来看（见\ref{fig:freq-switch-z}），Phase~1 期间 Hopfion 稳步向 $+z$ 移动，累计位移达到 $+17.6\,\mathrm{nm}$——$100\,\mathrm{GHz}$ 下 50 个完整周期为动量转移提供了足够的时间。进入 Phase~2 后，频率切换为 $1100\,\mathrm{GHz}$，Hopfion 随即反转为 $-z$ 方向运动，在 $0.41\,\mathrm{ns}$ 内从 $+17.6\,\mathrm{nm}$ 迅速移至 $-12.9\,\mathrm{nm}$（Phase~2 净位移 $-30.5\,\mathrm{nm}$），随后因持续强驱动触发拓扑结构失稳而坍塌。
+
+该实验证实了单一 srcZ 源借助频率切换即可完成 Hopfion 运动方向的彻底反转。$-z$ 方向的速度（$\sim74\,\mathrm{nm/ns}$）明显超过 $+z$（$\sim35\,\mathrm{nm/ns}$），反映出两种频率耦合强度上的差异。Phase~2 后期的坍塌现象则提示，强自旋波驱动下拓扑结构的寿命本身存在上限；实际应用中需对驱动幅度加以优化或引入脉冲调制，从而在速度与寿命之间取得平衡。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-11_freq_switch_z_control.png}
+  \caption{频率切换下双向 $z$ 轴控制的验证结果（v3 平衡时序）。上：$z$ 方向位移对时间的变化；下：$z$ 方向速度。绿色区对应 srcZ@$100\,\mathrm{GHz}$（$0$--$0.50\,\mathrm{ns}$，$+z$），蓝色区对应 srcZ@$1100\,\mathrm{GHz}$（$0.50\,\mathrm{}$--$1.00\,\mathrm{ns}$，$-z$）。Hopfion 在 $t \approx 0.91\,\mathrm{ns}$ 因强驱动而坍塌}
+  \label{fig:freq-switch-z}
+\end{figure}
+
+\subsubsection*{与二维 Skyrmion 自旋波驱动的对比}
+Hopfion 的自旋波驱动机制与二维 Skyrmion 的情形具有自然的类比关系。Ding 等\cite{ding2015motion}与 Huang 等\cite{huang2023transient}指出，自旋波通过线性动量转移推动 Skyrmion 沿传播方向迁移，速度受频率与振幅共同调制。回旋矢量为零的 Skyrmionium 亦被 Shen 等\cite{shen2018skyrmionium}考察，其沿自旋波传播方向做直线运动、无霍尔偏转——这一特征恰与 Hopfion 的 $\mathbf{G} = 0$ 属性相呼应。
+
+本章仿真与上述二维体系的共性与差异可归纳为以下几点：
+
+\begin{enumerate}
+  \item 幅度标度律一致：Hopfion 所得 $v \propto B_0^{1.99}$ 与 Skyrmion/Skyrmionium 的 $v \propto B_0^2$ 相互吻合，这说明三维拓扑结构下动量转移的基本机制并未发生改变。
+  \item Hall 角差异：二维 Skyrmion 的 Hall 角取决于拓扑荷 $Q$ 与耗散张量，典型取值范围为 $0^{\circ}$--$60^{\circ}$。相比之下，Hopfion 在 srcX 驱动下获得 $\theta_{\text{H}} \approx 90^{\circ}$ 的极端 Hall 角——此类取值在二维系统中实属罕见，反映出三维拓扑结构所具备的独特耦合通道。Saji 等人\cite{saji2023magnonic}曾从解析层面预言过类似的磁振子 Hall 效应，本章仿真则在微磁学尺度首次给出定量验证。
+  \item 三维新自由度：二维 Skyrmion 受限于面内运动，而 Hopfion 的三维构型额外提供轴向自由度。srcX 与 srcZ 分别激活面内-轴向耦合通道和直接轴向通道，使得单一体系即可实现双向控制——该功能在二维拓扑结构中无从实现。
+  \item 振荡方向选择性：二维体系的 Skyrmion 对自旋波的面内/面外振荡均有响应\cite{ding2015motion}，而 Hopfion 仅对面内振荡敏感，面外振荡完全无效。这种选择性根源于 Hopfion 的轴对称拓扑结构。
+\end{enumerate}
+
+\subsubsection*{点源与平面源的对比}
+前述各项仿真皆以平面波激励（$0.5\,\mathrm{nm}$ 厚薄片层，$B_0 = 1\,\mathrm{T}$）为前提。为评估激励几何对驱动行为的影响，本文补充了点源对照实验：激励区域收缩至单个网格单元（$0.5\,\mathrm{nm}^3$，位于同一坐标），幅度则相应增至 $B_0 = 500\,\mathrm{T}$ 以补偿体积差别，其余参数维持不变。沿 srcX、srcZ 两种传播方向各进行 $100\text{--}1000\,\mathrm{GHz}$ 的 10 点频率扫描。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig4-12_point_source_freq_response.png}
+  \caption{点源驱动下的频率响应谱。上图 srcX：最强响应出现于 $700\,\mathrm{GHz}$（$|\Delta r| = 5.7\,\mathrm{nm}$）；下图 srcZ：最强响应位于 $800\,\mathrm{GHz}$（$|\Delta r| = 7.3\,\mathrm{nm}$，$-z$）；绿色、橙色分别代表 $+z$、$-z$ 方向}
+  \label{fig:point-source-freq}
+\end{figure}
+
+从\ref{fig:point-source-freq}可见，点源驱动与平面源之间的差别相当明显：
+
+\begin{enumerate}
+  \item 共振频率偏移：srcX 的峰值频率由平面源的 $1000\,\mathrm{GHz}$ 移至 $700\,\mathrm{GHz}$（$|\Delta r| = 5.7\,\mathrm{nm}$），原有死区不复存在；srcZ 的峰值频率则从 $1100\,\mathrm{GHz}$ 移至 $800\,\mathrm{GHz}$（$|\Delta r| = 7.3\,\mathrm{nm}$）。这种移动可归咎于点源激发的自旋波所含波矢分布更宽，由此改变了与 Hopfion 内模的耦合条件。
+  \item 方向特征保持：srcX 点源对应的 10 个频率全部驱动 $+z$ 运动，与平面源结果一致。srcZ 的方向分布则复杂得多——100--$400\,\mathrm{GHz}$、$600\,\mathrm{GHz}$、$900\,\mathrm{GHz}$ 为 $+z$，$500\,\mathrm{GHz}$、$700\,\mathrm{GHz}$、$800\,\mathrm{GHz}$ 为 $-z$——平面源中仅 $100\,\mathrm{GHz}$ 表现为方向异常，点源情形下则有多个频率出现反转。
+  \item Hall 角鲁棒性：从\ref{fig:point-source-hall}可见，srcX 点源的 Hall 角仍然聚集在 $69^{\circ}$--$89^{\circ}$，高 Hall 角的拓扑特征得以保留。srcZ 的 Hall 角则由平面源的 $\approx1^{\circ}$ 扩展到 $9^{\circ}$--$40^{\circ}$，这意味着点源的非对称激励部分地破坏了轴向对称性，引入了弱横向耦合成分。
+\end{enumerate}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figures/fig4-13_point_source_hall_angle.png}
+  \caption{点源与平面源 Hall 角的比较。srcX 的高 Hall 角（$69^{\circ}$--$89^{\circ}$）得以保留，srcZ 则由 $\approx1^{\circ}$ 抬升至 $9^{\circ}$--$40^{\circ}$}
+  \label{fig:point-source-hall}
+\end{figure}
+
+上述对照说明，Hopfion 对自旋波响应的核心特征——振荡方向选择性、运动方向以及高 Hall 角——本质上由其拓扑结构决定，与激励几何的具体细节无关。点源虽然改变了共振频率与方向分布的细节面貌，却未触动整体物理图像。
+
+
+自旋波驱动 Hopfion 运动的物理机制，本章经由平面源与点源两条路线完成了比较完整的刻画，六项核心发现分述如下：
+
+\begin{enumerate}
+  \item 方向选择性：面内振荡（vibX）自旋波是驱动 Hopfion 运动的有效激发源，面外振荡（vibZ）则无响应；面内传播方向（srcX/srcY）之间的各向同性结果，从侧面佐证了 Hopfion 的轴对称性。
+  \item 频率响应：srcX 的最大位移出现在 $1000\,\mathrm{GHz}$（$|\Delta r| = 5.5\,\mathrm{nm}$），$400\text{--}600\,\mathrm{GHz}$ 对应明显死区；srcZ 的最强响应则推至 $1100\,\mathrm{GHz}$（$|\Delta r| = 18.1\,\mathrm{nm}$），并伴随多峰共振结构。一处例外值得单独提出：srcZ 在 $100\,\mathrm{GHz}$ 处沿 $+z$ 运动，其余频率全部指向 $-z$。
+  \item 幅度标度律：Hopfion 的运动速度与自旋波幅度 $B_0$ 之间呈现幂律关系 $v \propto B_0^{1.99}$（$R^2 = 0.998$），与动量转移理论所预言的指数吻合良好。
+  \item 拓扑 Hall 效应：srcX 激发下的 Hall 角 $\theta_{\text{H}} \approx 87^{\circ}$--$90^{\circ}$，在频率与幅度两轮扫描中均表现出高度稳定性，属于典型的拓扑保护行为；相较之下，srcZ 对应的 Hall 角仅约 $1^{\circ}$，运动基本沿传播方向进行。
+  \item 双向控制：srcX 走 $+z$ 而 srcZ 走 $-z$，两条路径本身已构成方向互补；srcZ 自身的频率相关方向异常则进一步提供了单激励源内部的双向切换可能，使 Hopfion 在 $z$ 轴方向的可控迁移具备两种独立实现路径。
+  \item 激励几何鲁棒性：点源与平面源两类激励的对照结果说明，振荡方向选择性以及高 Hall 角这两项关键特征的根源在于 Hopfion 的拓扑结构本身，对激励几何的具体细节并不敏感。
+\end{enumerate}
+
+% 第五章 神经形态计算初步探索
+\chapter{神经形态计算初步探索}
+
+非易失性、低功耗以及丰富的动力学行为，使磁性拓扑结构成为神经形态计算硬件的合适候选。本章承接前几章对 Hopfion 稳定性与动力学调控的讨论，从物理机制映射的视角出发，初步评估其在神经形态计算中的应用前景。
+
+
+\section{Hopfion 动力学特征与神经元功能的类比}
+
+生物神经元的功能可归纳为四个环节：输入信号的接收、跨越阈值后的脉冲激发、向下游的脉冲传播，以及响应之后的不应期抑制。需要指出的是，第四章给出的仿真结果显示，Hopfion 在自旋波驱动下的行为与上述环节之间存在可被直接对照的物理对应关系：
+
+\begin{enumerate}
+  \item 阈值效应：从幅度扫描（\ref{subsec:amplitude-scaling}）来看，自旋波幅度 $B_0$ 存在明显的驱动门槛——$B_0 \leq 0.1\,\mathrm{T}$ 时 Hopfion 几乎原地不动，$B_0 \geq 0.5\,\mathrm{T}$ 才会触发有效位移。此类阶跃式响应与神经元"全或无"激发特性高度相似。
+  \item 频率选择性：频率扫描结果（\ref{subsec:freq-sweep}）表明，Hopfion 对特定频率（典型如 $1100\,\mathrm{GHz}$）的自旋波响应强烈，而在其他频段，尤其是 $400\text{--}600\,\mathrm{GHz}$ 的死区，几乎保持静止。该选择性可类比为神经元对特定突触输入模式的筛选机制。
+  \item 方向编码：拓扑 Hall 效应（\ref{subsec:hall-effect}）使 srcX 与 srcZ 激励产生走向相反的运动（$+z$ 与 $-z$），而 Hall 角在拓扑保护下保持高度稳定。从仿真结果来看，这为在单个器件中同时承载兴奋性（$+z$）与抑制性（$-z$）两类信号提供了物理基础。
+  \item 双向可控：双向控制实验（\ref{subsec:bidirectional-control}）表明，切换自旋波频率或改变传播方向即可引导 Hopfion 的可逆位移，呈现出与神经元激发-恢复循环相似的行为特征。
+\end{enumerate}
+
+
+\section{概念器件设计}
+
+依据上述映射关系，本文构想了一种以 Hopfion 为核心的自旋波神经形态器件，其构成如下：
+
+\begin{enumerate}
+  \item 自旋波输入端：由微波天线阵列扮演"突触"角色，借助自旋波将输入信号导入 Hopfion。天线间频率、幅度和传播方向的不同组合，共同张成多维输入空间。
+  \item Hopfion 处理单元：作为"神经元胞体"的 Hopfion 以位置变化编码输出；其阈值效应天然实现非线性激活，频率选择性则承担输入滤波的职能。
+  \item 位置读出：利用磁阻效应（TMR/GMR）或拓扑 Hall 效应读取 Hopfion 的位置信息，并转换为电信号输出。
+  \item 权重调节：把自旋波幅度 $B_0$ 视作突触权重，$v \propto B_0^2$ 的标度律保证了权重到输出之间存在确定性映射。
+\end{enumerate}
+
+就优势而言，本方案有以下几点：相较于二维 Skyrmion，Hopfion 的三维结构在存储密度和动力学自由度上更具潜力；拓扑保护赋予信号处理较强的鲁棒性；采用自旋波驱动还能规避电流引起的焦耳热。
+
+当然，从构想走向实现仍有若干门槛需要跨越。实验上 Hopfion 目前仅在低温条件下被观测到\cite{zheng2023hopfion}，室温稳定性尚待突破；在竞争交换体系中，其特征尺寸约 $2\,\mathrm{nm}$，已贴近当前加工工艺的极限；此外，纳米尺度下自旋波的衰减问题也需要做进一步的研究。
+
+
+Hopfion 从一个基础物理对象转向神经形态计算硬件候选的可能性，在本章得到了较为正面的初步评估。阈值效应、频率选择性、方向编码以及双向可控——这四项由前几章仿真所刻画的动力学特征，恰好能与神经元的激发、滤波、兴奋/抑制与恢复四个环节建立起较为直接的物理对应。以此映射关系为支点，本文进一步构想了一类以 Hopfion 为核心的自旋波神经形态概念器件。然而要把该构想推向实验验证，材料体系的突破、加工工艺的进展以及室温稳定性问题的解决，仍是缺一不可的前置条件。
+
+% 第六章 总结与展望
+\chapter{总结与展望}
+
+\section{主要结论}
+
+本文借助微磁学模拟软件 Mumax3，对磁性霍普夫子（Hopfion）在不同磁性体系中的稳定性边界及动力学调控机制进行了系统考察。
+
+\begin{enumerate}[label=(\arabic*)]
+  \item 构型构建脚本开发：依托前人给出的局域旋转矩阵与环面坐标系理论框架，本文编写了可支持任意拓扑荷并兼容反铁磁交替背景的 Hopfion 初始态生成脚本。配合自行实现的三维可视化解调工具，完成了拓扑构型的渲染校核，为后续微磁学仿真提供了灵活的基础工具。
+
+  \item DMI 铁磁体系的稳定性：在 FeGe 手性磁体的材料参数下，本文梳理出 Hopfion 得以稳定存在的三项必要条件：解析初始态的构造、边界层的冻结处理以及退磁场效应的纳入。采用直径 $3\lambda$、高度 $\lambda$ 的圆柱模型，Hopfion 至少可以稳定保持 2\,\mathrm{ns}。
+
+  \item 竞争交换体系的稳定性：本文识别出 Hopfion 存在固有的尺寸吸引子（$R_{\text{eq}} = 2.60\,\mathrm{nm}$, $r_{\text{eq}} = 2.16\,\mathrm{nm}$）。控制变量对照实验表明，背景磁化方向对漂移行为并无影响——所有配置都呈现为一次性格点弛豫后完全钉扎。进一步的各向异性参数扫描给出了临界稳定阈值 $K_{u1,c} \in (52\times10^{3}, 55\times10^{3}) \, \mathrm{J/m^3}$。
+
+  \item 自旋波驱动的方向选择性与频率响应：从仿真结果来看，只有面内振荡（vibX）的自旋波才能有效驱动 Hopfion，而面外振荡（vibZ）完全失效。在传播方向上，面内传播（srcX）以 1000\,\mathrm{GHz} 响应最强，轴向传播（srcZ）则在 1100\,\mathrm{GHz} 达到峰值（$|\Delta r| = 18.1\,\mathrm{nm}$）。值得留意的是，两种传播方向所驱动的 Hopfion 运动朝向相反（$+z$ vs $-z$），谱线中还呈现出明显的死区频段。
+
+  \item 幅度标度律与拓扑 Hall 效应：Hopfion 的运动速度与自旋波幅度之间服从 $v \propto B_0^{1.99}$ 的关系（$R^2 = 0.998$），与二维 Skyrmion 的 $v \propto B^2$ 相符。面内传播驱动所产生的拓扑 Hall 角 $\theta_{\text{H}} \approx 87^{\circ}$--$90^{\circ}$，在不同频率、幅度以及激励几何（平面源/点源）下均保持稳定。该结果从微磁学层面首次对 Hopfion 磁振子 Hall 效应完成了定量核验。
+
+  \item 双向轴向控制：本文利用 srcX 与 srcZ 在方向上的互补性，并结合 srcZ 在不同频率下出现的方向反转现象，设计并验证了仅凭一个 srcZ 源、通过频率切换（$100\,\mathrm{GHz} \to +z$，$1100\,\mathrm{GHz} \to -z$）即可实现 Hopfion 沿 $z$ 轴双向运动的方案。在平衡时序实验中，Phase~1 达到 $+17.6\,\mathrm{nm}$，Phase~2 则成功反转至 $-12.9\,\mathrm{nm}$。需要指出的是，强驱动条件下 Hopfion 的寿命有限（约 0.41\,\mathrm{ns}），实际应用因此必须在驱动强度与拓扑稳定性之间审慎折衷。
+\end{enumerate}
+
+
+\section{创新点}
+
+\begin{enumerate}[label=(\arabic*)]
+  \item 本研究率先在竞争交换铁磁体系中考察了自旋波驱动 Hopfion 的动力学行为，从中观察到振荡方向选择性以及多峰共振谱等尚未见诸文献的新现象。
+  \item 针对 Hopfion 的磁振子拓扑 Hall 效应，本文给出了定量刻画（$\theta_{\text{H}} \approx 90^{\circ}$），为 Saji 等人的理论预言提供了来自微磁学层面的数值支撑。
+  \item 基于自旋波频率切换的思路，本文提出了 Hopfion 双向轴向控制方案，为磁性拓扑结构的精准操控开辟了一条新的技术路径。
+  \item 通过控制变量实验，本文推翻了此前文献中关于 Hopfion 漂移方向依赖性的判断，从而建立起更加可靠的稳定性认识。
+\end{enumerate}
+
+
+\section{展望}
+
+本研究尚存若干不足，后续可围绕以下几个方向继续拓展：
+
+\begin{enumerate}[label=(\arabic*)]
+  \item 材料体系扩展：竞争交换体系下 Hopfion 的特征尺寸目前只有 $\sim2\,\mathrm{nm}$，既不利于实验观测，也给器件加工带来困难。寻找能够放大特征尺寸的材料体系（例如通过调节竞争交换比例）将是后续研究的重点之一。
+  \item 高阶拓扑荷：本文的实验均立足于 $Q_H = 1$ 的 Hopfion。在竞争交换体系中 $Q_H = 2$ 乃至更高阶 Hopfion 能否保持稳定、其 Hall 角是否随 $Q_H$ 线性增长，这类问题将成为检验拓扑保护性质的关键切入点。
+  \item 热效应与有限温度：微磁学仿真默认在零温下开展，而有限温度下的热涨落可能重塑 Hopfion 的稳定边界与动力学形貌。把随机热场纳入朗之万动力学框架，将是一项必要的扩展工作。
+  \item 多 Hopfion 相互作用：单 Hopfion 的动力学图像已初步成形，但多个 Hopfion 之间经自旋波介导的相互作用、碰撞与湮灭等集体现象仍处于空白状态；厘清这些行为正是构建神经形态计算网络所依赖的物理前提。
+  \item 实验验证：将电子全息术与微波天线技术结合起来，在 FeGe 等已能观测到 Hopfion 的材料平台上考察自旋波驱动效应，是把当前仿真结论推向实际应用的必由之路。
+\end{enumerate}
+
+
+% ============================================================
+%                        致 谢
+% ============================================================
+% 致谢
+\chapter*{致\hspace{1em}谢}
+\addcontentsline{toc}{chapter}{致谢}
+\markboth{致谢}{致谢}
+
+本论文的完成离不开众多人的帮助与支持。
+
+首先，感谢我的指导教师金蒙豪在我本科学习期间对我的认真指导，从大一开始的SRTP的导师课题互选开启了我的本科的科研经历，一步步教导我从一个对科研一片茫然的本科生变成一个有一定经验和科研能力的本科毕业生。最开始，金老师带我引入了关于微磁学的研究，初步研究了有关Skyrmions的一些内容，并且教导我能够利用OOMMF来进行最简单的微磁学仿真，并指导了我的一篇基于Skyrmions的人工神经元的构建的专利的内容。在此之后，又给我开拓了"三维Skyrmions"——Hopfion的研究，才让我接触到这个科学界最前沿的尖端领域的知识，也更进一步学会了Mumax3这种可视化更好的微磁学仿真软件，让我在微磁学领域有了更多的知识储备和了解，对我之后的研究打下了无比扎实的基础，最终影响到我的最后本科毕业设计的研究。关于本次的本科毕业设计，从课题的选定、研究方案的设计到论文的撰写修改，金老师都给予了耐心的指导和很好的建议，让我在磁性拓扑结构这一前沿领域获得了很多研究经验。
+
+其次，感谢杭州电子科技大学电子信息学院第三教学楼519实验室为本课题提供的计算资源和科研条件，在最开始我缺乏算力资源的阶段，给我提供了微磁学仿真最基础的条件和算力，才能让我完成最终的毕业设计的产出。感谢本科期间课题组全体成员在日常学习和研究中的交流与帮助，大家的支持对我帮助很大。
+
+最后，特别感谢所有在本科四年学习生活中给予我帮助的老师和同学们和我的家人，感谢他们一直以来的理解、支持与鼓励。
+
+
+% ============================================================
+%                      参 考 文 献
+% ============================================================
+
+
+\end{document}

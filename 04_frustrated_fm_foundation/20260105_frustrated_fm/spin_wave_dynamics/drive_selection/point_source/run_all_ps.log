@@ -1,0 +1,16 @@
+[RUN] ps_srcX_vibZ.mx3 — Wed Apr  1 09:18:57 CST 2026
+Terminated
+[DONE] ps_srcX_vibZ.mx3 — Wed Apr  1 09:26:14 CST 2026
+[RUN] ps_srcY_vibX.mx3 — Wed Apr  1 09:26:14 CST 2026
+Terminated
+[DONE] ps_srcY_vibX.mx3 — Wed Apr  1 09:26:24 CST 2026
+[RUN] ps_srcY_vibZ.mx3 — Wed Apr  1 09:26:24 CST 2026
+Terminated
+[DONE] ps_srcY_vibZ.mx3 — Wed Apr  1 09:26:29 CST 2026
+[RUN] ps_srcZ_vibX.mx3 — Wed Apr  1 09:26:29 CST 2026
+run_all_ps.sh: line 15: 108833 Killed                  mumax3 "$script" > "${script%.mx3}.log" 2>&1
+[DONE] ps_srcZ_vibX.mx3 — Wed Apr  1 09:26:39 CST 2026
+[RUN] ps_srcZ_vibZ.mx3 — Wed Apr  1 09:26:39 CST 2026
+run_all_ps.sh: line 15: 108908 Killed                  mumax3 "$script" > "${script%.mx3}.log" 2>&1
+[DONE] ps_srcZ_vibZ.mx3 — Wed Apr  1 09:26:47 CST 2026
+All point-source simulations finished at Wed Apr  1 09:26:47 CST 2026

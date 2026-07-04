@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bd ready:*)",
+      "Bash(bd list:*)",
+      "Bash(ls /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/*.out)",
+      "Bash(ls /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/run_magnon.out/*.ovf)",
+      "Bash(ls -d /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/*.out/)",
+      "Bash(ls /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/centered_stability_test/stability_Ku10k.out/*.ovf)",
+      "Bash(grep -oP '@article\\\\{\\([^,]+\\)' refs.bib)"
+    ]
+  }
+}

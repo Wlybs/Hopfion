@@ -1,0 +1,41 @@
+//mumax 3.11.1 [linux_amd64 go1.24.0(gc) CUDA-12.8]
+//commit hash: 549d2a52
+//CPU info: Intel(R) Core(TM) i7-14650HX, Cores: 12, MHz: 2419.209
+//GPU info: NVIDIA GeForce RTX 5070 Ti Laptop GPU(12226MB), CUDA Driver 12.8, cc=12.0, using cc=120 PTX
+//OS  info: Ubuntu 24.04.4 LTS, Hostname: wjl-5070ti-laptop
+//Timestamp: 2026-03-10 21:14:15
+//(c) Arne Vansteenkiste, Dynamat LAB, Ghent University, Belgium
+//This is free software without any warranty. See license.txt
+//********************************************************************//
+//  If you use mumax in any work or publication,                      //
+//  we kindly ask you to cite the references in references.bib        //
+//********************************************************************//
+//output directory: run_no_field_long.out/
+//starting GUI at http://127.0.0.1:35367
+Nx := 128
+Ny := 128
+Nz := 16
+SetGridSize(Nx, Ny, Nz)
+SetCellSize(0.5e-9, 0.5e-9, 0.5e-9)
+SetGeom(Cylinder(64e-9, 8e-9))
+// Initializing geometry 0 %
+// Initializing geometry 100 %
+Msat = 3e5
+Aex = 1.1e-12
+Dind = 1.15e-3
+Ku1 = 1e6
+anisU = vector(0, 0, 1)
+m.LoadFile("neel_hopfion_sutcliffe.ovf")
+TableAdd(E_Total)
+tableautosave(1e-12)
+alpha = 0.5
+autosave(m, 5e-11)
+Relax()
+//Using cached kernel: /tmp/mumax3kernel_[128 128 16]_[0 0 0]_[5e-10 5e-10 5e-10]_6_
+saveas(m, "no_field_relax")
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Mulkers et al., Phys. Rev. B 95, 144401 (2017).
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).

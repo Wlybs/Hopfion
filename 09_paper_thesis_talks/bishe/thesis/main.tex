@@ -1,0 +1,145 @@
+% !TEX recipe = xe->biber->xe*2
+% 杭州电子科技大学 本科毕业论文
+% 编译方式: XeLaTeX → Biber → XeLaTeX × 2
+
+\documentclass[UTF8, a4paper, zihao=-4, fontset=fandol, openany, oneside]{ctexbook}
+\usepackage{hduthesis}
+\addbibresource{refs.bib}
+
+% ============================================================
+%                         封 面
+% ============================================================
+\begin{document}
+
+\pagestyle{bareempty}
+\pagenumbering{gobble}  % 封面无页码
+
+% ============================================================
+%                         封 面
+% ============================================================
+\begin{titlepage}
+\begin{center}
+\vspace*{1cm}
+
+\includegraphics[width=0.7\textwidth]{figures/hdu_logo.png}\\[1.2cm]
+
+{\songti\zihao{1} 本科毕业设计（论文）}\\[0.4cm]
+{\songti\zihao{3} （2026 届）}\\[4cm]
+
+\newcommand{\coverfield}[2]{%
+  {\heiti\bfseries\zihao{-3} #1：} &
+  \underline{\makebox[10cm][c]{\kaishu\zihao{-3} #2}} \\[12pt]%
+}
+\newcommand{\coverfieldtwo}[3]{%
+  {\heiti\bfseries\zihao{-3} #1：} &
+  \underline{\makebox[10cm][c]{\kaishu\zihao{-3} \shortstack{#2 \\ #3}}} \\[28pt]%
+}
+
+\begin{tabular}{rl}
+  \coverfieldtwo{题\qquad 目}{磁性拓扑结构的动力学调控}{及其在神经形态计算中的应用}
+  \coverfieldtwo{学\qquad 院}{电子信息学院}{（集成电路科学与工程学院）}
+  \coverfield{专\qquad 业}{电子科学与技术}
+  \coverfield{班\qquad 级}{22042011}
+  \coverfield{学\qquad 号}{22040338}
+  \coverfield{学生姓名}{吴佳乐}
+  \coverfield{指导教师}{金蒙豪}
+  \coverfield{完成日期}{2026 年 4 月}
+\end{tabular}
+
+\vfill
+\end{center}
+\end{titlepage}
+
+% ============================================================
+%                     诚 信 承 诺 书
+% ============================================================
+\begin{commitment}
+我谨在此承诺：本人所写的毕业论文《磁性拓扑结构的动力学调控及其在神经形态计算中的应用》均系本人独立完成，没有抄袭行为，凡涉及其他作者的观点和材料，均作了注释，若有不实，后果由本人承担。
+
+\vspace{40pt}
+\hspace*{14em}{\heiti\zihao{4} 承诺人（签名）：}\underline{\hspace{6em}}
+
+\vspace{12pt}
+\hspace*{20em}{\heiti\zihao{4} 年\hspace{2em}月\hspace{2em}日}
+\end{commitment}
+
+% ============================================================
+%                  切换为罗马页码（前置页）
+% ============================================================
+\cleardoublepage
+\pagenumbering{Roman}
+\setcounter{page}{1}
+\pagestyle{romanfront}
+
+% ============================================================
+%                      中 文 摘 要
+% ============================================================
+\thispagestyle{romanfront}
+
+\begin{cnabstract}
+作为一种承载纽结型自旋纹理的三维拓扑准粒子，磁性霍普夫子（Hopfion）兼具稳健的拓扑保护与丰富的运动自由度，被视为高密度信息存储与类脑计算器件的候选载体。本研究借助微磁学仿真平台 Mumax3，围绕 Hopfion 在几类代表性磁体中的稳态存在条件，以及磁振子激励下的输运规律，开展系统考察。
+
+就拓扑稳定性而言，本文以局域旋转矩阵结合环面坐标映射为数学框架，实现了任意拓扑荷数与反铁磁交替背景下 Hopfion 自旋态的解析化生成及三维可视化工具链。对以 FeGe 为代表、含体积型 Dzyaloshinskii-Moriya 相互作用（DMI）的铁磁体系，仿真结果归纳出维持 Hopfion 稳态需同时满足的三项要件——解析初始构型、边界层冻结处理以及退磁场纳入。当切换至竞争交换作用铁磁体系时，观测到 Hopfion 收敛至一个固有尺寸吸引子，对应大半径 $R_{\text{eq}} = \SI{2.60}{nm}$；通过控制变量式数值实验可以排除背景磁化取向对漂移行为的作用。针对各向异性参数的精细化扫描将临界失稳阈值定位于 $K_{u1,c} \in (\num{52e3}, \num{55e3}) \, \si{J/m^3}$ 区间。
+
+进一步地，本研究在同一竞争交换模型中系统分析了 Hopfion 受自旋波激励后的响应规律。数值证据表明，仅当磁振子沿面内方向极化时，Hopfion 才会被有效驱动；面外极化分量对平动几乎毫无贡献。从频谱扫描结果看，轴向传播模式下出现多个共振峰，其中 $\SI{1100}{GHz}$ 附近响应最为强烈，对应位移 $\SI{18.1}{nm}$；漂移速度随激励幅度近似呈 $v \propto B_0^{1.99}$ 的幂律关系。而面内传播激励则驱使 Hopfion 以接近 $90°$ 的拓扑霍尔角偏移，该偏转角度在改变频率、强度与激励几何后依然稳健。需要指出的是，上述观测在微磁学尺度上首次定量刻画了 Hopfion 的磁振子霍尔效应。本文据此挖掘面内与轴向两种传播模式的方向互补特性，设计并通过仿真验证了借助频率切换实现 Hopfion 轴向双向可逆输运的调控策略。
+
+在上述结果基础上，本文凝练出 Hopfion 所具备的激发阈值、频率选择响应以及方向编码能力等动力学指纹，将之与生物神经元的关键功能进行映射，进而勾勒出一种以自旋波为输入媒介的 Hopfion 类脑器件概念架构。
+
+\cnkeywords{霍普夫子；微磁学模拟；拓扑稳定性；自旋波驱动；磁振子霍尔效应；神经形态计算}
+\end{cnabstract}
+
+% ============================================================
+%                    英 文 摘 要
+% ============================================================
+\thispagestyle{romanfront}
+
+\begin{enabstract}
+Magnetic hopfions are 3D topological magnetic quasi-particles with knot-like spin configurations, exhibiting strong topological stability and multiple dynamical modes. They hold great promise for high-density storage and neuromorphic computing. Using Mumax3, we investigated the stability conditions and spin-wave-driven dynamics of hopfions in different magnetic systems.
+
+First, based on existing toroidal coordinate mapping theories, we developed a programmatic initialization script and 3D visualization tools for hopfions with arbitrary topological charges and antiferromagnetic backgrounds. In a FeGe-based ferromagnetic system with bulk Dzyaloshinskii-Moriya interaction (DMI), we identified three necessary conditions for hopfion stability: analytical initial state, boundary layer freezing, and demagnetization effects. In a frustrated ferromagnetic system, we found an intrinsic size attractor ($R_{\text{eq}} = \SI{2.60}{nm}$). Background magnetization orientation showed no influence on hopfion drift. The critical anisotropy threshold was determined as $K_{u1,c} \in (\num{52e3}, \num{55e3}) \, \si{J/m^3}$.
+
+Second, we studied spin-wave-driven hopfion dynamics in the frustrated exchange system. Only in-plane oscillating spin waves effectively drive hopfions. Frequency sweeps revealed a multi-peak resonance spectrum, with the strongest response at $\SI{1100}{GHz}$ under axial propagation. The velocity scales as $v \propto B_0^{1.99}$ with driving amplitude. In-plane propagation produces a stable topological Hall angle of $\sim 90°$, providing the first micromagnetic quantitative verification of the magnonic Hall effect for hopfions. Additionally, we proposed a bidirectional axial control scheme via spin-wave frequency switching.
+
+Finally, exploiting the threshold effect, frequency selectivity, and directional encoding of hopfion dynamics, we mapped these behaviors to neuron functionalities and proposed a conceptual spin-wave-based hopfion neuromorphic device.
+
+\enkeywords{hopfion; micromagnetic simulation; topological stability; spin-wave driving; magnonic Hall effect; neuromorphic computing}
+\end{enabstract}
+
+% ============================================================
+%                        目 录
+% ============================================================
+\tableofcontents
+
+% ============================================================
+%                        正 文
+% ============================================================
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\pagestyle{mainmatter}
+
+\input{chapters/ch01-intro}
+\input{chapters/ch02-theory}
+\input{chapters/ch03-construction}
+\input{chapters/ch04-stability}
+\input{chapters/ch05-dynamics}
+\input{chapters/ch06-neuromorphic}
+\input{chapters/ch07-conclusion}
+
+% ============================================================
+%                        致 谢
+% ============================================================
+\input{chapters/acknowledgements}
+
+% ============================================================
+%                      参 考 文 献
+% ============================================================
+\printbibliography
+
+% ============================================================
+%                        附 录
+% ============================================================
+% \appendix
+% \input{chapters/appendix}
+
+\end{document}

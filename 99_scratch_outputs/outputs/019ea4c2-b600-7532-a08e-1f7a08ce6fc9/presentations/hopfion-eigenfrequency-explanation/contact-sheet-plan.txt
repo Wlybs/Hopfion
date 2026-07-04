@@ -1,0 +1,3 @@
+17 slides using at least six macro layouts:
+1 cover; 2 central thesis; 3 two-column concept comparison; 4 response-window table; 5 causal flow; 6 method chain; 7 protocol timeline; 8 peak comparison; 9 anomaly comparison; 10 analogy diagram; 11 bar proof; 12 three-stage control flow; 13 subtraction diagram; 14 bar proof plus criteria rail; 15 four-reason matrix; 16 decision gate; 17 conclusion and next direction.
+No three consecutive slides share the same layout.

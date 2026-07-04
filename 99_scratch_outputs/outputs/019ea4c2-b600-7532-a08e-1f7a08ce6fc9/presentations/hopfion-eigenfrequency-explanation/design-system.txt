@@ -1,0 +1,10 @@
+Slide size: 1280x720.
+Background: white with a pale gray footer rule.
+Typography: Microsoft YaHei where available; fallback handled by PowerPoint. Titles 34-48 px, body 20-25 px, labels 14-18 px.
+Palette: ink #172033, blue #246BCE, red #C43D3D, green #2F7D60, pale blue #EAF2FF, pale red #FCECEC, pale gray #F4F6F8.
+Charts: editable rectangles with direct labels; no legends when labels fit directly.
+Diagrams: simple rectangular stages and text arrows.
+Containers: square or 6 px radius at most; used only for real comparison or grouping.
+Footer: source path or evidence status in 12 px gray.
+Page marker: lower right.
+Banned motifs: decorative gradients, photography, floating cards, icons, logos, ornamental shapes.

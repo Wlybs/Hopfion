@@ -1,0 +1,500 @@
+{
+  "analysis": "static texture, translation coordinates X/Y/Z, convergence ladder (TC.1)",
+  "status": "gate_cleared",
+  "integrity": {
+    "no_micromagnetic_simulation_run": true,
+    "no_eigenfrequency_claim": true,
+    "hall_angle_computed": false,
+    "hall_angle_withheld_reason": "requires TC.4 measured deflection; gated at GC-FINAL",
+    "skyrmion_calibration_used_to_bound_hopfion_precision": false
+  },
+  "literature_convention": {
+    "source": "Y. Liu et al., Phys. Rev. Lett. 124, 127204 (2020)",
+    "doi": "https://doi.org/10.1103/PhysRevLett.124.127204",
+    "arxiv": "https://arxiv.org/abs/2001.00417",
+    "G_convention": "G_ab = +(Ms/gamma) * integral m . (d_a m x d_b m) dV",
+    "D_convention": "D_ab = +(alpha*Ms/gamma) * integral (d_a m . d_b m) dV"
+  },
+  "constants": {
+    "Ms_A_per_m": 150000.0,
+    "gamma_SI": 176000000000.0,
+    "alpha": 0.001,
+    "alpha_source_file": "04_frustrated_fm_foundation\\20260105_frustrated_fm\\spin_wave_dynamics\\amplitude_sweep\\plane_wave\\sw_B1p0T.mx3",
+    "cell_spacing_m": 5e-10,
+    "cell_volume_m3": 1.2500000000000003e-28
+  },
+  "texture": {
+    "archive": "D:\\Research\\Hopfion\\04_frustrated_fm_foundation\\20260105_frustrated_fm\\centered_stability_test\\stability_Ku10k.out\\ovf_archive.tar.zst",
+    "member": "m000020.ovf",
+    "mesh_shape": [
+      100,
+      100,
+      100
+    ],
+    "mesh_cell_m": [
+      5e-10,
+      5e-10,
+      5e-10
+    ],
+    "max_unit_norm_error_before_renormalization": 1.4120943325757196e-07
+  },
+  "natural_scale_S_SI": 4.0460739408965815e-13,
+  "natural_scale_S_note": "Full 100^3 box, exact periodic wrap; no boundary-cell exclusion. The 2026-06-15 first pass used S=3.7607e-13 with a 5-cell margin excluded on each face (V_eff/V_full=0.729); not needed here since all derivatives use genuine periodic wrap rather than a truncated stencil near the array edge.",
+  "raw_delta_ladder": {
+    "1": {
+      "G_SI": [
+        [
+          0.0,
+          -4.469339572918329e-15,
+          1.1431321204363639e-21
+        ],
+        [
+          4.469339572918329e-15,
+          0.0,
+          2.540290506222178e-21
+        ],
+        [
+          -1.1431321204363639e-21,
+          -2.540290506222178e-21,
+          0.0
+        ]
+      ],
+      "D_SI": [
+        [
+          1.1698484337962492e-16,
+          -4.502206675816798e-24,
+          -1.9047660188144114e-23
+        ],
+        [
+          -4.502206675816798e-24,
+          1.1698485113435313e-16,
+          4.868243313000001e-24
+        ],
+        [
+          -1.9047660188144114e-23,
+          4.868243313000001e-24,
+          1.4226940927511584e-16
+        ]
+      ]
+    },
+    "2": {
+      "G_SI": [
+        [
+          0.0,
+          -1.3468271548554656e-14,
+          3.559112594618182e-21
+        ],
+        [
+          1.3468271548554656e-14,
+          0.0,
+          7.628351636650283e-21
+        ],
+        [
+          -3.559112594618182e-21,
+          -7.628351636650283e-21,
+          0.0
+        ]
+      ],
+      "D_SI": [
+        [
+          9.498913966272966e-17,
+          -4.1970647472314915e-24,
+          -1.9438328331304055e-23
+        ],
+        [
+          -4.1970647472314915e-24,
+          9.498914495341742e-17,
+          5.1305377651636375e-24
+        ],
+        [
+          -1.9438328331304055e-23,
+          5.1305377651636375e-24,
+          1.2028439101990375e-16
+        ]
+      ]
+    },
+    "3": {
+      "G_SI": [
+        [
+          0.0,
+          -1.9603808558288e-14,
+          5.426570677527274e-21
+        ],
+        [
+          1.9603808558288e-14,
+          0.0,
+          1.101056867911744e-20
+        ],
+        [
+          -5.426570677527274e-21,
+          -1.101056867911744e-20,
+          0.0
+        ]
+      ],
+      "D_SI": [
+        [
+          7.285856012945824e-17,
+          -3.689963160065659e-24,
+          -1.9090979373851602e-23
+        ],
+        [
+          -3.689963160065659e-24,
+          7.285856383303193e-17,
+          5.102546946763637e-24
+        ],
+        [
+          -1.9090979373851602e-23,
+          5.102546946763637e-24,
+          9.465570671831347e-17
+        ]
+      ]
+    },
+    "4": {
+      "G_SI": [
+        [
+          0.0,
+          -2.0323533640659873e-14,
+          5.842965214254547e-21
+        ],
+        [
+          2.0323533640659873e-14,
+          0.0,
+          1.1175026171418743e-20
+        ],
+        [
+          -5.842965214254547e-21,
+          -1.1175026171418743e-20,
+          0.0
+        ]
+      ],
+      "D_SI": [
+        [
+          5.64543069907755e-17,
+          -3.0931268933241617e-24,
+          -1.748944457074761e-23
+        ],
+        [
+          -3.0931268933241617e-24,
+          5.645430996696731e-17,
+          4.618595357236365e-24
+        ],
+        [
+          -1.748944457074761e-23,
+          4.618595357236365e-24,
+          7.188740965018262e-17
+        ]
+      ]
+    }
+  },
+  "methods": {
+    "richardson_fd_delta1to4": {
+      "G_SI": [
+        [
+          -0.0,
+          -2.7652421570114814e-16,
+          5.513846574545492e-23
+        ],
+        [
+          2.7652421570114814e-16,
+          -0.0,
+          1.5919845096442403e-22
+        ],
+        [
+          -5.513846574545492e-23,
+          -1.5919845096442403e-22,
+          -0.0
+        ]
+      ],
+      "D_SI": [
+        [
+          1.2622484264992728e-16,
+          -4.600923980298858e-24,
+          -1.87895476479892e-23
+        ],
+        [
+          -4.600923980298858e-24,
+          1.2622485158643931e-16,
+          4.719095666294028e-24
+        ],
+        [
+          -1.87895476479892e-23,
+          4.719095666294028e-24,
+          1.509852061413002e-16
+        ]
+      ]
+    },
+    "fourth_order_fd_delta1": {
+      "G_SI": [
+        [
+          0.0,
+          -7.715478248743021e-16,
+          1.8403142749090913e-22
+        ],
+        [
+          7.715478248743021e-16,
+          0.0,
+          4.4827839722499e-22
+        ],
+        [
+          -1.8403142749090913e-22,
+          -4.4827839722499e-22,
+          0.0
+        ]
+      ],
+      "D_SI": [
+        [
+          1.2562409811931183e-16,
+          -4.602391386407106e-24,
+          -1.885126177133699e-23
+        ],
+        [
+          -4.602391386407106e-24,
+          1.256241069624812e-16,
+          4.747733158336365e-24
+        ],
+        [
+          -1.885126177133699e-23,
+          4.747733158336365e-24,
+          1.505190314616002e-16
+        ]
+      ]
+    },
+    "spectral_native_100cube": {
+      "G_SI": [
+        [
+          0.0,
+          -1.398239853321175e-19,
+          -4.876311272727274e-25
+        ],
+        [
+          1.398239853321175e-19,
+          0.0,
+          2.5141251989148755e-25
+        ],
+        [
+          4.876311272727274e-25,
+          -2.5141251989148755e-25,
+          0.0
+        ]
+      ],
+      "D_SI": [
+        [
+          1.2669014197636901e-16,
+          -4.6051796881476695e-24,
+          -1.8774000463687718e-23
+        ],
+        [
+          -4.6051796881476695e-24,
+          1.2669015104396868e-16,
+          4.703497516097729e-24
+        ],
+        [
+          -1.8774000463687718e-23,
+          4.703497516097729e-24,
+          1.5122710106932043e-16
+        ]
+      ]
+    },
+    "supersample_2x_spectral": {
+      "G_SI": [
+        [
+          0.0,
+          -4.273380331636364e-22,
+          1.4090112000000003e-22
+        ],
+        [
+          4.273380331636364e-22,
+          0.0,
+          -1.455626303358131e-23
+        ],
+        [
+          -1.4090112000000003e-22,
+          1.455626303358131e-23,
+          0.0
+        ]
+      ],
+      "D_SI": [
+        [
+          1.2669023955478428e-16,
+          -4.970481279763783e-24,
+          -1.902945738465702e-23
+        ],
+        [
+          -4.970481279763783e-24,
+          1.2669025020586696e-16,
+          5.249646493363637e-24
+        ],
+        [
+          -1.902945738465702e-23,
+          5.249646493363637e-24,
+          1.512270712275203e-16
+        ]
+      ]
+    },
+    "supersample_4x_spectral": {
+      "G_SI": [
+        [
+          0.0,
+          -5.225947819636365e-22,
+          1.8863273890909094e-23
+        ],
+        [
+          5.225947819636365e-22,
+          0.0,
+          4.6055389611875163e-23
+        ],
+        [
+          -1.8863273890909094e-23,
+          -4.6055389611875163e-23,
+          0.0
+        ]
+      ],
+      "D_SI": [
+        [
+          1.2669023877708093e-16,
+          -4.8667804008049516e-24,
+          -1.9002838725146615e-23
+        ],
+        [
+          -4.8667804008049516e-24,
+          1.2669024976118424e-16,
+          5.252216265109092e-24
+        ],
+        [
+          -1.9002838725146615e-23,
+          5.252216265109092e-24,
+          1.5122707112480433e-16
+        ]
+      ]
+    }
+  },
+  "gates": {
+    "GC1_cross_method_convergence": {
+      "threshold_percent_of_S": 5.0,
+      "max_pairwise_G_percent_of_S": [
+        [
+          0.0,
+          0.1906903850020347,
+          4.560447023795461e-08
+        ],
+        [
+          0.1906903850020347,
+          0.0,
+          1.14391053406209e-07
+        ],
+        [
+          4.560447023795461e-08,
+          1.14391053406209e-07,
+          0.0
+        ]
+      ],
+      "max_pairwise_D_percent_of_S": [
+        [
+          0.0002635002353012376,
+          9.133725800943562e-11,
+          6.313698778146747e-11
+        ],
+        [
+          9.133725800943562e-11,
+          0.00026350068213273957,
+          1.3561757818241228e-10
+        ],
+        [
+          6.313698778146747e-11,
+          1.3561757818241228e-10,
+          0.00017500164803298644
+        ]
+      ],
+      "worst_pair_G": [
+        [
+          null,
+          "fourth_order_fd_delta1 vs supersample_2x_spectral",
+          "fourth_order_fd_delta1 vs spectral_native_100cube"
+        ],
+        [
+          "fourth_order_fd_delta1 vs supersample_2x_spectral",
+          null,
+          "fourth_order_fd_delta1 vs supersample_2x_spectral"
+        ],
+        [
+          "fourth_order_fd_delta1 vs spectral_native_100cube",
+          "fourth_order_fd_delta1 vs supersample_2x_spectral",
+          null
+        ]
+      ],
+      "worst_pair_D": [
+        [
+          "fourth_order_fd_delta1 vs supersample_2x_spectral",
+          "richardson_fd_delta1to4 vs supersample_2x_spectral",
+          "spectral_native_100cube vs supersample_2x_spectral"
+        ],
+        [
+          "richardson_fd_delta1to4 vs supersample_2x_spectral",
+          "fourth_order_fd_delta1 vs supersample_2x_spectral",
+          "spectral_native_100cube vs supersample_4x_spectral"
+        ],
+        [
+          "spectral_native_100cube vs supersample_2x_spectral",
+          "spectral_native_100cube vs supersample_4x_spectral",
+          "fourth_order_fd_delta1 vs spectral_native_100cube"
+        ]
+      ],
+      "G_subgate_pass": true,
+      "D_subgate_pass": true,
+      "pass": true
+    },
+    "tensor_algebra": {
+      "antisymmetry_relative_error": 0.0,
+      "D_symmetry_relative_error": 0.0,
+      "threshold": 0.001,
+      "pass": true
+    },
+    "closed_loop_translational_gyrocoupling": {
+      "method": "supersample_4x_spectral",
+      "components": {
+        "XY": {
+          "absolute_G_SI": -5.225947819636365e-22,
+          "relative_to_S": 1.2916095691712277e-09,
+          "relative_percent_of_S": 1.2916095691712278e-07,
+          "noise_floor_fraction_of_S": 0.03,
+          "verdict": "below 3% noise floor; consistent with zero"
+        },
+        "XZ": {
+          "absolute_G_SI": 1.8863273890909094e-23,
+          "relative_to_S": 4.662117936166319e-11,
+          "relative_percent_of_S": 4.6621179361663185e-09,
+          "noise_floor_fraction_of_S": 0.03,
+          "verdict": "below 3% noise floor; consistent with zero"
+        },
+        "YZ": {
+          "absolute_G_SI": 4.6055389611875163e-23,
+          "relative_to_S": 1.1382735531933856e-10,
+          "relative_percent_of_S": 1.1382735531933855e-08,
+          "noise_floor_fraction_of_S": 0.03,
+          "verdict": "below 3% noise floor; consistent with zero"
+        }
+      },
+      "all_three_consistent_with_zero": true
+    },
+    "skyrmion_implementation_sanity_check": {
+      "note": "sanity check only -- NOT used to bound Hopfion tensor precision (master plan TC.3/Section 8 item 5)",
+      "grid": [
+        100,
+        100
+      ],
+      "spacing_m": 5e-10,
+      "analytic_Q_target": -1,
+      "computed_Q": -0.9988275256778018,
+      "computed_Q_relative_error_percent": 0.1172474322198247,
+      "computed_G_xy_SI_per_m": -1.0697417784793132e-05,
+      "expected_G_xy_SI_per_m": -1.0709974955419749e-05,
+      "relative_error": 0.0011724743221982771,
+      "relative_error_percent": 0.11724743221982771,
+      "pass_": true
+    }
+  },
+  "all_numeric_validation_gates_pass": true,
+  "hall_prediction": null,
+  "hall_prediction_withheld_reason": "GC1 cleared, but Hall-angle prediction additionally requires TC.4 measured deflection and is gated at GC-FINAL; not computed in this script.",
+  "wall_time_seconds": 55.91591000556946
+}

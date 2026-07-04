@@ -1,0 +1,74 @@
+// 1. 基础物理参数设定 (你可以修改这些，只要比例不变)
+cellsize   := 0.5e-9           // 晶格常数 a = 1 nm [cite: 2406]
+Ms_val := 1.5e5          // 饱和磁化强度
+A_base := 5e-12          // 对应 J1 = 1
+
+//K_norm   := -0.1          
+// 换算公式: Ku1 (J/m^3) = (2 * K_norm * A_base) / a^2
+//Ku1_val  := (2.0 * K_norm * A_base) / (cellsize * cellsize)
+
+SetGridSize(100, 100, 100)
+SetCellSize(cellsize, cellsize, cellsize)
+SetPBC(1, 1, 1) 
+
+
+Msat  = Ms_val
+Aex = A_base             // 【J1 项】直接使用内置交换作用
+Dbulk = 0                // 必须关闭 DMI
+Dind  = 0
+//Ku1   = Ku1_val           // 一阶单轴各向异性常数
+//anisU = vector(0, 0, 1)   // 易轴方向 (沿 Z 轴)
+EnableDemag = false       // 禁用退磁场 (符合理论模型)
+alpha		= 5.0
+
+// 2. 计算场强系数因子
+// 交换场系数 B = 2 * A_eff / (Ms * cell^2)
+factor := 2.0 / (Ms_val * cellsize * cellsize)
+
+// 3. 实现 J4 (第四近邻, 距离 2a, 6个邻居)
+// J4 = -0.082 * J1
+A_J4 := A_base * (-0.082)
+Coeff_J4 := A_J4 * factor
+
+// 获取 ±2 格的邻居
+sum_J4 :=     Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, 2))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, -2))
+
+// 添加 J4 场
+B_J4 := Mul(Const(Coeff_J4), sum_J4)
+AddFieldTerm(B_J4)
+
+// 4. 实现 J2 (次近邻, 距离 sqrt(2)a, 12个邻居)
+// J2 = -0.164 * J1
+A_J2 := A_base * (-0.164)
+Coeff_J2 := A_J2 * factor
+
+// 手动累加 12 个面对角线邻居 (非常繁琐但必须做)
+// XY平面 (4个)
+sum_J2 :=     Add(Shifted(m, 1, 1, 0), Shifted(m, 1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, -1, 0))
+// YZ平面 (4个)
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, -1))
+// XZ平面 (4个)
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, -1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, -1))
+
+// 添加 J2 场
+B_J2 := Mul(Const(Coeff_J2), sum_J2)
+AddFieldTerm(B_J2)
+
+m.LoadFile("hopfion_y_R3_r2.ovf")
+
+autosave(m, 1e-10)
+tableautosave(1e-11)
+TableAdd(E_Total)
+run(2e-09)

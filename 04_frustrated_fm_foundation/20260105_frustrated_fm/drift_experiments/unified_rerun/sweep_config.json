@@ -1,0 +1,37 @@
+{
+    "output_dir": "drift_experiments/unified_rerun",
+    "template": "templates/frustrated_fm_base.mx3.template",
+    "description_prefix": "Unified drift experiment",
+    "sweep_var": "LoadFile",
+    "defaults": {
+        "cellsize": "0.5e-9",
+        "Ms_val": "1.5e5",
+        "A_base": "5e-12",
+        "Ku1": "0",
+        "alpha": "0.2",
+        "EnableDemag": "false",
+        "run_time": "2e-9",
+        "autosave": "1e-10",
+        "tableautosave": "1e-11",
+        "J2_ratio": "-0.164",
+        "J4_ratio": "-0.082"
+    },
+    "runs": [
+        {
+            "name": "bg_mz_axis_z",
+            "LoadFile": "/mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/drift_experiments/initial_states/hopfion_z_R3_r2.ovf"
+        },
+        {
+            "name": "bg_mz_axis_x",
+            "LoadFile": "/mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/drift_experiments/initial_states/hopfion_xaxis_zbg_R3_r2.ovf"
+        },
+        {
+            "name": "bg_my_axis_y",
+            "LoadFile": "/mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/drift_experiments/initial_states/hopfion_y_R3_r2.ovf"
+        },
+        {
+            "name": "bg_mx_axis_x",
+            "LoadFile": "/mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/drift_experiments/initial_states/hopfion_x_R3_r2.ovf"
+        }
+    ]
+}

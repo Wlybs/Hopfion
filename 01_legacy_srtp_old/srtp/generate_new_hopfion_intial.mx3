@@ -1,0 +1,16 @@
+// --- 几何与网格定义 ---
+sizeX := 50e-9
+sizeY := 50e-9
+sizeZ := 50e-9
+gridX := 100
+gridY := 100
+gridZ := 100
+SetGridSize(gridX, gridY, gridZ)
+SetCellSize(sizeX/gridX, sizeY/gridY, sizeZ/gridZ)
+
+// 将磁化m定义为一个Hopfion
+m = HopfionCompactSupport(3e-9, 1.5e-9).Transl(sizeX/2, sizeY/2, sizeZ/2)
+
+// 直接保存，不进行任何计算
+save(m)
+print("测试脚本完成，请检查Hopfion_Initial_State_Verification.out文件夹中的m.ovf文件。")

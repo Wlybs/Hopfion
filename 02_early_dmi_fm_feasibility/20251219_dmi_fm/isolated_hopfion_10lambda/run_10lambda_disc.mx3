@@ -1,0 +1,45 @@
+// FeGe Bloch Hopfion - d=5λ=350nm 圆柱盘（孤立构型）
+//
+// 目的: 与 successful_simulation/ 的 d=3λ=210nm 完全相同的物理，
+//       仅扩大圆柱直径，使 Hopfion 更孤立（远离边界）。
+//
+// Hopfion 尺寸由 λ=70nm 决定，圆柱变大不改变 Hopfion 本体。
+//
+// 前置步骤: 先运行 gen_hopfion_5lambda_disc.py 生成初始态 OVF。
+//
+// 几何对比:
+//   原始 (successful_simulation): d=3λ=210nm, R_hopfion/R_disc ≈ 0.48
+//   本脚本:                       d=5λ=350nm, R_hopfion/R_disc ≈ 0.29
+
+Nx := 350; Ny := 350; Nz := 35
+SetGridSize(Nx, Ny, Nz)
+SetCellSize(2e-9, 2e-9, 2e-9)
+SetGeom(Cylinder(7e-7, 7e-8))   // d=700nm=10λ, h=70nm=λ
+
+// FeGe @ 276K
+Msat  = 384e3
+Aex   = 8.78e-12
+Dbulk = 1.58e-3
+Ku1   = 0
+// EnableDemag = true (默认，退磁场是稳定 Hopfion 的必要条件)
+
+// 顶底层冻结 m=e3（强制边界条件）
+defRegion(1, Layer(Nz-1).add(Layer(0)))
+frozenspins.setRegion(1, 1)
+
+m.LoadFile("hopfion_10lambda_init.ovf")
+
+TableAdd(E_Total)
+TableAdd(E_demag)
+tableautosave(1e-11)
+
+// Relax 找能量极小值
+alpha = 0.5
+Relax()
+saveas(m, "hopfion_5lambda_relax")
+
+// 低阻尼动力学验证稳定性
+alpha = 0.02
+autosave(m, 2e-10)
+Run(2e-9)
+saveas(m, "hopfion_5lambda_final")

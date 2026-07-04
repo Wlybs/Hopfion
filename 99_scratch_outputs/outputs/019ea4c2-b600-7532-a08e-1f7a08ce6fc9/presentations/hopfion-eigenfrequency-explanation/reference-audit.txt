@@ -1,0 +1,3 @@
+No reference deck supplied.
+The requested visual target is deliberately simple: text, basic diagrams, tables, and small editable charts.
+Anti-patterns avoided: decorative imagery, complex gradients, nested cards, dense formulas, unexplained jargon.

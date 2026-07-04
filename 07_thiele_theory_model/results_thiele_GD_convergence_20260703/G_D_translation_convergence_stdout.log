@@ -1,0 +1,85 @@
+STATIC-TEXTURE TRANSLATION-BLOCK THIELE ANALYSIS -- CONVERGENCE LADDER (TC.1)
+No micromagnetic simulation is run.
+Archive: D:\Research\Hopfion\04_frustrated_fm_foundation\20260105_frustrated_fm\centered_stability_test\stability_Ku10k.out\ovf_archive.tar.zst
+Texture member: m000020.ovf
+G convention: G_ab = +(Ms/gamma) * integral m . (d_a m x d_b m) dV
+D convention: D_ab = +(alpha*Ms/gamma) * integral (d_a m . d_b m) dV
+Literature: Y. Liu et al., Phys. Rev. Lett. 124, 127204 (2020), DOI https://doi.org/10.1103/PhysRevLett.124.127204
+
+Extracted m000020.ovf to scratch: C:\Users\JiaLeWu\AppData\Local\Temp\thiele_GD_convergence__xjj5c0m\m000020.ovf
+Scratch cleaned: C:\Users\JiaLeWu\AppData\Local\Temp\thiele_GD_convergence__xjj5c0m
+REAL RELAXED TEXTURE: shape=(100,100,100), cell=0.5000 nm, max|m|-1 error before renorm = 1.412e-07
+
+RAW DELTA LADDER (for continuity with the 2026-06-15 first pass):
+  delta=1: G_XY=-4.469340e-15  D_XX=1.169848e-16  D_YY=1.169849e-16  D_ZZ=1.422694e-16
+  delta=2: G_XY=-1.346827e-14  D_XX=9.498914e-17  D_YY=9.498914e-17  D_ZZ=1.202844e-16
+  delta=3: G_XY=-1.960381e-14  D_XX=7.285856e-17  D_YY=7.285856e-17  D_ZZ=9.465571e-17
+  delta=4: G_XY=-2.032353e-14  D_XX=5.645431e-17  D_YY=5.645431e-17  D_ZZ=7.188741e-17
+
+Natural scale S = 4.046074e-13 (SI)
+  NOTE: this uses the FULL 100^3 box (PBC wrap is exact, no boundary exclusion).
+  The 2026-06-15 first pass reported S=3.7607e-13 using only the inner box with a
+  5-cell margin excluded on each face (V_eff/V_full=0.729); that exclusion is not
+  needed here because all derivatives below are computed with genuine periodic
+  wrap, not a truncated stencil near the array edge.
+
+supersample 2x done in 5.7s (grid 200^3): G_XY=-4.273380e-22  D_XX=1.266902e-16
+supersample 4x done in 46.5s (grid 400^3): G_XY=-5.225948e-22  D_XX=1.266902e-16
+
+METHOD COMPARISON (G components, SI):
+  richardson_fd_delta1to4       G_XY=-2.765242e-16  G_XZ= 5.513847e-23  G_YZ= 1.591985e-22
+  fourth_order_fd_delta1        G_XY=-7.715478e-16  G_XZ= 1.840314e-22  G_YZ= 4.482784e-22
+  spectral_native_100cube       G_XY=-1.398240e-19  G_XZ=-4.876311e-25  G_YZ= 2.514125e-25
+  supersample_2x_spectral       G_XY=-4.273380e-22  G_XZ= 1.409011e-22  G_YZ=-1.455626e-23
+  supersample_4x_spectral       G_XY=-5.225948e-22  G_XZ= 1.886327e-23  G_YZ= 4.605539e-23
+
+METHOD COMPARISON (D diagonal, SI):
+  richardson_fd_delta1to4       D_XX= 1.262248e-16  D_YY= 1.262249e-16  D_ZZ= 1.509852e-16
+  fourth_order_fd_delta1        D_XX= 1.256241e-16  D_YY= 1.256241e-16  D_ZZ= 1.505190e-16
+  spectral_native_100cube       D_XX= 1.266901e-16  D_YY= 1.266902e-16  D_ZZ= 1.512271e-16
+  supersample_2x_spectral       D_XX= 1.266902e-16  D_YY= 1.266903e-16  D_ZZ= 1.512271e-16
+  supersample_4x_spectral       D_XX= 1.266902e-16  D_YY= 1.266902e-16  D_ZZ= 1.512271e-16
+
+GATE GC1: CROSS-METHOD CONVERGENCE (5 methods, pairwise, relative to S)
+  threshold: 5.0% of S = 2.023e-14 (SI)
+  max pairwise |Delta G_ab| / S (percent):
+      0.0000%    0.1907%    0.0000%
+      0.1907%    0.0000%    0.0000%
+      0.0000%    0.0000%    0.0000%
+  max pairwise |Delta D_ab| / S (percent):
+      0.0003%    0.0000%    0.0000%
+      0.0000%    0.0003%    0.0000%
+      0.0000%    0.0000%    0.0002%
+  G sub-gate PASS: True
+  D sub-gate PASS: True
+  GATE GC1 PASS: True
+
+GATE: TENSOR ALGEBRA (finest method, supersample_4x_spectral)
+  max|G+G^T|/max|G|: 0.000e+00
+  max|D-D^T|/max|D|: 0.000e+00
+  PASS: True
+
+CLOSED-LOOP TRANSLATIONAL GYROCOUPLING (finest method = supersample_4x_spectral)
+  |G_XY|=5.225948e-22; |G_XY|/S=0.000000%; below 3% noise floor
+  |G_XZ|=1.886327e-23; |G_XZ|/S=0.000000%; below 3% noise floor
+  |G_YZ|=4.605539e-23; |G_YZ|/S=0.000000%; below 3% noise floor
+  all three consistent with zero: True
+
+IMPLEMENTATION SANITY CHECK (2D Bloch skyrmion, matched 100x100 in-plane grid):
+  sanity check only -- NOT used to bound Hopfion tensor precision (master plan TC.3/Section 8 item 5)
+  computed Q=-0.998828 (target -1)
+  computed G_xy=-1.069742e-05  expected=-1.070997e-05
+  relative error: 0.1172%  PASS: True
+
+======================================================================
+GATE GC1 PASS: all four differentiation methods (plus Richardson) agree
+within 5% of the natural scale S. Convergence gate CLEARED.
+Closed-loop translational G is consistent with zero at the noise floor,
+with convergence CONFIRMED (not merely unconfirmed as in the 2026-06-15 pass).
+No Hall-angle number is computed here; that requires TC.4 measured deflection
+and is gated at GC-FINAL per the master plan.
+======================================================================
+
+Total wall time: 55.9 s
+
+JSON written: D:\Research\Hopfion\07_thiele_theory_model\results_thiele_GD_convergence_20260703\G_D_translation_convergence.json

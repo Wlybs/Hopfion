@@ -1,0 +1,223 @@
+\begin{thebibliography}{30}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{#1}
+\expandafter\ifx\csname urlstyle\endcsname\relax\else
+  \urlstyle{same}\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \DeclareUrlCommand\doi{\urlstyle{rm}}
+  \def\eprint#1#2{#2}
+\else
+  \def\doi#1{\href{https://doi.org/#1}{\nolinkurl{#1}}}
+  \let\eprint\href
+\fi
+
+\bibitem[G{\"o}bel et~al.(2021)G{\"o}bel, Mertig, and
+  Tretiakov]{gobel2021beyond}
+G{\"o}bel B, Mertig I, Tretiakov O~A.
+\newblock Beyond skyrmions: review and perspectives of alternative magnetic
+  quasiparticles\allowbreak[J/OL].
+\newblock Physics Reports, 2021, 895: 1-28.
+\newblock DOI: \doi{10.1016/j.physrep.2020.10.001}.
+
+\bibitem[Guslienko(2024)]{guslienko2024review}
+Guslienko K.
+\newblock Magnetic hopfions: a review\allowbreak[J/OL].
+\newblock Magnetism, 2024, 4\allowbreak (4): 383-399.
+\newblock DOI: \doi{10.3390/magnetism4040025}.
+
+\bibitem[刘艺舟\ 等(2020)刘艺舟 and 韩秀峰]{liu2020magnetic_hopfion}
+刘艺舟, 韩秀峰.
+\newblock 磁霍普夫子及其三维自旋动力学研究\allowbreak[J/OL].
+\newblock 物理, 2020, 49\allowbreak (12): 793-803.
+\newblock DOI: \doi{10.7693/wl20201205}.
+
+\bibitem[Hopf(1931)]{hopf1931abbildungen}
+Hopf H.
+\newblock {\"U}ber die abbildungen der dreidimensionalen Sph{\"a}re auf die
+  Kugelfl{\"a}che\allowbreak[J/OL].
+\newblock Mathematische Annalen, 1931, 104\allowbreak (1): 637-665.
+\newblock DOI: \doi{10.1007/BF01457962}.
+
+\bibitem[Faddeev et~al.(1997)Faddeev and Niemi]{faddeev1997knots}
+Faddeev L, Niemi A~J.
+\newblock Stable knot-like structures in classical field
+  theory\allowbreak[J/OL].
+\newblock Nature, 1997, 387: 58-61.
+\newblock DOI: \doi{10.1038/387058a0}.
+
+\bibitem[Tai et~al.(2018)Tai and Smalyukh]{tai2018static}
+Tai J~S~B, Smalyukh I~I.
+\newblock Static {Hopf} solitons and knotted emergent fields in solid-state
+  noncentrosymmetric magnetic nanostructures\allowbreak[J/OL].
+\newblock Physical Review Letters, 2018, 121\allowbreak (18): 187201.
+\newblock DOI: \doi{10.1103/PhysRevLett.121.187201}.
+
+\bibitem[Kent et~al.(2021)Kent, Reynolds, Raftrey, et~al.]{kent2021creation}
+Kent N, Reynolds N, Raftrey D, et~al.
+\newblock Creation and observation of {Hopfions} in magnetic multilayer
+  systems\allowbreak[J/OL].
+\newblock Nature Communications, 2021, 12: 1562.
+\newblock DOI: \doi{10.1038/s41467-021-21846-5}.
+
+\bibitem[Zheng et~al.(2023)Zheng, Kiselev, Rybakov, et~al.]{zheng2023hopfion}
+Zheng F, Kiselev N~S, Rybakov F~N, et~al.
+\newblock Hopfion rings in a cubic chiral magnet\allowbreak[J/OL].
+\newblock Nature, 2023, 623\allowbreak (7988): 718-723.
+\newblock DOI: \doi{10.1038/s41586-023-06658-5}.
+
+\bibitem[Sutcliffe(2018)]{sutcliffe2018hopfions}
+Sutcliffe P.
+\newblock Hopfions in chiral magnets\allowbreak[J/OL].
+\newblock Journal of Physics A: Mathematical and Theoretical, 2018,
+  51\allowbreak (37): 375401.
+\newblock DOI: \doi{10.1088/1751-8121/aad521}.
+
+\bibitem[Liu et~al.(2018)Liu, Lake, and Zang]{liu2018binding}
+Liu Y, Lake R~K, Zang J.
+\newblock Binding a hopfion in a chiral magnet nanodisk\allowbreak[J/OL].
+\newblock Physical Review B, 2018, 98\allowbreak (17): 174437.
+\newblock DOI: \doi{10.1103/PhysRevB.98.174437}.
+
+\bibitem[Metlov(2025)]{metlov2025elliptical}
+Metlov K~L.
+\newblock Elliptical stability of hopfions in bulk
+  helimagnets\allowbreak[J/OL].
+\newblock Physical Review B, 2025, 111\allowbreak (17): 174450.
+\newblock DOI: \doi{10.1103/PhysRevB.111.174450}.
+
+\bibitem[Yu et~al.(2023)Yu, Liu, Iakoubovskii, et~al.]{yu2023realization}
+Yu X, Liu Y, Iakoubovskii K~V, et~al.
+\newblock Realization and current-driven dynamics of fractional hopfions and
+  their ensembles in a helimagnet {FeGe}\allowbreak[J/OL].
+\newblock Advanced Materials, 2023, 35\allowbreak (12): 2210646.
+\newblock DOI: \doi{10.1002/adma.202210646}.
+
+\bibitem[Sallermann et~al.(2023)Sallermann, J{\"o}nsson, and
+  Bl{\"u}gel]{sallermann2023stability}
+Sallermann M, J{\"o}nsson H, Bl{\"u}gel S.
+\newblock Stability of hopfions in bulk magnets with competing exchange
+  interactions\allowbreak[J/OL].
+\newblock Physical Review B, 2023, 107\allowbreak (10): 104404.
+\newblock DOI: \doi{10.1103/PhysRevB.107.104404}.
+
+\bibitem[Lobanov et~al.(2023)Lobanov and Uzdin]{lobanov2023lifetime}
+Lobanov I~S, Uzdin V~M.
+\newblock Lifetime, collapse, and escape paths for hopfions in bulk magnets
+  with competing exchange interactions\allowbreak[J/OL].
+\newblock Physical Review B, 2023, 107\allowbreak (10): 104405.
+\newblock DOI: \doi{10.1103/PhysRevB.107.104405}.
+
+\bibitem[Wang et~al.(2019)Wang, Qaiumzadeh, and Brataas]{wang2019current}
+Wang X~S, Qaiumzadeh A, Brataas A.
+\newblock Current-driven dynamics of magnetic hopfions\allowbreak[J/OL].
+\newblock Physical Review Letters, 2019, 123\allowbreak (14): 147203.
+\newblock DOI: \doi{10.1103/PhysRevLett.123.147203}.
+
+\bibitem[Liu et~al.(2020)Liu, Hou, Han, and Zang]{liu2020three}
+Liu Y, Hou W, Han X, et~al.
+\newblock Three-dimensional dynamics of a magnetic hopfion driven by spin
+  transfer torque\allowbreak[J/OL].
+\newblock Physical Review Letters, 2020, 124\allowbreak (12): 127204.
+\newblock DOI: \doi{10.1103/PhysRevLett.124.127204}.
+
+\bibitem[Liu et~al.(2022)Liu, Watanabe, and Nagaosa]{liu2022emergent}
+Liu Y, Watanabe H, Nagaosa N.
+\newblock Emergent magnetomultipoles and nonlinear responses of a magnetic
+  hopfion\allowbreak[J/OL].
+\newblock Physical Review Letters, 2022, 129\allowbreak (26): 267201.
+\newblock DOI: \doi{10.1103/PhysRevLett.129.267201}.
+
+\bibitem[Ding et~al.(2015)Ding, Yang, and Zhu]{ding2015motion}
+Ding J, Yang X, Zhu T.
+\newblock The motion of magnetic skyrmions driven by propagating spin
+  waves\allowbreak[J/OL].
+\newblock IEEE Transactions on Magnetics, 2015, 51\allowbreak (11): 1500504.
+\newblock DOI: \doi{10.1109/TMAG.2015.2446516}.
+
+\bibitem[Huang et~al.(2023)Huang, Burnell, and Marrows]{huang2023transient}
+Huang L, Burnell G, Marrows C~H.
+\newblock Transient retrograde motion of spin wave driven skyrmions in magnetic
+  nanotracks\allowbreak[J/OL].
+\newblock Physical Review B, 2023, 107\allowbreak (22): 224418.
+\newblock DOI: \doi{10.1103/PhysRevB.107.224418}.
+
+\bibitem[Shen et~al.(2018)Shen, Zhang, Yang, You, and Hu]{shen2018skyrmionium}
+Shen M, Zhang Y, Yang X, et~al.
+\newblock Motion of a skyrmionium driven by spin wave\allowbreak[J/OL].
+\newblock Applied Physics Letters, 2018, 112\allowbreak (6): 062403.
+\newblock DOI: \doi{10.1063/1.5010605}.
+
+\bibitem[Saji et~al.(2023)Saji, Troncoso, Carvalho-Santos, Altbir, and
+  Nunez]{saji2023magnonic}
+Saji C, Troncoso R~E, Carvalho-Santos V~L, et~al.
+\newblock Hopfion-driven magnonic {Hall} effect and magnonic
+  focusing\allowbreak[J/OL].
+\newblock Physical Review Letters, 2023, 131\allowbreak (16): 166702.
+\newblock DOI: \doi{10.1103/PhysRevLett.131.166702}.
+
+\bibitem[Zhang et~al.(2023)Zhang, Lin, Zhang, et~al.]{zhang2023magnon}
+Zhang Z, Lin K, Zhang Y, et~al.
+\newblock Magnon scattering modulated by omnidirectional hopfion motion in
+  antiferromagnets for meta-learning\allowbreak[J/OL].
+\newblock Science Advances, 2023, 9\allowbreak (6): eade7439.
+\newblock DOI: \doi{10.1126/sciadv.ade7439}.
+
+\bibitem[Pershoguba et~al.(2021)Pershoguba, Andreoli, and
+  Zang]{pershoguba2021electronic}
+Pershoguba S~S, Andreoli D, Zang J.
+\newblock Electronic scattering off a magnetic hopfion\allowbreak[J/OL].
+\newblock Physical Review B, 2021, 104\allowbreak (7): 075102.
+\newblock DOI: \doi{10.1103/PhysRevB.104.075102}.
+
+\bibitem[Souza et~al.(2025)Souza, Reichhardt, Reichhardt,
+  et~al.]{souza2025topological}
+Souza J~C~B, Reichhardt C~J~O, Reichhardt C, et~al.
+\newblock Topological transitions, pinning and ratchets for driven magnetic
+  hopfions in nanostructures\allowbreak[J/OL].
+\newblock Scientific Reports, 2025, 15: 16802.
+\newblock DOI: \doi{10.1038/s41598-025-01349-9}.
+
+\bibitem[Metlov et~al.(2025)Metlov, Tarasenko, Bezus, and
+  Gordei]{metlov2025control}
+Metlov K~L, Tarasenko A~S, Bezus Y~A, et~al.
+\newblock Control of the magnetic hopfion lattice in helimagnet with the
+  external field and anisotropy\allowbreak[A/OL].
+\newblock arXiv (2025).
+\newblock \url{https://arxiv.org/abs/2503.23481}.
+
+\bibitem[Kasai et~al.(2025)Kasai, Okumura, and Motome]{kasai2025sot}
+Kasai S, Okumura S, Motome Y.
+\newblock Nonequilibrium dynamics of magnetic hopfions driven by spin-orbit
+  torque\allowbreak[A/OL].
+\newblock arXiv (2025).
+\newblock \url{https://arxiv.org/abs/2511.23045}.
+
+\bibitem[G\"obel et~al.(2025)G\"obel and Lounis]{goebel2025orbital}
+G\"obel B, Lounis S.
+\newblock Three-dimensional topological orbital hall effect caused by magnetic
+  hopfions\allowbreak[A/OL].
+\newblock arXiv (2025).
+\newblock \url{https://arxiv.org/abs/2506.11448}.
+
+\bibitem[Rybakov et~al.(2022)Rybakov, Kiselev, Borisov, D{\"o}ring, Melcher,
+  and Bl{\"u}gel]{rybakov2022magnetic}
+Rybakov F~N, Kiselev N~S, Borisov A~B, et~al.
+\newblock Magnetic hopfions in solids\allowbreak[J/OL].
+\newblock APL Materials, 2022, 10\allowbreak (11): 111113.
+\newblock DOI: \doi{10.1063/5.0099942}.
+
+\bibitem[Vansteenkiste et~al.(2014)Vansteenkiste, Leliaert, Dvornik, Helsen,
+  Garcia-Sanchez, and Van~Waeyenberge]{vansteenkiste2014design}
+Vansteenkiste A, Leliaert J, Dvornik M, et~al.
+\newblock The design and verification of {MuMax3}\allowbreak[J/OL].
+\newblock AIP Advances, 2014, 4\allowbreak (10): 107133.
+\newblock DOI: \doi{10.1063/1.4899186}.
+
+\bibitem[Guslienko(2025)]{guslienko2025magnetic}
+Guslienko K~Y.
+\newblock Magnetic hopfions as local rotations of the uniform magnetization
+  background\allowbreak[J/OL].
+\newblock physica status solidi (RRL) - Rapid Research Letters, 2025, 2500022.
+\newblock DOI: \doi{10.1002/pssr.202500022}.
+
+\end{thebibliography}

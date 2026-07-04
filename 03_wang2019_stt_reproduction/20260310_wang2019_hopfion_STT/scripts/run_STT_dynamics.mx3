@@ -1,0 +1,50 @@
+// Wang 2019 PRL — STT 驱动 Hopfion 动力学 (Fig. 3 复现)
+// 复现: J=1e11 A/m², β/α=2（β=0.1, α=0.05），15ns 轨迹
+// 预期: Hopfion 沿 x 方向平移，无横向霍尔偏转（G=0）
+
+Nx := 256; Ny := 256; Nz := 32
+SetGridSize(Nx, Ny, Nz)
+SetCellSize(0.5e-9, 0.5e-9, 0.5e-9)
+SetPBC(1, 0, 0)
+
+// 材料参数 — 与稳定化脚本一致
+// 选择 Bloch 或 Néel：注释/取消注释下方两组之一
+
+// == Bloch Hopfion ==
+Msat  = 1.51e5
+Aex   = 0.16e-12
+Ku1   = 41e3
+anisU = vector(0, 0, 1)
+Dbulk = 0.115e-3
+
+// == Néel Hopfion (取消下方注释以切换) ==
+// Ku1   = 20e3
+// Dind  = 0.115e-3
+// Dbulk = 0          // 注意：切换时将上方 Dbulk 改为 0
+
+// 表面各向异性
+DefRegion(1, Layers(0, 0))
+DefRegion(2, Layers(Nz-1, Nz-1))
+Ku1.SetRegion(1, 41e3 + 1e6)
+Ku1.SetRegion(2, 41e3 + 1e6)
+
+// 加载已弛豫的稳定态（先运行 run_bloch_hopfion.mx3 生成）
+m.LoadFile("bloch_hopfion_stable.ovf")
+
+// STT 参数 (Wang 2019, Table I)
+alpha = 0.05
+xi    = 0.1          // β = xi（非绝热 STT 参数）
+J     := 1e11        // A/m²，电流密度
+p     := 0.12        // 自旋极化率
+
+// Mumax3 STT: SpinTransferTorque = SpinTorque(J×̂x, p, lambda, epsilonprime)
+// 电流沿 x 方向，lambda=1（忽略自旋积累衰减），epsilonprime=0
+SpinTorque(vector(J, 0, 0), p, 1.0, 0.0)
+
+TableAdd(E_Total)
+tableautosave(2e-11)    // 每 20ps 记录一次
+autosave(m, 5e-11)      // 每 50ps 保存构型
+
+// 跑 15ns 的 STT 驱动动力学
+Run(15e-9)
+saveas(m, "STT_hopfion_final")

@@ -2,3 +2,57 @@
 # Dolt database files (added by bd init)
 .dolt/
 *.db
+
+# Mumax3 simulation data (binary, large — never commit)
+*.ovf
+*.out/
+.mumax3_cache/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Process locks
+*.pid.lock
+
+# Large archives - prevent accidental staging / git churn (NTFS $Deleted leak source)
+*.tar.zst
+*.rar
+*.zip
+*.7z
+
+# --- 2026-07 reorg commit hygiene (lean policy) ---
+# Video renders (large — legacy SRTP), OOMMF binary field data (same class as .ovf)
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.omf
+# Office / documents (regenerable, large — keep out of git)
+*.pptx
+*.ppt
+*.docx
+*.doc
+*.pdf
+# Local tooling / worktrees / virtualenv (never commit) — anchored to repo root
+/.claude/
+/.vscode/
+/.agents/
+/hopfion/
+# Node dependencies (any depth — defense/presentation projects; contain symlinks git can't index on NTFS)
+node_modules/
+# Legacy never-tracked data dumps
+/01_legacy_srtp_old/old_results/
+/01_legacy_srtp_old/srtp/hopfion_mumax3/
+# Downloaded literature library + saved web pages (thesis reference material, not source)
+/09_paper_thesis_talks/bishe/paper/
+*.html
+*.htm
+*.mht
+*.caj
+*.crdownload
+*.part
+# Fonts (large, system-provided / regenerable)
+*.otf
+*.ttf
+*.ttc

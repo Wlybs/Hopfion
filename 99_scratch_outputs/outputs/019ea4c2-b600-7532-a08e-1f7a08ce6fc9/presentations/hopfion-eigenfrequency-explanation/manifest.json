@@ -1,0 +1,187 @@
+{
+  "output": "D:\\Research\\Hopfion\\hopfion_eigenfrequency_research_explanation_20260615\\Hopfion固有频率研究全过程.pptx",
+  "outputBytes": 76864,
+  "slideCount": 17,
+  "slideSize": {
+    "width": 1280,
+    "height": 720
+  },
+  "previewDir": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview",
+  "previewPaths": [
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-01.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-02.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-03.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-04.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-05.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-06.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-07.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-08.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-09.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-10.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-11.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-12.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-13.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-14.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-15.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-16.png",
+    "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\preview\\slide-17.png"
+  ],
+  "layoutDir": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout",
+  "layoutResults": [
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-01.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-02.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-03.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-04.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-05.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-06.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-07.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-08.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-09.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-10.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-11.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-12.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-13.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-14.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-15.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-16.layout.json"
+    },
+    {
+      "layoutPath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\layout\\slide-17.layout.json"
+    }
+  ],
+  "slides": [
+    {
+      "index": 1,
+      "requestedSlideNumber": 1,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-01.mjs",
+      "exportName": "slide01"
+    },
+    {
+      "index": 2,
+      "requestedSlideNumber": 2,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-02.mjs",
+      "exportName": "slide02"
+    },
+    {
+      "index": 3,
+      "requestedSlideNumber": 3,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-03.mjs",
+      "exportName": "slide03"
+    },
+    {
+      "index": 4,
+      "requestedSlideNumber": 4,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-04.mjs",
+      "exportName": "slide04"
+    },
+    {
+      "index": 5,
+      "requestedSlideNumber": 5,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-05.mjs",
+      "exportName": "slide05"
+    },
+    {
+      "index": 6,
+      "requestedSlideNumber": 6,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-06.mjs",
+      "exportName": "slide06"
+    },
+    {
+      "index": 7,
+      "requestedSlideNumber": 7,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-07.mjs",
+      "exportName": "slide07"
+    },
+    {
+      "index": 8,
+      "requestedSlideNumber": 8,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-08.mjs",
+      "exportName": "slide08"
+    },
+    {
+      "index": 9,
+      "requestedSlideNumber": 9,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-09.mjs",
+      "exportName": "slide09"
+    },
+    {
+      "index": 10,
+      "requestedSlideNumber": 10,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-10.mjs",
+      "exportName": "slide10"
+    },
+    {
+      "index": 11,
+      "requestedSlideNumber": 11,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-11.mjs",
+      "exportName": "slide11"
+    },
+    {
+      "index": 12,
+      "requestedSlideNumber": 12,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-12.mjs",
+      "exportName": "slide12"
+    },
+    {
+      "index": 13,
+      "requestedSlideNumber": 13,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-13.mjs",
+      "exportName": "slide13"
+    },
+    {
+      "index": 14,
+      "requestedSlideNumber": 14,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-14.mjs",
+      "exportName": "slide14"
+    },
+    {
+      "index": 15,
+      "requestedSlideNumber": 15,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-15.mjs",
+      "exportName": "slide15"
+    },
+    {
+      "index": 16,
+      "requestedSlideNumber": 16,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-16.mjs",
+      "exportName": "slide16"
+    },
+    {
+      "index": 17,
+      "requestedSlideNumber": 17,
+      "modulePath": "D:\\Research\\Hopfion\\outputs\\019ea4c2-b600-7532-a08e-1f7a08ce6fc9\\presentations\\hopfion-eigenfrequency-explanation\\slides\\slide-17.mjs",
+      "exportName": "slide17"
+    }
+  ]
+}

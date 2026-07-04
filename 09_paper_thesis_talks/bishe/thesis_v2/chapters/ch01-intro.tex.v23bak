@@ -1,0 +1,57 @@
+% 第一章 引言
+\chapter{引言}
+
+\section{选题背景与意义}
+
+伴随后摩尔时代的到来，冯·诺依曼架构因存储单元与运算单元相互分离而陷入访存瓶颈，由此派生出的延迟与功耗代价已难以通过工艺尺寸进一步缩减来化解。为绕开这一体系结构层面的约束，存算一体以及神经形态计算路线近年来成为学界与产业界共同关注的焦点。就硬件载体而言，磁性拓扑结构凭借非易失、低耗散以及与 CMOS 工艺相对兼容等物理属性，被认为是承载上述新型计算范式的有力候选。
+
+在二维层面，斯格明子（Skyrmion）的构建、稳定及其操控已积累了系统的研究基础。相较之下，三维磁性拓扑准粒子霍普夫子（Hopfion）由于具备更高的空间存储密度，并可沿多条自由度方向被驱动\cite{gobel2021beyond}，所能提供的信息承载维度显著扩展。从构型上看，Hopfion 的自旋分布呈现类似三维纽结的拓扑缠绕形态,其整体拓扑特征由 Hopf 指数 $Q_H$ 刻画。当 $Q_H$ 取非零整数时,该结构在涨落、热扰动以及复杂外场耦合下仍可维持几何完整性,这一拓扑保护效应被视作其承担类脑计算功能的物理前提\cite{guslienko2024review}。
+
+然而，就本文关心的核心议题而言，Hopfion 在自旋波激励下的动力学图像目前仍缺乏系统刻画，相关运动规律亦未形成明晰的物理共识。围绕上述空白，本研究借助微磁学数值方法，针对不同磁性体系中 Hopfion 的稳定性边界及其动力学调控机制展开剖析，并进一步评估其在神经形态计算场景下的可行实现路径。
+
+
+\section{国内外研究动态}
+
+\subsection{理论预测与实验观测}
+
+就理论脉络而言，Hopfion 的研究线索可上溯至拓扑学中的 Hopf 映射。针对非中心对称磁性纳米结构中静态 Hopf 孤子的存在性，Tai 与 Smalyukh 给出了较早的理论论证\cite{tai2018static}，由此在固态磁性材料中确立了该结构的可实现性。其后，Kent 等人借助磁性多层膜体系完成了 Hopfion 的构建与观测\cite{kent2021creation}。至 2023 年，立方手性磁体中稳定 Hopfion 环结构的直接成像由 Zheng 团队借助电子全息术得以实现\cite{zheng2023hopfion}，这一结果被视为实验层面具有标志意义的进展。与之相关，螺旋磁体 FeGe 中分数 Hopfion 及其集合体的现象由 Yu 等人率先报道，电流驱动下的运动行为也在同一工作中得到讨论\cite{yu2023realization}。
+
+\subsection{稳定性研究}
+
+Hopfion 若要走向器件落地，稳定性问题便无法回避。针对圆柱形样品体系，Guslienko 的综述系统梳理了 Hopfion 的稳定条件与边界效应\cite{guslienko2024review}。Sallermann 等人则从理论计算角度指出，体块磁体中 Hopfion 的稳定化可由竞争交换相互作用（frustrated exchange）提供有效途径\cite{sallermann2023stability}。
+
+几何限域构成另一条主流的稳定化思路。就手性磁体纳米盘而言，Liu 等人证实其具备束缚 Hopfion 的能力\cite{liu2018binding}；环形纳米环曲率效应的利用路径，则由 Corona 等人以方案形式提出\cite{corona2023curvature}。除此之外，Hopfion 与 Skyrmion 之间的拓扑相变\cite{gao2024topological,souza2025topological}以及所谓时空编织机制\cite{knapman2024spacetime}，亦在近期成为研究关注的焦点。
+
+\subsection{动力学调控}
+
+对 Hopfion 施以精准操控，是其迈向器件应用的关键环节。就电流驱动方向的工作进展来看,铁磁体中 Bloch 型与 N\'{e}el 型 Hopfion 在 STT 作用下的动力学行为，由 Wang 等人给出了首次系统性分析\cite{wang2019current}；其中，轴对称 Hopfion 的回旋矢量满足 $\mathbf{G} = 0$，由此沿电流方向做无霍尔偏转的直线运动。在此基础上，Liu 等人针对三维 Hopfion 在 STT 驱动下的完整动力学作了进一步考察，并厘清了回旋矢量与 Hopf 指数之间的对应关系\cite{liu2020three}。此外，Hopfion 所涌现的磁多极矩结构及其非线性响应特性，亦在 Liu 等人的后续工作中被揭示\cite{liu2022emergent}。
+
+自旋波（Magnon）驱动与电流驱动相比，在热耗散层面具有明显优势。就二维体系而言，自旋波对 Skyrmion 的驱动行为已得到较为充分的考察：Ding 等人关注的是传播自旋波驱动磁性 Skyrmion 的运动规律\cite{ding2015motion}；瞬态逆行运动这一现象，由 Huang 等人在自旋波驱动 Skyrmion 的情形下首次报道\cite{huang2023transient}；对于回旋矢量为零的 Skyrmionium，Shen 等人证明其同样可被自旋波有效驱动\cite{shen2018skyrmionium}。进入三维 Hopfion 体系后，Hopfion 所诱导的磁振子霍尔效应以及磁振子聚焦现象，由 Saji 等人以理论预测的形式给出\cite{saji2023magnonic}。反铁磁体系中 Hopfion 调节自旋波散射特性这一图像，则由 Zhang 等人提出并指出其在元学习方向的应用潜力\cite{zhang2023magnon}。电子在 Hopfion 上散射特性的数值计算，见于 Pershoguba 等人的工作\cite{pershoguba2021electronic}。更进一步的工作来自 Souza 等人：自旋波不仅可以驱动 Hopfion 运动，还可诱导其发生拓扑转变\cite{souza2025topological}，由此为器件设计拓出了新的思路。
+
+
+\section{本文的研究内容与章节安排}
+
+纵览上述脉络可见，Hopfion 的静态构型已在实验层面获得确认，而自旋波驱动下的动力学机制连同神经形态器件的适配方案，目前仍缺乏深入的系统考察。本文依托微磁学模拟软件 Mumax3，围绕如下若干问题展开：
+
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{构型构建}：如何搭建支持任意拓扑荷及反铁磁交替背景的 Hopfion，并同步实现有效的拓扑三维可视化？
+  \item \textbf{稳定性}：就 DMI 铁磁体系以及竞争交换铁磁体系而言，Hopfion 得以稳定存在的参数条件应如何界定？
+  \item \textbf{动力学调控}：自旋波驱动 Hopfion 的运动规律何在？尤其是在铁磁条件下，自旋波激励所诱发的响应特征。
+  \item \textbf{应用探索}：Hopfion 的运动规律能否用于模拟神经元功能？
+\end{enumerate}
+
+就章节组织而言，本文安排如下：
+
+\textbf{第一章}为引言，涉及选题背景、国内外研究动态以及本文研究内容的整体介绍。
+
+\textbf{第二章}为理论基础，依次介绍微磁学模型、Hopfion 的拓扑性质、DMI 与竞争交换相互作用、以及 Thiele 集体坐标方程。
+
+\textbf{第三章}为任意构型 Hopfion 的程序化构建，内容在于将前人提出的高阶拓扑理论模型，转化为可直接用于微磁学模拟的初始态生成脚本与可视化工具。
+
+\textbf{第四章}为 Hopfion 稳定性研究，分别就 DMI 铁磁（FeGe）体系与竞争交换铁磁体系，考察 Hopfion 的稳定条件及其参数相图。
+
+\textbf{第五章}为 Hopfion 动力学调控，围绕自旋波驱动下 Hopfion 的方向选择性、频率响应谱、幅度标度律以及拓扑 Hall 效应展开分析，同时探讨双向轴向控制方案的可行性。
+
+\textbf{第六章}为神经形态计算初步探索，依托 Hopfion 动力学特征评估其作为神经元功能载体的物理可行性，并给出概念器件的设计方案。
+
+\textbf{第七章}为总结与展望，汇总全文主要结论与创新点，并就未来研究方向加以展望。

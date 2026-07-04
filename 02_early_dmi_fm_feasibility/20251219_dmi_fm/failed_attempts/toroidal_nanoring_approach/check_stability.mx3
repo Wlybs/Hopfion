@@ -1,0 +1,54 @@
+// MuMax3 Input Script: check_stability.mx3
+// Modified to simulate: "Curvature-induced stabilization and field-driven dynamics of magnetic hopfions in toroidal nanorings"
+// R M Corona et al 2023 Nanotechnology 34 165702
+
+// --- 1. Define Environment (Grid & Geometry) ---
+// The paper uses a toroidal nanoring with R = 100 nm and r = 80 nm.
+// Cell size is 2 nm.
+SetGridSize(200, 200, 100)
+SetCellSize(2e-9, 2e-9, 2e-9)
+
+// Define Geometry: Toroidal Nanoring
+// Center of the simulation box (200*2nm / 2 = 200nm)
+cx := 200 * 2e-9 / 2
+cy := 200 * 2e-9 / 2
+cz := 100 * 2e-9 / 2
+R_torus := 100e-9
+r_tube  := 80e-9
+
+// Torus formula: (sqrt((x-cx)^2 + (y-cy)^2) - R)^2 + (z-cz)^2 <= r^2
+defRegion(1, pow(sqrt(pow(x-cx, 2) + pow(y-cy, 2)) - R_torus, 2) + pow(z-cz, 2) <= pow(r_tube, 2))
+SetGeom(Region(1))
+
+// --- 2. Define Material Parameters (FeGe) ---
+// Values from the paper's "Theoretical model" section.
+Msat  = 860e3       // Saturation Magnetization (A/m)
+Aex   = 13e-12      // Exchange Stiffness (J/m)
+Dbulk = 1.58e-3     // Bulk DMI Constant (J/m^2). (Paper uses Bulk DMI for FeGe)
+Ku1   = 0           // Vanishing magnetocrystalline anisotropy
+alpha = 0.5         // High damping for relaxation (stability check)
+
+// --- 3. Boundary Conditions ---
+// Isolated nanoring, so Periodic Boundary Conditions are zero.
+// Demagnetizing field is enabled by default in MuMax3.
+
+// --- 4. Load Initial State ---
+// Load the pre-generated Hopfion configuration. 
+// User: Ensure "hopfion_init.ovf" exists or change this to your filename.
+// Note: The loaded state will be masked by SetGeom above.
+m.LoadFile("hopfion_Qh1.ovf")
+
+// --- 5. Simulation Schedule ---
+// Start with 0 external field to check intrinsic stability
+B_ext = vector(0, 0, 0)
+
+// Output settings
+autosave(m, 1e-10)
+tableautosave(1e-11)
+
+// Run Energy Minimization (Relaxation) to find the stable state
+run(5e-9)
+
+// Optional: Dynamic run (uncomment if needed)
+// alpha = 0.008 
+// run(1e-9)

@@ -5,8 +5,8 @@
 - **场景**：与导师 1-on-1 casual talk，无严格时长
 - **目标**：把 Hopfion 项目下所有跑过的仿真完整、诚实地呈现，不掩盖失败与半成品
 - **交付物**：
-  1. `presentation/talk.pptx` — 朴素 PowerPoint，文本框+插图，中文
-  2. `presentation/key_code/` — 阅读型代码包，每多文件目录配 README
+  1. `09_paper_thesis_talks/presentation/talk.pptx` — 朴素 PowerPoint，文本框+插图，中文
+  2. `09_paper_thesis_talks/presentation/key_code/` — 阅读型代码包，每多文件目录配 README
 
 ## 1. 设计原则
 
@@ -24,7 +24,7 @@
 
 | 页 | 仿真目录 | 内容性质 |
 |---|---|---|
-| P1 | `20251219_dmi_fm/successful_simulation/run_analytic_relax.out/` | 现象 + 结论：Sutcliffe 解析初始态 + frozenspins + 退磁 → 2ns 稳定，三条件缺一不可 |
+| P1 | `02_early_dmi_fm_feasibility/20251219_dmi_fm/successful_simulation/run_analytic_relax.out/` | 现象 + 结论：Sutcliffe 解析初始态 + frozenspins + 退磁 → 2ns 稳定，三条件缺一不可 |
 | P2 | `failed_attempts/bulk_pbc_tests/` (2 runs) | 现象：Bulk PBC 螺旋态竞争失败，无成功条件 |
 | P3 | `failed_attempts/sutcliffe_disc_wrong_ansatz/` (4 runs) | 现象：环形 ansatz 4 次失败 |
 | P4 | `failed_attempts/toroidal_nanoring_approach/` (2 runs) | 现象：未完成 |
@@ -76,13 +76,13 @@
 
 | 页 | 仿真目录 | 内容性质 |
 |---|---|---|
-| P23 | `20260310_wang2019_hopfion_STT/` (v1 91 帧 + v2 32 帧) | 结论：Wang 2019 PRL 复现，Bloch Hopfion STT 可驱动 |
+| P23 | `03_wang2019_stt_reproduction/20260310_wang2019_hopfion_STT/` (v1 91 帧 + v2 32 帧) | 结论：Wang 2019 PRL 复现，Bloch Hopfion STT 可驱动 |
 
 ### H. LIF 神经元（P24–P26）
 
 | 页 | 仿真目录 | 内容性质 |
 |---|---|---|
-| P24 | `lif_neuron_hopfion/gradient_ku_verification/` (V2 gradient + uniform) | 结论：PASS，梯度恢复力确认；意外发现 Hopfion 偏好低 Ku 区，与初始假设相反 |
+| P24 | `08_lif_neuron_device_application/lif_neuron_hopfion/gradient_ku_verification/` (V2 gradient + uniform) | 结论：PASS，梯度恢复力确认；意外发现 Hopfion 偏好低 Ku 区，与初始假设相反 |
 | P25 | `lif_cycle_demo/pulse_train_integrate/lif_pulse_train.out/` | 现象：F1 FAILED，t=1.089 ns kill；1100 GHz 推 -z 方向与梯度恢复力同向（非反向），Leak 期持续 overshoot |
 | P26 | Phase 2 重设计候选方案 A/B/C/D | 现状：未开工，4 个候选未定 |
 
@@ -90,8 +90,8 @@
 
 | 页 | 仿真目录 | 内容性质 |
 |---|---|---|
-| P27 | `old_results/My_old_simulation/` (20 runs) | 现象：旧版本系数错误，与当前版差异约 2-3% 拓扑荷，列为系数符号陷阱教训 |
-| P28 | `deviceB_package/` (9 runs) + `srtp/` 学生项目 | 现象：Device B 验证；部分学生工作未完成 |
+| P27 | `01_legacy_srtp_old/old_results/My_old_simulation/` (20 runs) | 现象：旧版本系数错误，与当前版差异约 2-3% 拓扑荷，列为系数符号陷阱教训 |
+| P28 | `90_external_refs/deviceB_package/` (9 runs) + `01_legacy_srtp_old/srtp/` 学生项目 | 现象：Device B 验证；部分学生工作未完成 |
 
 ### 末页（P29）
 
@@ -100,7 +100,7 @@
 ## 3. 代码包结构
 
 ```
-presentation/key_code/
+09_paper_thesis_talks/presentation/key_code/
 ├── README.md                                # 顶层总索引
 │
 ├── 00_shared_libs/                          # 共享分析库
@@ -215,23 +215,23 @@ presentation/key_code/
 **纳入**：
 - 代表性 `.mx3` 脚本（不是 184 个全拷）
 - 关键 Python 分析脚本
-- 共享库 `scripts/*.py`
+- 共享库 `95_shared_scripts/*.py`
 - 关键分析图（PNG）
 
 **排除**：
 - 所有 `.out/` 输出目录与 `.ovf` 帧
-- 毕设 `bishe/`
+- 毕设 `09_paper_thesis_talks/bishe/`
 - 论文 `.tex`
 - bd / mempalace 数据库
 
 ## 4. 工作流程
 
-1. 建 `presentation/key_code/` 子树骨架（含空 README）
+1. 建 `09_paper_thesis_talks/presentation/key_code/` 子树骨架（含空 README）
 2. 拷代码 + 共享库 → 各子目录
 3. 写各级 README
-4. 收图到 `presentation/key_code/figures/`
-5. 写 `presentation/talk_outline.md`（页对页文字 + 图引用）
-6. 用 pptx skill 生成 `presentation/talk.pptx`
+4. 收图到 `09_paper_thesis_talks/presentation/key_code/figures/`
+5. 写 `09_paper_thesis_talks/presentation/talk_outline.md`（页对页文字 + 图引用）
+6. 用 pptx skill 生成 `09_paper_thesis_talks/presentation/talk.pptx`
 7. 走查：对照 P1-P29 检查每页
 
 ### 数据流
@@ -239,11 +239,11 @@ presentation/key_code/
 ```
 源仿真目录 (.out/, .mx3, .py)
         ↓ rsync 排除 .ovf/.out/.tex
-presentation/key_code/<module>/
+09_paper_thesis_talks/presentation/key_code/<module>/
         ↓ README 标注
-presentation/key_code/figures/  ←  从 *.out/analysis/ 收
+09_paper_thesis_talks/presentation/key_code/figures/  ←  从 *.out/analysis/ 收
         ↓ 引用
-presentation/talk_outline.md → talk.pptx
+09_paper_thesis_talks/presentation/talk_outline.md → talk.pptx
 ```
 
 ## 5. 风险与缓解
@@ -259,14 +259,14 @@ presentation/talk_outline.md → talk.pptx
 
 ## 6. 输出位置
 
-- 全部产物：`/mnt/d/Research/Hopfion/presentation/`
-- 不动 `bishe/` 与其它源仿真目录
+- 全部产物：`/mnt/d/Research/Hopfion/09_paper_thesis_talks/presentation/`
+- 不动 `09_paper_thesis_talks/bishe/` 与其它源仿真目录
 
 ## 7. 退出标准
 
-- `presentation/key_code/` 树齐 + 所有 README 写完
-- `presentation/talk.pptx` 29 页齐
-- `presentation/README.md` 一段话使用说明
+- `09_paper_thesis_talks/presentation/key_code/` 树齐 + 所有 README 写完
+- `09_paper_thesis_talks/presentation/talk.pptx` 29 页齐
+- `09_paper_thesis_talks/presentation/README.md` 一段话使用说明
 
 ## 8. 后续
 

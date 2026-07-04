@@ -1,0 +1,17 @@
+Thesis: The study did not show that Hopfions lack eigenfrequencies; it showed that the present measurement chain could not isolate a linear Hopfion-localized mode from boundary quench and background differences.
+Audience: project owner familiar with the simulations but seeking a plain-language, complete explanation.
+Arc:
+1. State the question and final answer.
+2. Separate driven response from eigenfrequency.
+3. Reconstruct the original frequency-scan evidence.
+4. Explain why literature led to pulse ringdown.
+5. Show the first 173.66 GHz candidate.
+6. Show the anomalies that triggered an audit.
+7. Explain boundary quench with a bell-and-stand analogy.
+8. Show C0 zero-field confirmation.
+9. Show C1 re-equilibration and topology preservation.
+10. Show C2 zero-field subtraction and linearity test.
+11. Show the 79.14 GHz candidate failing amplitude scaling and SNR.
+12. Summarize why neither candidate can be called an eigenfrequency.
+13. Explain why expensive follow-up simulations were stopped.
+14. Preserve the scientifically valid conclusions and next theoretical direction.

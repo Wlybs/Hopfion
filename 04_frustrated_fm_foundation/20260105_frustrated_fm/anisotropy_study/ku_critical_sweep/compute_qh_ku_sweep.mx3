@@ -1,0 +1,23 @@
+// Compute Hopf index Q_H for each OVF in Ku sweep using mumax3 builtin
+// Method: ext_hopfindex_solidanglefourier (Berg-Luscher + Fourier)
+
+SetPBC(1, 1, 1)
+SetGridSize(100, 100, 100)
+SetCellSize(0.5e-9, 0.5e-9, 0.5e-9)
+
+tableadd(ext_hopfindex_solidanglefourier)
+tableadd(ext_hopfindex_solidangle)
+tableadd(ext_hopfindex_fivepointstencil)
+
+m.LoadFile("R8r4_Ku0.out/m000020.ovf");   tablesave()
+m.LoadFile("R8r4_Ku5k.out/m000020.ovf");  tablesave()
+m.LoadFile("R8r4_Ku10k.out/m000020.ovf"); tablesave()
+m.LoadFile("R8r4_Ku20k.out/m000020.ovf"); tablesave()
+m.LoadFile("R8r4_Ku30k.out/m000020.ovf"); tablesave()
+m.LoadFile("R8r4_Ku40k.out/m000020.ovf"); tablesave()
+m.LoadFile("R8r4_Ku50k.out/m000020.ovf"); tablesave()
+m.LoadFile("R8r4_Ku52k.out/m000020.ovf"); tablesave()
+m.LoadFile("R8r4_Ku55k.out/m000020.ovf"); tablesave()
+m.LoadFile("R8r4_Ku56k.out/m000020.ovf"); tablesave()
+m.LoadFile("R8r4_Ku57k.out/m000020.ovf"); tablesave()
+m.LoadFile("R8r4_Ku58k.out/m000020.ovf"); tablesave()

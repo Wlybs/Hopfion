@@ -1,0 +1,53 @@
+//mumax 3.11.1 [linux_amd64 go1.24.0(gc) CUDA-12.8]
+//commit hash: 549d2a52
+//CPU info: Intel(R) Core(TM) i7-14650HX, Cores: 12, MHz: 2419.209
+//GPU info: NVIDIA GeForce RTX 5070 Ti Laptop GPU(12226MB), CUDA Driver 12.8, cc=12.0, using cc=120 PTX
+//OS  info: Ubuntu 24.04.4 LTS, Hostname: wjl-5070ti-laptop
+//Timestamp: 2026-03-10 21:30:50
+//(c) Arne Vansteenkiste, Dynamat LAB, Ghent University, Belgium
+//This is free software without any warranty. See license.txt
+//********************************************************************//
+//  If you use mumax in any work or publication,                      //
+//  we kindly ask you to cite the references in references.bib        //
+//********************************************************************//
+//output directory: run_bloch_hopfion.out/
+//starting GUI at http://127.0.0.1:35367
+Nx := 256
+Ny := 256
+Nz := 32
+SetGridSize(Nx, Ny, Nz)
+SetCellSize(0.5e-9, 0.5e-9, 0.5e-9)
+SetPBC(1, 0, 0)
+//resizing...
+Msat = 1.51e5
+Aex = 0.16e-12
+Kbulk := 41e3
+Ku1 = Kbulk
+anisU = vector(0, 0, 1)
+Dbulk = 0.115e-3
+Ks_extra := 1e6
+DefRegion(1, Layers(0, 0))
+DefRegion(2, Layers(Nz-1, Nz-1))
+Ku1.SetRegion(1, Kbulk+Ks_extra)
+Ku1.SetRegion(2, Kbulk+Ks_extra)
+m.LoadFile("../init_states/wang_bloch_hopfion_init.ovf")
+TableAdd(E_Total)
+TableAdd(E_demag)
+tableautosave(1e-12)
+alpha = 1.0
+autosave(m, 2e-11)
+Run(1e-9)
+//Did not use cached kernel: open /tmp/mumax3kernel_[256 256 32]_[1 0 0]_[5e-10 5e-10 5e-10]_6_0 0.ovf: no such file or directory
+// Calculating demag kernel 0 %
+// Calculating demag kernel 100 %
+//Cached kernel: /tmp/mumax3kernel_[256 256 32]_[1 0 0]_[5e-10 5e-10 5e-10]_6_
+saveas(m, "bloch_hopfion_relaxed")
+alpha = 0.05
+autosave(m, 5e-11)
+Run(2e-9)
+saveas(m, "bloch_hopfion_stable")
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).

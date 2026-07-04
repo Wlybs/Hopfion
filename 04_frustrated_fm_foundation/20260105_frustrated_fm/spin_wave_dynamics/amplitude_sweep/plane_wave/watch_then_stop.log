@@ -1,0 +1,6 @@
+[2026-05-14 16:09:02] watcher started: PID 49613, monitoring sw_B0p7T in /mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/run_amplitude_extended.log, target wrapper PID 38216
+[2026-05-14 20:10:18] sw_B0p7T finished detected
+[2026-05-14 20:10:18] sent SIGTERM to wrapper
+[2026-05-14 20:10:19] killing mumax3 sw_B3p0T (pids=99814)
+[2026-05-14 20:10:20] removed partial /mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep/plane_wave/sw_B3p0T.out (had 0 frames)
+[2026-05-14 20:10:20] watcher done, exit

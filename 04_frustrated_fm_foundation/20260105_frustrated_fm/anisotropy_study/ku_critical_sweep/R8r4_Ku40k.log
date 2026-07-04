@@ -1,0 +1,61 @@
+//mumax 3.11.1 [linux_amd64 go1.24.0(gc) CUDA-12.8]
+//commit hash: 549d2a52
+//CPU info: Intel(R) Core(TM) i7-14650HX, Cores: 12, MHz: 2419.209
+//GPU info: NVIDIA GeForce RTX 5070 Ti Laptop GPU(12226MB), CUDA Driver 12.8, cc=12.0, using cc=120 PTX
+//OS  info: Ubuntu 24.04.4 LTS, Hostname: wjl-5070ti-laptop
+//Timestamp: 2026-03-24 15:43:37
+//(c) Arne Vansteenkiste, Dynamat LAB, Ghent University, Belgium
+//This is free software without any warranty. See license.txt
+//********************************************************************//
+//  If you use mumax in any work or publication,                      //
+//  we kindly ask you to cite the references in references.bib        //
+//********************************************************************//
+//output directory: R8r4_Ku40k.out/
+//starting GUI at http://127.0.0.1:35367
+cellsize := 0.5e-9
+Ms_val := 150000.0
+A_base := 5e-12
+SetGridSize(100, 100, 100)
+SetCellSize(cellsize, cellsize, cellsize)
+SetPBC(1, 1, 1)
+//resizing...
+Msat = Ms_val
+Aex = A_base
+Dbulk = 0
+Dind = 0
+Ku1 = 40000
+anisU = vector(0, 0, 1)
+EnableDemag = false
+alpha = 0.2
+A_J4 := A_base * (-0.082)
+Coeff_J4 := A_J4 * 2.0 / (Ms_val * cellsize * cellsize)
+sum_J4 := Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, 2))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, -2))
+AddFieldTerm(Mul(Const(Coeff_J4), sum_J4))
+A_J2 := A_base * (-0.164)
+Coeff_J2 := A_J2 * 2.0 / (Ms_val * cellsize * cellsize)
+sum_J2 := Add(Shifted(m, 1, 1, 0), Shifted(m, 1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, -1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, -1))
+AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
+m.LoadFile("hopfion_z_R8_r4.ovf")
+autosave(m, 5e-11)
+tableautosave(1e-11)
+TableAdd(E_Total)
+run(1e-9)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).

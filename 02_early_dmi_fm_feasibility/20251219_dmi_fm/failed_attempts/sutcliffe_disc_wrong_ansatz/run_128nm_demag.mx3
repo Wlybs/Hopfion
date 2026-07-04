@@ -1,0 +1,42 @@
+// FeGe Bloch Hopfion - 论文几何 + 退磁场
+// 参考: Khodzhaev & Turgut, J. Phys.: Condens. Matter 34, 225805 (2022)
+//
+// 关键修正:
+//   1. 使用 Relax() 做能量最小化（找局部极小，不越过势垒）
+//   2. 随后 Run() 低阻尼验证动力学稳定性
+//   3. EnableDemag=true（论文关键结论：退磁场稳定 Hopfion）
+//
+// FeGe @ 276K: Msat=384kA/m, Aex=8.78pJ/m, Dbulk=1.58mJ/m2, lambda=70nm
+// 圆柱盘: d=128nm (~2lambda), h=64nm (~lambda)
+// 网格: 64x64x32 @ 2nm
+
+SetGridSize(64, 64, 32)
+SetCellSize(2e-09, 2e-09, 2e-09)
+
+Diameter := 1.28e-07   // 128nm = 2*lambda
+Height   := 6.4e-08    // 64nm  = lambda
+SetGeom(Cylinder(Diameter, Height))
+
+Msat  = 384e3
+Aex   = 8.78e-12
+Dbulk = 1.58e-3
+Ku1   = 0
+// EnableDemag 默认 true
+
+alpha = 0.5            // 高阻尼用于弛豫
+m.LoadFile("hopfion_128nm_init.ovf")
+
+// 阶段1: 能量最小化（找 Hopfion 局部极小）
+TableAdd(E_Total)
+TableAdd(E_demag)
+tableautosave(1e-11)
+Relax()
+
+saveas(m, "hopfion_relax_state")
+
+// 阶段2: 低阻尼时间演化，验证动力学稳定性
+alpha = 0.01
+autosave(m, 5e-10)     // 每 500ps 存一帧
+Run(5e-9)              // 5ns 动力学验证
+
+saveas(m, "hopfion_128nm_demag_final")

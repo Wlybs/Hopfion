@@ -1,0 +1,74 @@
+// file: hopfion_rings_nature2023.mx3
+// Purpose: Reproduce cubic-chiral-magnet hopfion ring micromagnetics (bulk DMI) with MuMax3.
+// System: FeGe-like B20 chiral magnet disk (bulk DMI), relaxed from a Hopfion ansatz, then field sweep.
+// Note: Geometry/params chosen from the paper’s SI; this script is self-contained.
+
+// ---------- Mesh & units ----------
+SetGridsize(256, 256, 78)        // nx, ny, nz cells
+SetCellsize(2e-9, 2e-9, 2e-9)    // 2 nm cubic cells
+SetPBC(0,0,0)
+
+// ---------- Material parameters (FeGe-like, bulk DMI) ----------
+Msat = 384e3          // A/m
+Aex  = 8.78e-12       // J/m
+Dbulk = 1.58e-3       // J/m^2  (bulk DMI)
+alpha = 0.02
+gammaLL = 2.211e5     // m/(A·s)
+xi = 0                 // no non-adiabatic STT
+Pol = 0                // no STT
+
+// Weak cubic anisotropy neglected; use a tiny easy-axis to aid relaxation:
+Ku1 = 2e3               // J/m^3
+anisU = vector(0,0,1)
+
+// ---------- Geometry: cylinder (disk) ----------
+defRegion(1, cylinder(256e-9/2)) // radius = 256 cells * 2nm /2 = 256 nm
+setgeom(region(1))
+
+// ---------- Initial state: Hopfion ansatz (Bloch-type in bulk-DMI) ----------
+R0 := 140e-9  // major radius of torus (≈ diameter/2 - margin)
+r0 := 40e-9   // minor radius (tube radius)
+z0 := 0.0
+// Profile functions:
+func theta(ρ float64) float64 { // polar twist across tube (0 -> pi)
+    // smooth 180° twist localized within tube radius
+    return Pi * (1 - 1/(1 + pow(r0/ρ, 2)))
+}
+func phi(x,y float64) float64 {
+    return atan2(y, x) // azimuthal around z
+}
+func hopfion(m *data.Vector, r *data.Vector) {
+    x := r.X(); y := r.Y(); z := r.Z()
+    // Map to toroidal distance from ring centered at radius R0 in xy-plane
+    ρ := sqrt( pow( sqrt(x*x+y*y) - R0, 2 ) + pow(z - z0, 2) ) + 1e-18
+    th := theta(ρ)
+    ph := phi(x,y)
+    // Bloch-type winding around tube:
+    mx :=  cos(ph)*sin(th)
+    my :=  sin(ph)*sin(th)
+    mz :=  cos(th)
+    m.Set(mx, my, mz)
+}
+m = NewVector(1,1,1)
+m.Set(hopfion)
+
+// Slight randomization to escape saddle points
+m = m + 0.01*randVec()
+
+// ---------- Relax ----------
+Autosave(m, 1e-9)       // save during relaxation
+minimize()              // energy minimization
+relax()
+
+// ---------- Field sweep ----------
+Bext = vector(0, 0, 0.03)  // 30 mT along +z
+run(5e-9)
+autosave(m, 5e-9)
+tablesave()
+saveas(m, "m_relaxed.omf")
+saveas(B_eff, "Beff.ovf")
+saveas(E_total, "E.txt")
+
+// ---------- Exports ----------
+tableautosave(1e-10)
+snapshot("hopfion_rings_nature2023.png")

@@ -1,0 +1,202 @@
+=== Centered Hopfion Stability Tests ===
+Started: Fri Mar 20 10:26:49 CST 2026
+
+--- Running stability_Ku0.mx3 ---
+Start: Fri Mar 20 10:26:49 CST 2026
+//mumax 3.11.1 [linux_amd64 go1.24.0(gc) CUDA-12.8]
+//commit hash: 549d2a52
+//CPU info: Intel(R) Core(TM) i7-14650HX, Cores: 12, MHz: 2419.209
+//GPU info: NVIDIA GeForce RTX 5070 Ti Laptop GPU(12226MB), CUDA Driver 12.8, cc=12.0, using cc=120 PTX
+//OS  info: Ubuntu 24.04.4 LTS, Hostname: wjl-5070ti-laptop
+//Timestamp: 2026-03-20 10:26:49
+//(c) Arne Vansteenkiste, Dynamat LAB, Ghent University, Belgium
+//This is free software without any warranty. See license.txt
+//********************************************************************//
+//  If you use mumax in any work or publication,                      //
+//  we kindly ask you to cite the references in references.bib        //
+//********************************************************************//
+//output directory: /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/centered_stability_test/stability_Ku0.out/
+//starting GUI at http://127.0.0.1:35367
+CellSize := 0.5e-9
+SetGridSize(100, 100, 100)
+SetCellSize(CellSize, CellSize, CellSize)
+SetPBC(1, 1, 1)
+//resizing...
+EnableDemag = false
+Ms := 1.5e5
+Msat = Ms
+A_base := 5e-12
+Aex = A_base
+Dbulk = 0
+Dind = 0
+Ku1 = 0
+anisU = vector(0, 0, 1)
+alpha = 0.2
+A_J4 := A_base * (-0.082)
+Coeff_J4 := A_J4 * 2.0 / (Ms * CellSize * CellSize)
+sum_J4 := Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, 2))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, -2))
+AddFieldTerm(Mul(Const(Coeff_J4), sum_J4))
+A_J2 := A_base * (-0.164)
+Coeff_J2 := A_J2 * 2.0 / (Ms * CellSize * CellSize)
+sum_J2 := Add(Shifted(m, 1, 1, 0), Shifted(m, 1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, -1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, -1))
+AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
+m.LoadFile("/mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/centered_stability_test/centered_Ku0.ovf")
+autosave(m, 5e-11)
+tableautosave(1e-11)
+TableAdd(E_Total)
+run(1e-9)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+End: Fri Mar 20 13:44:32 CST 2026
+Exit code: 0
+
+--- Running stability_Ku10k.mx3 ---
+Start: Fri Mar 20 13:44:32 CST 2026
+//mumax 3.11.1 [linux_amd64 go1.24.0(gc) CUDA-12.8]
+//commit hash: 549d2a52
+//CPU info: Intel(R) Core(TM) i7-14650HX, Cores: 12, MHz: 2419.209
+//GPU info: NVIDIA GeForce RTX 5070 Ti Laptop GPU(12226MB), CUDA Driver 12.8, cc=12.0, using cc=120 PTX
+//OS  info: Ubuntu 24.04.4 LTS, Hostname: wjl-5070ti-laptop
+//Timestamp: 2026-03-20 13:44:32
+//(c) Arne Vansteenkiste, Dynamat LAB, Ghent University, Belgium
+//This is free software without any warranty. See license.txt
+//********************************************************************//
+//  If you use mumax in any work or publication,                      //
+//  we kindly ask you to cite the references in references.bib        //
+//********************************************************************//
+//output directory: /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/centered_stability_test/stability_Ku10k.out/
+//starting GUI at http://127.0.0.1:35367
+CellSize := 0.5e-9
+SetGridSize(100, 100, 100)
+SetCellSize(CellSize, CellSize, CellSize)
+SetPBC(1, 1, 1)
+//resizing...
+EnableDemag = false
+Ms := 1.5e5
+Msat = Ms
+A_base := 5e-12
+Aex = A_base
+Dbulk = 0
+Dind = 0
+Ku1 = 1e4
+anisU = vector(0, 0, 1)
+alpha = 0.2
+A_J4 := A_base * (-0.082)
+Coeff_J4 := A_J4 * 2.0 / (Ms * CellSize * CellSize)
+sum_J4 := Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, 2))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, -2))
+AddFieldTerm(Mul(Const(Coeff_J4), sum_J4))
+A_J2 := A_base * (-0.164)
+Coeff_J2 := A_J2 * 2.0 / (Ms * CellSize * CellSize)
+sum_J2 := Add(Shifted(m, 1, 1, 0), Shifted(m, 1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, -1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, -1))
+AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
+m.LoadFile("/mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/centered_stability_test/centered_Ku10k.ovf")
+autosave(m, 5e-11)
+tableautosave(1e-11)
+TableAdd(E_Total)
+run(1e-9)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+End: Fri Mar 20 16:40:47 CST 2026
+Exit code: 0
+
+--- Running stability_Ku50k.mx3 ---
+Start: Fri Mar 20 16:40:47 CST 2026
+//mumax 3.11.1 [linux_amd64 go1.24.0(gc) CUDA-12.8]
+//commit hash: 549d2a52
+//CPU info: Intel(R) Core(TM) i7-14650HX, Cores: 12, MHz: 2419.209
+//GPU info: NVIDIA GeForce RTX 5070 Ti Laptop GPU(12226MB), CUDA Driver 12.8, cc=12.0, using cc=120 PTX
+//OS  info: Ubuntu 24.04.4 LTS, Hostname: wjl-5070ti-laptop
+//Timestamp: 2026-03-20 16:40:48
+//(c) Arne Vansteenkiste, Dynamat LAB, Ghent University, Belgium
+//This is free software without any warranty. See license.txt
+//********************************************************************//
+//  If you use mumax in any work or publication,                      //
+//  we kindly ask you to cite the references in references.bib        //
+//********************************************************************//
+//output directory: /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/centered_stability_test/stability_Ku50k.out/
+//starting GUI at http://127.0.0.1:35367
+CellSize := 0.5e-9
+SetGridSize(100, 100, 100)
+SetCellSize(CellSize, CellSize, CellSize)
+SetPBC(1, 1, 1)
+//resizing...
+EnableDemag = false
+Ms := 1.5e5
+Msat = Ms
+A_base := 5e-12
+Aex = A_base
+Dbulk = 0
+Dind = 0
+Ku1 = 5e4
+anisU = vector(0, 0, 1)
+alpha = 0.2
+A_J4 := A_base * (-0.082)
+Coeff_J4 := A_J4 * 2.0 / (Ms * CellSize * CellSize)
+sum_J4 := Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, 2))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, -2))
+AddFieldTerm(Mul(Const(Coeff_J4), sum_J4))
+A_J2 := A_base * (-0.164)
+Coeff_J2 := A_J2 * 2.0 / (Ms * CellSize * CellSize)
+sum_J2 := Add(Shifted(m, 1, 1, 0), Shifted(m, 1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, -1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, -1))
+AddFieldTerm(Mul(Const(Coeff_J2), sum_J2))
+m.LoadFile("/mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/centered_stability_test/centered_Ku50k.ovf")
+autosave(m, 5e-11)
+tableautosave(1e-11)
+TableAdd(E_Total)
+run(1e-9)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+End: Fri Mar 20 20:04:01 CST 2026
+Exit code: 0
+
+=== All tests completed: Fri Mar 20 20:04:01 CST 2026 ===

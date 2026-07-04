@@ -1,0 +1,46 @@
+//mumax 3.11.1 [linux_amd64 go1.22.4(gc) CUDA-12.0]
+//commit hash: ee077035
+//CPU info: AMD EPYC 7402 24-Core Processor, Cores: 24, MHz: 1499.799
+//GPU info: NVIDIA GeForce RTX 3090(24259MB), CUDA Driver 12.2, cc=8.6, using cc=86 PTX
+//OS  info: Ubuntu 22.04.3 LTS, Hostname: I236e5ae02100801afb
+//Timestamp: 2025-08-29 08:23:48
+//(c) Arne Vansteenkiste, Dynamat LAB, Ghent University, Belgium
+//This is free software without any warranty. See license.txt
+//********************************************************************//
+//  If you use mumax in any work or publication,                      //
+//  we kindly ask you to cite the references in references.bib        //
+//********************************************************************//
+//output directory: 20240828.out/
+CellSize := 0.5e-9
+SetGridSize(100, 100, 100)
+SetCellSize(CellSize, CellSize, CellSize)
+DefRegion(1, XRange(24.5e-9, 25e-9))
+DefRegion(2, XRange(-25e-9, -24.5e-9))
+DefRegion(3, ZRange(-10e-9, -9.5e-9))
+OpenBC = false
+EnableDemag = false
+Ms := 1.51e5
+Msat = Ms
+A := 0.5e-12
+Aex = -A
+Kc1 = 1e3
+anisC1 = vector(1, 0, 0)
+anisC2 = vector(0, 1, 0)
+Ku1 = 1e4
+anisU = vector(0, 0, 1)
+alpha = 0.005
+Dbulk = 0.115e-3
+m.LoadFile("stable-state-h+1+2_trans_q=2.ovf")
+B_sw1 := 2.0
+B_sw2 := 2.0
+f_sw := 440e9 * 2 * pi
+f_curve := 2 * pi / 10e-9
+phi_shift := pi * 25. / 180
+B_ext.setRegion(3, Vector(sin(f_sw*t), 0, 0))
+autosave(m, 5e-11)
+run(25e-9)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).

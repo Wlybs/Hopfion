@@ -1,0 +1,40 @@
+// Néel Hopfion v3 - R=12nm, r=3nm（管壁与圆盘面留 1nm 间距）
+//
+// 参考: Khodzhaev & Turgut 2022, J. Phys.: Condens. Matter 34, 225805
+//
+// v3 改动:
+//   - 初始态: neel_hopfion_init_r3.ovf（r=3nm，管壁不接触圆盘顶/底面）
+//   - 外场: -0.3T（论文稳定范围内靠近强场端，增强核心稳定性）
+//   - 弛豫: alpha=5.0 高阻尼 Run(0.5ns) 替代 Relax()
+
+Nx := 128; Ny := 128; Nz := 16
+SetGridSize(Nx, Ny, Nz)
+SetCellSize(0.5e-9, 0.5e-9, 0.5e-9)
+SetGeom(Cylinder(64e-9, 8e-9))
+
+Msat  = 3e5
+Aex   = 1.1e-12
+Dind  = 1.15e-3
+Ku1   = 1e6
+anisU = vector(0, 0, 1)
+
+// 外场 -0.3T（v3 调大：增强核心 mz=-1 稳定性）
+B_ext = vector(0, 0, -0.3)
+
+m.LoadFile("neel_hopfion_init_r3.ovf")
+
+TableAdd(E_Total)
+TableAdd(E_demag)
+tableautosave(1e-12)
+
+// 高阻尼弛豫（保守拓扑，不越过拓扑势垒）
+alpha = 5.0
+autosave(m, 5e-11)
+Run(0.5e-9)
+saveas(m, "neel_hopfion_relaxed")
+
+// 低阻尼验证稳定性
+alpha = 0.02
+autosave(m, 2e-11)
+Run(2e-9)
+saveas(m, "neel_hopfion_final")

@@ -1,0 +1,160 @@
+% 第二章 理论基础
+\chapter{理论基础}
+
+\section{微磁学模型}
+
+\subsection{连续介质近似}
+
+微磁学（Micromagnetics）是研究纳米尺度磁性材料中磁化动力学的理论框架。在连续介质近似下，局域磁化矢量 $\mathbf{M}(\mathbf{r}, t)$ 的模为饱和磁化强度 $M_s$，方向由单位矢量 $\mathbf{m}(\mathbf{r}, t) = \mathbf{M}/M_s$ 描述，其中 $|\mathbf{m}| = 1$。
+
+系统的总自由能 $E_{\text{total}}$ 由多种能量贡献组成：
+\begin{equation}
+  E_{\text{total}} = E_{\text{ex}} + E_{\text{DMI}} + E_{\text{anis}} + E_{\text{demag}} + E_{\text{Zeeman}}
+  \label{eq:total-energy}
+\end{equation}
+其中各项分别为交换能、Dzyaloshinskii-Moriya 相互作用（DMI）能、磁晶各向异性能、退磁能和塞曼能。
+
+\subsection{交换相互作用}
+
+海森堡交换相互作用趋于使相邻磁矩平行排列，其连续介质形式为：
+\begin{equation}
+  E_{\text{ex}} = \int A_{\text{ex}} \left[ (\nabla m_x)^2 + (\nabla m_y)^2 + (\nabla m_z)^2 \right] \, dV
+  \label{eq:exchange}
+\end{equation}
+其中 $A_{\text{ex}}$ 为交换刚度常数，单位为 $\si{J/m}$。
+
+在竞争交换体系中，除最近邻铁磁交换 $J_1 > 0$ 外，还存在次近邻反铁磁交换 $J_2 < 0$ 和第四近邻反铁磁交换 $J_4 < 0$，这种"受挫"交换相互作用能够支撑三维拓扑结构的稳定\cite{sallermann2023stability}。
+
+\subsection{Dzyaloshinskii-Moriya 相互作用}
+
+DMI 是一种反对称交换相互作用，源自自旋-轨道耦合与空间反演对称性破缺的联合效应。它倾向于使相邻磁矩垂直排列，是产生手性磁性拓扑结构的关键因素。
+
+对于体积型（Bulk）DMI，能量密度为：
+\begin{equation}
+  \varepsilon_{\text{DMI}}^{\text{bulk}} = D_{\text{bulk}} \, \mathbf{m} \cdot (\nabla \times \mathbf{m})
+  \label{eq:dmi-bulk}
+\end{equation}
+其中 $D_{\text{bulk}}$ 为体积型 DMI 常数。此类 DMI 常见于手性磁体如 FeGe、MnSi 等 B20 型晶体结构中。
+
+对于界面型（Interfacial）DMI，能量密度为：
+\begin{equation}
+  \varepsilon_{\text{DMI}}^{\text{int}} = D_{\text{int}} \left( m_z \nabla \cdot \mathbf{m} - (\mathbf{m} \cdot \nabla) m_z \right)
+  \label{eq:dmi-int}
+\end{equation}
+体积型 DMI 产生 Bloch 型 Hopfion，界面型 DMI 则产生 N\'{e}el 型 Hopfion。
+
+\subsection{磁晶各向异性}
+
+单轴磁晶各向异性能量密度为：
+\begin{equation}
+  \varepsilon_{\text{anis}} = K_{u1} (1 - m_z^2)
+  \label{eq:anisotropy}
+\end{equation}
+其中 $K_{u1}$ 为一阶各向异性常数。$K_{u1} > 0$ 对应易轴各向异性（沿 $z$ 轴），有利于均匀背景磁化的维持，但过强的各向异性会压缩 Hopfion 至消解。
+
+\subsection{退磁场}
+
+退磁场 $\mathbf{H}_{\text{demag}}$ 源于样品有限尺寸引起的磁荷分布，通过求解磁静力学方程获得：
+\begin{equation}
+  \nabla \cdot \mathbf{H}_{\text{demag}} = -\nabla \cdot \mathbf{M}
+  \label{eq:demag}
+\end{equation}
+退磁场计算是微磁学模拟中最耗时的步骤，Mumax3 采用快速傅里叶变换（FFT）进行高效计算。退磁效应对有限尺寸样品中 Hopfion 的稳定起重要作用。
+
+
+\section{Landau-Lifshitz-Gilbert 方程}
+
+磁化动力学由 Landau-Lifshitz-Gilbert（LLG）方程描述：
+\begin{equation}
+  \frac{\partial \mathbf{m}}{\partial t} = -\gamma_0 \, \mathbf{m} \times \mathbf{H}_{\text{eff}} + \alpha \, \mathbf{m} \times \frac{\partial \mathbf{m}}{\partial t}
+  \label{eq:llg}
+\end{equation}
+其中 $\gamma_0 = \mu_0 |\gamma_e|$ 为旋磁比（$\gamma_e$ 为电子旋磁比），$\alpha$ 为 Gilbert 阻尼常数，$\mathbf{H}_{\text{eff}} = -\frac{1}{\mu_0 M_s}\frac{\delta E_{\text{total}}}{\delta \mathbf{m}}$ 为有效场。
+
+LLG 方程描述了两种基本运动模式：进动项 $\mathbf{m} \times \mathbf{H}_{\text{eff}}$ 使磁化绕有效场旋转；阻尼项使磁化趋向有效场方向。在微磁学模拟中，弛豫（Relax）过程对应 $\alpha \to \infty$ 的极限，系统快速收敛到能量极小值。
+
+\subsection{自旋转移力矩}
+
+当自旋极化电流流过磁性材料时，传导电子的自旋角动量转移至局域磁矩，产生自旋转移力矩（STT）。Zhang-Li 模型将 STT 分为绝热项和非绝热项：
+\begin{equation}
+  \mathbf{T}_{\text{STT}} = -(\mathbf{u} \cdot \nabla)\mathbf{m} + \beta \, \mathbf{m} \times [(\mathbf{u} \cdot \nabla)\mathbf{m}]
+  \label{eq:stt}
+\end{equation}
+其中 $\mathbf{u} = \frac{P j_e \mu_B}{e M_s}$ 为与电流密度成正比的速度矢量，$P$ 为自旋极化率，$\beta$ 为非绝热系数。
+
+
+\subsection{自旋波与磁振子}
+
+铁磁体中，平衡态各磁矩平行排列。受局域扰动后，相邻磁矩偏离平衡方向，通过交换相互作用协同进动，形成空间周期性的集体振荡模式——\textbf{自旋波}（spin wave）。其能量量子称为\textbf{磁振子}（magnon）。
+
+在零偏置场铁磁体中，交换主导的自旋波色散关系为：
+\begin{equation}
+  \omega_k = \gamma_0 \frac{2A_{\text{ex}}}{M_s} k^2
+  \label{eq:sw-dispersion}
+\end{equation}
+其中 $k = |\mathbf{k}|$ 为波矢幅值，$2A_{\text{ex}}/M_s$ 为交换刚度参数。该抛物型色散表明，自旋波频率随波矢增大而升高，短波磁振子具有更高能量。
+
+在竞争交换铁磁体系中，次近邻（$J_2 < 0$）和第四近邻（$J_4 < 0$）的反铁磁交换对上述色散关系产生显著修正。在长波极限（$k \to 0$）下，体系行为仍由铁磁 $J_1$ 主导，保留抛物型特征；而在短波区域，竞争交换使色散曲线偏离抛物型，并在特定波矢 $k^*$ 处形成极小值：
+\begin{equation}
+  k^* \approx \left(\frac{|J_2|}{J_1}\right)^{1/2} \frac{1}{a}
+  \label{eq:sw-kstar}
+\end{equation}
+其中 $a$ 为格点间距。$k^*$ 处的磁振子软化与体系的螺旋不稳定性相关，并决定了 Hopfion 的特征尺寸。
+
+在微磁学仿真中，自旋波通过在局域薄片区域施加时变磁场来激发：
+\begin{equation}
+  \mathbf{B}_{\text{sw}}(\mathbf{r}, t) = B_0 \sin(2\pi f_{\text{sw}} t) \cdot \hat{e} \cdot \chi(\mathbf{r})
+  \label{eq:sw-excitation}
+\end{equation}
+其中 $B_0$ 为激发振幅，$f_{\text{sw}}$ 为驱动频率，$\hat{e}$ 为振荡极化方向，$\chi(\mathbf{r})$ 为源区域空间窗函数（取值 0 或 1）。边界处设置吸收层（高阻尼区域），防止反射波干扰，模拟半无限介质中单向自旋波传播。
+
+自旋波与磁性拓扑结构的相互作用是近年研究热点\cite{liu2020three}。当自旋波入射至 Hopfion 时，可通过以下机制驱动其运动：（1）散射截面不对称性导致的辐射压力；（2）拓扑磁荷与自旋波角动量的直接耦合。激发频率和振幅的选取决定耦合效率，构成第四章动力学调控研究的核心参数空间。
+
+
+\section{磁性霍普夫子的拓扑性质}
+
+\subsection{Hopf 映射与 Hopf 指数}
+
+Hopfion 的拓扑性质源于 Hopf 映射 $S^3 \to S^2$。磁化场 $\mathbf{m}(\mathbf{r})$ 将三维空间（紧致化后等价于 $S^3$）映射到磁化方向空间 $S^2$。Hopf 指数定义为：
+\begin{equation}
+  Q_H = -\frac{1}{4\pi^2} \int \mathbf{F} \cdot \mathbf{A} \, d^3r
+  \label{eq:hopf-index}
+\end{equation}
+其中 $\mathbf{F}$ 为涌现电磁场张量，$\mathbf{A}$ 为对应的矢量势。$Q_H$ 是整数拓扑不变量，$Q_H = 1$ 对应最简单的 Hopfion。
+
+\subsection{Preimage 结构}
+
+Hopfion 最直观的理解方式是"preimage"（原像）概念：$S^2$ 上任意一点的 preimage——即空间中所有磁化方向等于该点的位置集合——构成一条闭合曲线。不同方向对应的 preimage 曲线之间相互链接，链接数等于 Hopf 指数 $Q_H$。
+
+对于 $Q_H = 1$ 的 Hopfion，其核心结构可理解为：一根沿 $z$ 轴的反向磁化管（$m_z = -1$ 的 preimage）被包裹在均匀背景（$m_z = +1$）中，中间过渡区域的磁化矢量在环面上连续旋转，形成类似甜甜圈的纽结结构。
+
+
+\section{Thiele 集体坐标方程}
+
+对于刚性运动的磁性拓扑结构，Thiele 方程将 LLG 方程约化为质心运动方程：
+\begin{equation}
+  \mathbf{G} \times \mathbf{v} + \mathcal{D} \cdot \mathbf{v} = \mathbf{F}
+  \label{eq:thiele}
+\end{equation}
+其中 $\mathbf{v}$ 为 Hopfion 质心速度，$\mathbf{F}$ 为外部驱动力，$\mathcal{D}$ 为耗散张量，$\mathbf{G}$ 为回旋矢量。
+
+对于 Hopfion，回旋矢量 $\mathbf{G}$ 与 Hopf 指数的关系为\cite{liu2020three}：
+\begin{equation}
+  G_i = \frac{\mu_0 M_s}{\gamma_0} \int \epsilon_{ijk} \, \mathbf{m} \cdot \left( \frac{\partial \mathbf{m}}{\partial x_j} \times \frac{\partial \mathbf{m}}{\partial x_k} \right) d^3r
+  \label{eq:gyrovector}
+\end{equation}
+
+值得注意的是，对于轴对称 Hopfion，Wang 等人\cite{wang2019current}和 Liu 等人\cite{liu2020three}均发现理论预测 $\mathbf{G} = 0$，这意味着 STT 驱动下 Hopfion 不会产生霍尔偏转——与二维 Skyrmion 的行为截然不同。
+
+
+\section{Mumax3 仿真平台}
+
+Mumax3 是一款基于 GPU 加速的开源微磁学模拟软件，采用有限差分法在均匀网格上求解 LLG 方程\cite{vansteenkiste2014design}。其核心优势包括：
+
+\begin{enumerate}[label=(\arabic*)]
+  \item \textbf{GPU 并行加速}：利用 CUDA 进行大规模并行计算，相比 CPU 求解器可实现数十倍加速。
+  \item \textbf{FFT 退磁场计算}：采用快速傅里叶变换高效计算退磁场，适用于大规模三维模拟。
+  \item \textbf{灵活的脚本接口}：使用 Go 语言风格的脚本进行参数设置和仿真控制。
+\end{enumerate}
+
+本文所有的微磁学模拟均在配备 NVIDIA RTX 5070 Ti Laptop GPU 的本地笔记本电脑，以及位于杭州电子科技大学第三教学楼 519 实验室的配备 NVIDIA GeForce RTX 2080 Ti GPU 的工作站上，使用 Mumax3 v3.11.1 软件共同完成。

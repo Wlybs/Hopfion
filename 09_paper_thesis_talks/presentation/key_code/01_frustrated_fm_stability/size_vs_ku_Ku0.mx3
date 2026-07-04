@@ -1,0 +1,60 @@
+
+// 1. 基础物理参数设定
+cellsize   := 0.5e-9
+Ms_val := 150000.0
+A_base := 5e-12
+
+SetGridSize(100, 100, 100)
+SetCellSize(cellsize, cellsize, cellsize)
+SetPBC(1, 1, 1) 
+
+Msat  = Ms_val
+Aex = A_base
+Dbulk = 0
+Dind  = 0
+Ku1   = 0
+anisU = vector(0, 0, 1)
+EnableDemag = false
+alpha		= 0.2
+
+// 2. 计算场强系数因子
+factor := 2.0 / (Ms_val * cellsize * cellsize)
+
+// 3. 实现 J4 (第四近邻, 距离 2a, 6个邻居)
+A_J4 := A_base * (-0.082)
+Coeff_J4 := A_J4 * factor
+
+sum_J4 :=     Add(Shifted(m, 2, 0, 0), Shifted(m, -2, 0, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, -2, 0))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, 2))
+sum_J4 = Add(sum_J4, Shifted(m, 0, 0, -2))
+
+B_J4 := Mul(Const(Coeff_J4), sum_J4)
+AddFieldTerm(B_J4)
+
+// 4. 实现 J2 (次近邻, 距离 sqrt(2)a, 12个邻居)
+A_J2 := A_base * (-0.164)
+Coeff_J2 := A_J2 * factor
+
+sum_J2 :=     Add(Shifted(m, 1, 1, 0), Shifted(m, 1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, -1, -1, 0))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, 1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 0, -1, -1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, 1, 0, -1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, 1))
+sum_J2 = Add(sum_J2, Shifted(m, -1, 0, -1))
+
+B_J2 := Mul(Const(Coeff_J2), sum_J2)
+AddFieldTerm(B_J2)
+
+m.LoadFile("hopfion_Qh1_FM_SMALL.ovf")
+
+autosave(m, 1e-10)
+tableautosave(1e-11)
+TableAdd(E_Total)
+run(3e-09)

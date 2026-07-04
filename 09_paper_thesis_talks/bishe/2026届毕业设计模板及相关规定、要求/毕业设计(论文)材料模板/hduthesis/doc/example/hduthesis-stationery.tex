@@ -1,0 +1,36 @@
+\documentclass[mode = stationery]{hduthesis}
+
+\usepackage{lipsum}
+\usepackage [ mono = false ] {libertine}
+
+\hduset
+  {
+    title      = Recommendation Letter for SAN Chi Nan,
+    author     = YIP Tsz Ching,
+    mail       = email@server.domain,
+    date       = \today,
+    watermark  = true
+  }
+
+\begin{document}
+
+\maketitle
+
+Dear Prof. Wong,
+
+\lipsum[1-2]
+
+\vfill \raggedleft
+
+Sincerely yours,\\[4ex]
+\includegraphics[ height = 2em ]{hdu-title}\\[2ex]
+Professor of Department of Physics\\
+Hangzhou Dianzi University (Xiasha Campus)
+
+\vspace{\baselineskip}
+
+\clearpage
+
+\notelines[25]
+
+\end{document}

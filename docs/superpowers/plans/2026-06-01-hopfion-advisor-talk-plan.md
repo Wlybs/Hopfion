@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 在 `presentation/` 下产出 (1) 29 页 PPT `talk.pptx`，(2) 阅读型代码包 `key_code/` 含 10 子目录与 README，完整呈现 Hopfion 项目所有 184 个仿真的真实结果（包括失败与半成品）。
+**Goal:** 在 `09_paper_thesis_talks/presentation/` 下产出 (1) 29 页 PPT `talk.pptx`，(2) 阅读型代码包 `key_code/` 含 10 子目录与 README，完整呈现 Hopfion 项目所有 184 个仿真的真实结果（包括失败与半成品）。
 
 **Architecture:** 两条独立任务线。代码包：从 4 个源目录拷代表性 `.mx3`/`.py` + 共享库 + 关键分析图，每多文件子目录配 README。PPT：朴素文本框+插图，29 页按 A-I 九块结构，纯结果叙事不掩盖失败。
 
@@ -13,7 +13,7 @@
 ## File Structure
 
 ```
-presentation/
+09_paper_thesis_talks/presentation/
 ├── README.md                           # 顶层使用说明（T15 创建）
 ├── talk.pptx                           # 最终 PPT（T17 生成）
 ├── talk_outline.md                     # 页对页文字稿（T16 创建）
@@ -47,27 +47,27 @@ find /mnt/d/Research/Hopfion/<dir>/ -name "*.mx3" -not -path "*/\.out/*"
 ### Task 1: 建 presentation 根 + key_code 骨架
 
 **Files:**
-- Create: `/mnt/d/Research/Hopfion/presentation/`
-- Create: `/mnt/d/Research/Hopfion/presentation/key_code/{00_shared_libs,01_dmi_fm,02_frustrated_fm_stability,03_drift,04_spin_wave_plane,05_spin_wave_point,06_multisource_freq_switch,07_stt_wang2019,08_lif_neuron,09_old_simulations,figures}/`
+- Create: `/mnt/d/Research/Hopfion/09_paper_thesis_talks/presentation/`
+- Create: `/mnt/d/Research/Hopfion/09_paper_thesis_talks/presentation/key_code/{00_shared_libs,01_dmi_fm,02_frustrated_fm_stability,03_drift,04_spin_wave_plane,05_spin_wave_point,06_multisource_freq_switch,07_stt_wang2019,08_lif_neuron,09_old_simulations,figures}/`
 
 - [ ] **Step 1: 建目录**
 
 ```bash
 cd /mnt/d/Research/Hopfion
-mkdir -p presentation/key_code/{00_shared_libs,01_dmi_fm,02_frustrated_fm_stability,03_drift,04_spin_wave_plane,05_spin_wave_point,06_multisource_freq_switch,07_stt_wang2019,08_lif_neuron,09_old_simulations,figures}
+mkdir -p 09_paper_thesis_talks/presentation/key_code/{00_shared_libs,01_dmi_fm,02_frustrated_fm_stability,03_drift,04_spin_wave_plane,05_spin_wave_point,06_multisource_freq_switch,07_stt_wang2019,08_lif_neuron,09_old_simulations,figures}
 ```
 
 - [ ] **Step 2: 验证骨架**
 
 ```bash
-ls -d presentation/key_code/*/
+ls -d 09_paper_thesis_talks/presentation/key_code/*/
 ```
 
 Expected: 列出 11 个子目录（10 代码 + 1 figures）
 
 - [ ] **Step 3: 加 .gitignore 排除 pptx 临时文件**
 
-Write `/mnt/d/Research/Hopfion/presentation/.gitignore`:
+Write `/mnt/d/Research/Hopfion/09_paper_thesis_talks/presentation/.gitignore`:
 ```
 *.pptx~
 ~$*.pptx
@@ -78,7 +78,7 @@ Write `/mnt/d/Research/Hopfion/presentation/.gitignore`:
 
 ```bash
 cd /mnt/d/Research/Hopfion
-git add presentation/.gitignore
+git add 09_paper_thesis_talks/presentation/.gitignore
 git commit -m "feat(presentation): scaffold key_code subdirectory tree"
 ```
 
@@ -87,14 +87,14 @@ git commit -m "feat(presentation): scaffold key_code subdirectory tree"
 ### Task 2: 00_shared_libs — 拷共享分析库 + README
 
 **Files:**
-- Source: `/mnt/d/Research/Hopfion/scripts/*.py`
-- Target: `presentation/key_code/00_shared_libs/`
-- Create: `presentation/key_code/00_shared_libs/README.md`
+- Source: `/mnt/d/Research/Hopfion/95_shared_scripts/*.py`
+- Target: `09_paper_thesis_talks/presentation/key_code/00_shared_libs/`
+- Create: `09_paper_thesis_talks/presentation/key_code/00_shared_libs/README.md`
 
 - [ ] **Step 1: 定位共享库脚本**
 
 ```bash
-ls /mnt/d/Research/Hopfion/scripts/*.py
+ls /mnt/d/Research/Hopfion/95_shared_scripts/*.py
 ```
 
 Expected: 包括 `hopfion_analysis.py`, `compute_hopf_index.py`, `paper_style.py`, `post_sim_analysis.py`, `audit_sweep_params.py`（可能名字略有差异）
@@ -103,14 +103,14 @@ Expected: 包括 `hopfion_analysis.py`, `compute_hopf_index.py`, `paper_style.py
 
 ```bash
 cd /mnt/d/Research/Hopfion
-cp scripts/hopfion_analysis.py scripts/compute_hopf_index.py scripts/paper_style.py scripts/post_sim_analysis.py scripts/audit_sweep_params.py presentation/key_code/00_shared_libs/ 2>&1
+cp 95_shared_scripts/hopfion_analysis.py 95_shared_scripts/compute_hopf_index.py 95_shared_scripts/paper_style.py 95_shared_scripts/post_sim_analysis.py 95_shared_scripts/audit_sweep_params.py 09_paper_thesis_talks/presentation/key_code/00_shared_libs/ 2>&1
 ```
 
 如某文件缺失，跳过它，记在 README 的"缺失"段。
 
 - [ ] **Step 3: 写 README**
 
-Write `presentation/key_code/00_shared_libs/README.md`:
+Write `09_paper_thesis_talks/presentation/key_code/00_shared_libs/README.md`:
 
 ```markdown
 # 00_shared_libs — 共享分析库
@@ -139,8 +139,8 @@ Python 3 + numpy, scipy, matplotlib, discretisedfield（不含包管理，需用
 - [ ] **Step 4: 验证 + 提交**
 
 ```bash
-ls presentation/key_code/00_shared_libs/
-git add presentation/key_code/00_shared_libs/
+ls 09_paper_thesis_talks/presentation/key_code/00_shared_libs/
+git add 09_paper_thesis_talks/presentation/key_code/00_shared_libs/
 git commit -m "feat(presentation): copy shared analysis libs"
 ```
 
@@ -149,14 +149,14 @@ git commit -m "feat(presentation): copy shared analysis libs"
 ### Task 3: 01_dmi_fm — 拷脚本 + README
 
 **Files:**
-- Sources under: `20251219_dmi_fm/`
-- Target: `presentation/key_code/01_dmi_fm/`
+- Sources under: `02_early_dmi_fm_feasibility/20251219_dmi_fm/`
+- Target: `09_paper_thesis_talks/presentation/key_code/01_dmi_fm/`
 
 - [ ] **Step 1: 定位脚本**
 
 ```bash
-find /mnt/d/Research/Hopfion/20251219_dmi_fm -maxdepth 4 -name "*.mx3" -not -path "*/\.out/*" | head -40
-find /mnt/d/Research/Hopfion/20251219_dmi_fm -maxdepth 4 -name "*.py" -not -path "*/\.out/*" | head -20
+find /mnt/d/Research/Hopfion/02_early_dmi_fm_feasibility/20251219_dmi_fm -maxdepth 4 -name "*.mx3" -not -path "*/\.out/*" | head -40
+find /mnt/d/Research/Hopfion/02_early_dmi_fm_feasibility/20251219_dmi_fm -maxdepth 4 -name "*.py" -not -path "*/\.out/*" | head -20
 ```
 
 记录实际路径。
@@ -166,7 +166,7 @@ find /mnt/d/Research/Hopfion/20251219_dmi_fm -maxdepth 4 -name "*.py" -not -path
 ```bash
 cd /mnt/d/Research/Hopfion
 SRC=20251219_dmi_fm
-DST=presentation/key_code/01_dmi_fm
+DST=09_paper_thesis_talks/presentation/key_code/01_dmi_fm
 
 cp $SRC/Sutcliffe_Bloch_Hopfion/gen_sutcliffe_hopfion.py $DST/ 2>/dev/null || echo "miss: gen_sutcliffe"
 cp $SRC/Sutcliffe_Bloch_Hopfion/run_analytic_relax.mx3 $DST/ 2>/dev/null || echo "miss: run_analytic_relax"
@@ -185,7 +185,7 @@ ls $DST/
 
 - [ ] **Step 3: 写 README**
 
-Write `presentation/key_code/01_dmi_fm/README.md`:
+Write `09_paper_thesis_talks/presentation/key_code/01_dmi_fm/README.md`:
 
 ```markdown
 # 01_dmi_fm — DMI-FM (FeGe) Hopfion 稳定性
@@ -221,7 +221,7 @@ Write `presentation/key_code/01_dmi_fm/README.md`:
 
 ## 原始数据位置
 
-`/mnt/d/Research/Hopfion/20251219_dmi_fm/`
+`/mnt/d/Research/Hopfion/02_early_dmi_fm_feasibility/20251219_dmi_fm/`
 - successful_simulation/run_analytic_relax.out/
 - failed_attempts/{bulk_pbc_tests, sutcliffe_disc_wrong_ansatz, toroidal_nanoring_approach}/
 - isolated_hopfion_10lambda/
@@ -231,7 +231,7 @@ Write `presentation/key_code/01_dmi_fm/README.md`:
 - [ ] **Step 4: 提交**
 
 ```bash
-git add presentation/key_code/01_dmi_fm/
+git add 09_paper_thesis_talks/presentation/key_code/01_dmi_fm/
 git commit -m "feat(presentation): copy DMI-FM scripts + README"
 ```
 
@@ -240,15 +240,15 @@ git commit -m "feat(presentation): copy DMI-FM scripts + README"
 ### Task 4: 02_frustrated_fm_stability — 拷脚本 + README
 
 **Files:**
-- Sources under: `20260105_frustrated_fm/{size_sweep,centered_stability_test,anisotropy_study}/`
-- Target: `presentation/key_code/02_frustrated_fm_stability/`
+- Sources under: `04_frustrated_fm_foundation/20260105_frustrated_fm/{size_sweep,centered_stability_test,anisotropy_study}/`
+- Target: `09_paper_thesis_talks/presentation/key_code/02_frustrated_fm_stability/`
 
 - [ ] **Step 1: 定位**
 
 ```bash
-find /mnt/d/Research/Hopfion/20260105_frustrated_fm/size_sweep -name "*.mx3" -not -path "*/\.out/*"
-find /mnt/d/Research/Hopfion/20260105_frustrated_fm/centered_stability_test -name "*.mx3" -not -path "*/\.out/*"
-find /mnt/d/Research/Hopfion/20260105_frustrated_fm/anisotropy_study -name "*.mx3" -not -path "*/\.out/*" | head -20
+find /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/size_sweep -name "*.mx3" -not -path "*/\.out/*"
+find /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/centered_stability_test -name "*.mx3" -not -path "*/\.out/*"
+find /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/anisotropy_study -name "*.mx3" -not -path "*/\.out/*" | head -20
 ```
 
 - [ ] **Step 2: 拷脚本**
@@ -256,7 +256,7 @@ find /mnt/d/Research/Hopfion/20260105_frustrated_fm/anisotropy_study -name "*.mx
 ```bash
 cd /mnt/d/Research/Hopfion
 SRC=20260105_frustrated_fm
-DST=presentation/key_code/02_frustrated_fm_stability
+DST=09_paper_thesis_talks/presentation/key_code/02_frustrated_fm_stability
 
 # size_sweep
 find $SRC/size_sweep -name "*R8r4*Ku0*.mx3" -not -path "*/\.out/*" | head -1 | xargs -I {} cp {} $DST/size_sweep_R8r4_Ku0.mx3
@@ -282,7 +282,7 @@ ls $DST/
 
 - [ ] **Step 3: 写 README**
 
-Write `presentation/key_code/02_frustrated_fm_stability/README.md`:
+Write `09_paper_thesis_talks/presentation/key_code/02_frustrated_fm_stability/README.md`:
 
 ```markdown
 # 02_frustrated_fm_stability — 竞争交换 FM Hopfion 稳定性
@@ -321,13 +321,13 @@ Write `presentation/key_code/02_frustrated_fm_stability/README.md`:
 
 ## 原始数据位置
 
-`20260105_frustrated_fm/{size_sweep, centered_stability_test, anisotropy_study/{ku_critical_sweep, size_vs_ku}}/`
+`04_frustrated_fm_foundation/20260105_frustrated_fm/{size_sweep, centered_stability_test, anisotropy_study/{ku_critical_sweep, size_vs_ku}}/`
 ```
 
 - [ ] **Step 4: 提交**
 
 ```bash
-git add presentation/key_code/02_frustrated_fm_stability/
+git add 09_paper_thesis_talks/presentation/key_code/02_frustrated_fm_stability/
 git commit -m "feat(presentation): copy frustrated FM stability scripts + README"
 ```
 
@@ -336,22 +336,22 @@ git commit -m "feat(presentation): copy frustrated FM stability scripts + README
 ### Task 5: 03_drift — 拷脚本 + README
 
 **Files:**
-- Sources under: `20260105_frustrated_fm/drift_experiments/`
-- Target: `presentation/key_code/03_drift/`
+- Sources under: `04_frustrated_fm_foundation/20260105_frustrated_fm/drift_experiments/`
+- Target: `09_paper_thesis_talks/presentation/key_code/03_drift/`
 
 - [ ] **Step 1: 定位**
 
 ```bash
-find /mnt/d/Research/Hopfion/20260105_frustrated_fm/drift_experiments -name "*.mx3" -not -path "*/\.out/*"
-find /mnt/d/Research/Hopfion/20260105_frustrated_fm/drift_experiments -name "*.py"
+find /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/drift_experiments -name "*.mx3" -not -path "*/\.out/*"
+find /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/drift_experiments -name "*.py"
 ```
 
 - [ ] **Step 2: 拷脚本**
 
 ```bash
 cd /mnt/d/Research/Hopfion
-SRC=20260105_frustrated_fm/drift_experiments
-DST=presentation/key_code/03_drift
+SRC=04_frustrated_fm_foundation/20260105_frustrated_fm/drift_experiments
+DST=09_paper_thesis_talks/presentation/key_code/03_drift
 
 find $SRC/bg_mx_axis_x_stable -name "*.mx3" -not -path "*/\.out/*" | head -1 | xargs -I {} cp {} $DST/bg_mx_axis_x_stable.mx3
 find $SRC/unified_rerun -name "*.mx3" -not -path "*/\.out/*" | head -1 | xargs -I {} cp {} $DST/unified_rerun_template.mx3
@@ -362,7 +362,7 @@ ls $DST/
 
 - [ ] **Step 3: 写 README**
 
-Write `presentation/key_code/03_drift/README.md`:
+Write `09_paper_thesis_talks/presentation/key_code/03_drift/README.md`:
 
 ```markdown
 # 03_drift — Hopfion 漂移实验
@@ -389,13 +389,13 @@ Write `presentation/key_code/03_drift/README.md`:
 
 ## 原始数据位置
 
-`20260105_frustrated_fm/drift_experiments/{bg_mx_axis_x_stable, bg_my_axis_y_stable, unified_rerun}/`
+`04_frustrated_fm_foundation/20260105_frustrated_fm/drift_experiments/{bg_mx_axis_x_stable, bg_my_axis_y_stable, unified_rerun}/`
 ```
 
 - [ ] **Step 4: 提交**
 
 ```bash
-git add presentation/key_code/03_drift/
+git add 09_paper_thesis_talks/presentation/key_code/03_drift/
 git commit -m "feat(presentation): copy drift experiment scripts + README"
 ```
 
@@ -404,13 +404,13 @@ git commit -m "feat(presentation): copy drift experiment scripts + README"
 ### Task 6: 04_spin_wave_plane — 拷脚本 + README
 
 **Files:**
-- Sources under: `20260105_frustrated_fm/spin_wave_dynamics/{drive_selection,freq_sweep,amplitude_sweep}/plane_wave/`
-- Target: `presentation/key_code/04_spin_wave_plane/`
+- Sources under: `04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/{drive_selection,freq_sweep,amplitude_sweep}/plane_wave/`
+- Target: `09_paper_thesis_talks/presentation/key_code/04_spin_wave_plane/`
 
 - [ ] **Step 1: 定位**
 
 ```bash
-SW=/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics
+SW=/mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics
 find $SW/drive_selection/plane_wave -name "*.mx3" -not -path "*/\.out/*" | head -5
 find $SW/freq_sweep/plane_wave/srcX -name "*.mx3" -not -path "*/\.out/*" | head -5
 find $SW/freq_sweep/plane_wave/srcZ -name "*.mx3" -not -path "*/\.out/*" | head -5
@@ -421,8 +421,8 @@ find $SW/amplitude_sweep/plane_wave -name "*.mx3" -not -path "*/\.out/*" | head 
 
 ```bash
 cd /mnt/d/Research/Hopfion
-SW=20260105_frustrated_fm/spin_wave_dynamics
-DST=presentation/key_code/04_spin_wave_plane
+SW=04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics
+DST=09_paper_thesis_talks/presentation/key_code/04_spin_wave_plane
 
 find $SW/drive_selection/plane_wave -name "*.mx3" -not -path "*/\.out/*" | head -1 | xargs -I {} cp {} $DST/drive_selection_template.mx3
 find $SW/freq_sweep/plane_wave/srcX -name "*.mx3" -not -path "*/\.out/*" | head -1 | xargs -I {} cp {} $DST/freq_sweep_srcX_template.mx3
@@ -439,7 +439,7 @@ ls $DST/
 
 - [ ] **Step 3: 写 README**
 
-Write `presentation/key_code/04_spin_wave_plane/README.md`:
+Write `09_paper_thesis_talks/presentation/key_code/04_spin_wave_plane/README.md`:
 
 ```markdown
 # 04_spin_wave_plane — 平面源自旋波驱动
@@ -477,13 +477,13 @@ Write `presentation/key_code/04_spin_wave_plane/README.md`:
 
 ## 原始数据位置
 
-`20260105_frustrated_fm/spin_wave_dynamics/{drive_selection, freq_sweep, amplitude_sweep}/plane_wave/`
+`04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/{drive_selection, freq_sweep, amplitude_sweep}/plane_wave/`
 ```
 
 - [ ] **Step 4: 提交**
 
 ```bash
-git add presentation/key_code/04_spin_wave_plane/
+git add 09_paper_thesis_talks/presentation/key_code/04_spin_wave_plane/
 git commit -m "feat(presentation): copy plane wave spin wave scripts + README"
 ```
 
@@ -492,13 +492,13 @@ git commit -m "feat(presentation): copy plane wave spin wave scripts + README"
 ### Task 7: 05_spin_wave_point — 拷脚本 + README
 
 **Files:**
-- Sources under: `20260105_frustrated_fm/spin_wave_dynamics/{freq_sweep,amplitude_sweep}/point_source/`
-- Target: `presentation/key_code/05_spin_wave_point/`
+- Sources under: `04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/{freq_sweep,amplitude_sweep}/point_source/`
+- Target: `09_paper_thesis_talks/presentation/key_code/05_spin_wave_point/`
 
 - [ ] **Step 1: 定位**
 
 ```bash
-SW=/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics
+SW=/mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics
 find $SW/freq_sweep/point_source -name "*.mx3" -not -path "*/\.out/*" | head -10
 find $SW/amplitude_sweep/point_source -name "*.mx3" -not -path "*/\.out/*" | head -10
 ```
@@ -507,8 +507,8 @@ find $SW/amplitude_sweep/point_source -name "*.mx3" -not -path "*/\.out/*" | hea
 
 ```bash
 cd /mnt/d/Research/Hopfion
-SW=20260105_frustrated_fm/spin_wave_dynamics
-DST=presentation/key_code/05_spin_wave_point
+SW=04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics
+DST=09_paper_thesis_talks/presentation/key_code/05_spin_wave_point
 
 find $SW/freq_sweep/point_source -name "*template*.mx3" -not -path "*/\.out/*" 2>/dev/null | head -1 | xargs -I {} cp {} $DST/point_source_template.mx3
 find $SW/freq_sweep/point_source/srcX -name "*.mx3" -not -path "*/\.out/*" 2>/dev/null | head -1 | xargs -I {} cp {} $DST/freq_sweep_srcX_point.mx3
@@ -520,7 +520,7 @@ ls $DST/
 
 - [ ] **Step 3: 写 README**
 
-Write `presentation/key_code/05_spin_wave_point/README.md`:
+Write `09_paper_thesis_talks/presentation/key_code/05_spin_wave_point/README.md`:
 
 ```markdown
 # 05_spin_wave_point — 点源自旋波驱动
@@ -551,13 +551,13 @@ Write `presentation/key_code/05_spin_wave_point/README.md`:
 
 ## 原始数据位置
 
-`20260105_frustrated_fm/spin_wave_dynamics/{freq_sweep, amplitude_sweep}/point_source/`
+`04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/{freq_sweep, amplitude_sweep}/point_source/`
 ```
 
 - [ ] **Step 4: 提交**
 
 ```bash
-git add presentation/key_code/05_spin_wave_point/
+git add 09_paper_thesis_talks/presentation/key_code/05_spin_wave_point/
 git commit -m "feat(presentation): copy point source spin wave scripts + README"
 ```
 
@@ -566,13 +566,13 @@ git commit -m "feat(presentation): copy point source spin wave scripts + README"
 ### Task 8: 06_multisource_freq_switch — 拷脚本 + README
 
 **Files:**
-- Sources under: `20260105_frustrated_fm/spin_wave_dynamics/multisource_control/`
-- Target: `presentation/key_code/06_multisource_freq_switch/`
+- Sources under: `04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/multisource_control/`
+- Target: `09_paper_thesis_talks/presentation/key_code/06_multisource_freq_switch/`
 
 - [ ] **Step 1: 定位**
 
 ```bash
-MS=/mnt/d/Research/Hopfion/20260105_frustrated_fm/spin_wave_dynamics/multisource_control
+MS=/mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/multisource_control
 find $MS -name "*.mx3" -not -path "*/\.out/*"
 find $MS -name "*.py"
 ```
@@ -581,8 +581,8 @@ find $MS -name "*.py"
 
 ```bash
 cd /mnt/d/Research/Hopfion
-MS=20260105_frustrated_fm/spin_wave_dynamics/multisource_control
-DST=presentation/key_code/06_multisource_freq_switch
+MS=04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/multisource_control
+DST=09_paper_thesis_talks/presentation/key_code/06_multisource_freq_switch
 
 find $MS/baseline -name "*.mx3" -not -path "*/\.out/*" | head -1 | xargs -I {} cp {} $DST/baseline_dual_src.mx3
 find $MS/bidirectional_z -name "*v1*.mx3" -not -path "*/\.out/*" | head -1 | xargs -I {} cp {} $DST/freq_switch_v1.mx3
@@ -595,7 +595,7 @@ ls $DST/
 
 - [ ] **Step 3: 写 README**
 
-Write `presentation/key_code/06_multisource_freq_switch/README.md`:
+Write `09_paper_thesis_talks/presentation/key_code/06_multisource_freq_switch/README.md`:
 
 ```markdown
 # 06_multisource_freq_switch — 双向 z 控制 / 多源 freq_switch
@@ -636,13 +636,13 @@ Write `presentation/key_code/06_multisource_freq_switch/README.md`:
 
 ## 原始数据位置
 
-`20260105_frustrated_fm/spin_wave_dynamics/multisource_control/{baseline, bidirectional_z}/`
+`04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/multisource_control/{baseline, bidirectional_z}/`
 ```
 
 - [ ] **Step 4: 提交**
 
 ```bash
-git add presentation/key_code/06_multisource_freq_switch/
+git add 09_paper_thesis_talks/presentation/key_code/06_multisource_freq_switch/
 git commit -m "feat(presentation): copy multisource freq_switch scripts + README"
 ```
 
@@ -651,15 +651,15 @@ git commit -m "feat(presentation): copy multisource freq_switch scripts + README
 ### Task 9: 07_stt_wang2019 — 拷脚本 + README
 
 **Files:**
-- Sources under: `20260310_wang2019_hopfion_STT/`
-- Target: `presentation/key_code/07_stt_wang2019/`
+- Sources under: `03_wang2019_stt_reproduction/20260310_wang2019_hopfion_STT/`
+- Target: `09_paper_thesis_talks/presentation/key_code/07_stt_wang2019/`
 
 - [ ] **Step 1: 定位 + 拷**
 
 ```bash
 cd /mnt/d/Research/Hopfion
 SRC=20260310_wang2019_hopfion_STT
-DST=presentation/key_code/07_stt_wang2019
+DST=09_paper_thesis_talks/presentation/key_code/07_stt_wang2019
 
 find $SRC -name "*.mx3" -not -path "*/\.out/*" | head -5
 find $SRC -name "run_bloch_hopfion.mx3" -not -path "*/\.out/*" | head -1 | xargs -I {} cp {} $DST/run_bloch_hopfion.mx3
@@ -670,7 +670,7 @@ ls $DST/
 
 - [ ] **Step 2: 写 README**
 
-Write `presentation/key_code/07_stt_wang2019/README.md`:
+Write `09_paper_thesis_talks/presentation/key_code/07_stt_wang2019/README.md`:
 
 ```markdown
 # 07_stt_wang2019 — Spin Transfer Torque 驱动 Bloch Hopfion
@@ -695,13 +695,13 @@ Write `presentation/key_code/07_stt_wang2019/README.md`:
 
 ## 原始数据位置
 
-`20260310_wang2019_hopfion_STT/{run_bloch_hopfion.out, run_bloch_hopfion_v2.out}/`
+`03_wang2019_stt_reproduction/20260310_wang2019_hopfion_STT/{run_bloch_hopfion.out, run_bloch_hopfion_v2.out}/`
 ```
 
 - [ ] **Step 3: 提交**
 
 ```bash
-git add presentation/key_code/07_stt_wang2019/
+git add 09_paper_thesis_talks/presentation/key_code/07_stt_wang2019/
 git commit -m "feat(presentation): copy STT Wang2019 scripts + README"
 ```
 
@@ -710,15 +710,15 @@ git commit -m "feat(presentation): copy STT Wang2019 scripts + README"
 ### Task 10: 08_lif_neuron — 拷脚本 + README
 
 **Files:**
-- Sources under: `lif_neuron_hopfion/`
-- Target: `presentation/key_code/08_lif_neuron/`
+- Sources under: `08_lif_neuron_device_application/lif_neuron_hopfion/`
+- Target: `09_paper_thesis_talks/presentation/key_code/08_lif_neuron/`
 
 - [ ] **Step 1: 定位 + 拷**
 
 ```bash
 cd /mnt/d/Research/Hopfion
 SRC=lif_neuron_hopfion
-DST=presentation/key_code/08_lif_neuron
+DST=09_paper_thesis_talks/presentation/key_code/08_lif_neuron
 
 find $SRC -name "*.mx3" -not -path "*/\.out/*"
 find $SRC -name "*.py" -not -path "*/\.out/*"
@@ -734,7 +734,7 @@ ls $DST/
 
 - [ ] **Step 2: 写 README**
 
-Write `presentation/key_code/08_lif_neuron/README.md`:
+Write `09_paper_thesis_talks/presentation/key_code/08_lif_neuron/README.md`:
 
 ```markdown
 # 08_lif_neuron — Hopfion 作 LIF 神经元（基于 Skyrmion 专利 CN 118284316 A 改写）
@@ -774,13 +774,13 @@ drive-release 实验：100 GHz 驱动 0.3 ns → 关掉 2 ns 自由弛豫，对�
 
 ## 原始数据位置
 
-`lif_neuron_hopfion/{gradient_ku_verification, lif_cycle_demo}/`
+`08_lif_neuron_device_application/lif_neuron_hopfion/{gradient_ku_verification, lif_cycle_demo}/`
 ```
 
 - [ ] **Step 3: 提交**
 
 ```bash
-git add presentation/key_code/08_lif_neuron/
+git add 09_paper_thesis_talks/presentation/key_code/08_lif_neuron/
 git commit -m "feat(presentation): copy LIF neuron scripts + README"
 ```
 
@@ -789,13 +789,13 @@ git commit -m "feat(presentation): copy LIF neuron scripts + README"
 ### Task 11: 09_old_simulations — 拷脚本 + README
 
 **Files:**
-- Sources under: `20260105_frustrated_fm/old_results/My_old_simulation/`, `deviceB_package/`
-- Target: `presentation/key_code/09_old_simulations/`
+- Sources under: `04_frustrated_fm_foundation/20260105_frustrated_fm/01_legacy_srtp_old/old_results/My_old_simulation/`, `90_external_refs/deviceB_package/`
+- Target: `09_paper_thesis_talks/presentation/key_code/09_old_simulations/`
 
 - [ ] **Step 1: 定位**
 
 ```bash
-find /mnt/d/Research/Hopfion/20260105_frustrated_fm/old_results -name "*.mx3" -not -path "*/\.out/*" | head -10
+find /mnt/d/Research/Hopfion/04_frustrated_fm_foundation/20260105_frustrated_fm/old_results -name "*.mx3" -not -path "*/\.out/*" | head -10
 find /mnt/d/Research/Hopfion -path "*deviceB*" -name "*.mx3" -not -path "*/\.out/*" | head -5
 ```
 
@@ -803,10 +803,10 @@ find /mnt/d/Research/Hopfion -path "*deviceB*" -name "*.mx3" -not -path "*/\.out
 
 ```bash
 cd /mnt/d/Research/Hopfion
-DST=presentation/key_code/09_old_simulations
+DST=09_paper_thesis_talks/presentation/key_code/09_old_simulations
 
-find 20260105_frustrated_fm/old_results -path "*srcX*" -name "*.mx3" -not -path "*/\.out/*" | head -1 | xargs -I {} cp {} $DST/My_old_simulation_srcX.mx3
-find 20260105_frustrated_fm/old_results -path "*srcZ*" -name "*.mx3" -not -path "*/\.out/*" | head -1 | xargs -I {} cp {} $DST/My_old_simulation_srcZ.mx3
+find 04_frustrated_fm_foundation/20260105_frustrated_fm/old_results -path "*srcX*" -name "*.mx3" -not -path "*/\.out/*" | head -1 | xargs -I {} cp {} $DST/My_old_simulation_srcX.mx3
+find 04_frustrated_fm_foundation/20260105_frustrated_fm/old_results -path "*srcZ*" -name "*.mx3" -not -path "*/\.out/*" | head -1 | xargs -I {} cp {} $DST/My_old_simulation_srcZ.mx3
 find . -path "*deviceB*" -name "*.mx3" -not -path "*/\.out/*" 2>/dev/null | head -1 | xargs -I {} cp {} $DST/deviceB_freq_sweep.mx3
 
 ls $DST/
@@ -814,7 +814,7 @@ ls $DST/
 
 - [ ] **Step 3: 写 README（重点说明系数错误）**
 
-Write `presentation/key_code/09_old_simulations/README.md`:
+Write `09_paper_thesis_talks/presentation/key_code/09_old_simulations/README.md`:
 
 ```markdown
 # 09_old_simulations — 旧版本对标
@@ -837,15 +837,15 @@ Write `presentation/key_code/09_old_simulations/README.md`:
 
 ## 原始数据位置
 
-- `20260105_frustrated_fm/old_results/My_old_simulation/{srcX, srcZ}/srcX/`（套娃路径）
-- `20260105_frustrated_fm/spin_wave_dynamics/freq_sweep/point_source/`（数据已迁回 2026-04-09）
-- `deviceB_package/deviceB_package/`
+- `04_frustrated_fm_foundation/20260105_frustrated_fm/01_legacy_srtp_old/old_results/My_old_simulation/{srcX, srcZ}/srcX/`（套娃路径）
+- `04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/freq_sweep/point_source/`（数据已迁回 2026-04-09）
+- `90_external_refs/deviceB_package/90_external_refs/deviceB_package/`
 ```
 
 - [ ] **Step 4: 提交**
 
 ```bash
-git add presentation/key_code/09_old_simulations/
+git add 09_paper_thesis_talks/presentation/key_code/09_old_simulations/
 git commit -m "feat(presentation): copy old simulation references + README"
 ```
 
@@ -854,8 +854,8 @@ git commit -m "feat(presentation): copy old simulation references + README"
 ### Task 12: figures/ — 收关键图
 
 **Files:**
-- Sources：分散在各 `*.out/analysis/`、`*/results/`、`bishe/figures/`
-- Target: `presentation/key_code/figures/`
+- Sources：分散在各 `*.out/analysis/`、`*/results/`、`09_paper_thesis_talks/bishe/figures/`
+- Target: `09_paper_thesis_talks/presentation/key_code/figures/`
 
 - [ ] **Step 1: 定位关键图**
 
@@ -868,28 +868,28 @@ cd /mnt/d/Research/Hopfion
 find 20251219_dmi_fm -name "*.png" -not -path "*/\.git/*" | head -10
 
 # Ku critical R vs Ku
-find 20260105_frustrated_fm/anisotropy_study -name "*.png" -not -path "*/\.out/*" | head -10
+find 04_frustrated_fm_foundation/20260105_frustrated_fm/anisotropy_study -name "*.png" -not -path "*/\.out/*" | head -10
 
 # 漂移 4 组对比
-find 20260105_frustrated_fm/drift_experiments -name "*drift*.png" -o -name "fig3-4*" | head -5
+find 04_frustrated_fm_foundation/20260105_frustrated_fm/drift_experiments -name "*drift*.png" -o -name "fig3-4*" | head -5
 
 # 频率响应谱
-find 20260105_frustrated_fm/spin_wave_dynamics/freq_sweep -name "*.png" | head -10
+find 04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/freq_sweep -name "*.png" | head -10
 
 # 幅度扫描旧拟合
-find 20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep -name "*.png" | head -10
+find 04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/amplitude_sweep -name "*.png" | head -10
 
 # 点源 vs 平面源
-find 20260105_frustrated_fm/spin_wave_dynamics -name "*point*.png" -o -name "*comparison*.png" | head -10
+find 04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics -name "*point*.png" -o -name "*comparison*.png" | head -10
 
 # freq_switch v3 坍塌
-find 20260105_frustrated_fm/spin_wave_dynamics/multisource_control -name "*.png" | head -10
+find 04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/multisource_control -name "*.png" | head -10
 
 # LIF Phase 1/2
 find lif_neuron_hopfion -name "*.png" | head -10
 
 # 论文 figures (备选)
-ls bishe/figures/ 2>/dev/null | head -20
+ls 09_paper_thesis_talks/bishe/figures/ 2>/dev/null | head -20
 ```
 
 - [ ] **Step 2: 拷贝（按目标文件名重命名）**
@@ -897,7 +897,7 @@ ls bishe/figures/ 2>/dev/null | head -20
 执行者按上一步找到的实际路径执行 cp。目标命名按 spec：
 
 ```bash
-DST=presentation/key_code/figures
+DST=09_paper_thesis_talks/presentation/key_code/figures
 
 # 示例命名，实际文件名按 find 输出
 # cp <find_result> $DST/dmi_fm_stable.png
@@ -918,7 +918,7 @@ ls $DST/
 
 - [ ] **Step 3: 写 figures/README**
 
-Write `presentation/key_code/figures/README.md`:
+Write `09_paper_thesis_talks/presentation/key_code/figures/README.md`:
 
 ```markdown
 # figures — PPT 关键分析图索引
@@ -927,7 +927,7 @@ PPT (`talk.pptx`) 引用的所有插图集中在这里。
 
 | 文件 | 对应 PPT 页 | 来源 | 描述 |
 |---|---|---|---|
-| `dmi_fm_stable.png` | P1 | 20251219_dmi_fm/ | DMI-FM Hopfion 2 ns 稳定截面 |
+| `dmi_fm_stable.png` | P1 | 02_early_dmi_fm_feasibility/20251219_dmi_fm/ | DMI-FM Hopfion 2 ns 稳定截面 |
 | `ku_critical_R_vs_Ku.png` | P8 | anisotropy_study/ku_critical_sweep/ | R(Ku) 13 点曲线 + 临界区域 |
 | `drift_4groups_comparison.png` | P11 | drift_experiments/unified_rerun/ | 4 组完全一致（旧结论推翻）|
 | `freq_response_srcX.png` | P13 | freq_sweep/plane_wave/srcX/results/ | srcX 频响谱 |
@@ -935,8 +935,8 @@ PPT (`talk.pptx`) 引用的所有插图集中在这里。
 | `amplitude_law_failed.png` | P15 | amplitude_sweep/plane_wave/results/ | 旧 v∝B¹·⁹⁹ 拟合（已推翻）|
 | `point_vs_plane.png` | P18-P19 | freq_sweep/point_source/results/ | 点源 vs 平面源对比 |
 | `freq_switch_v3_collapse.png` | P22 | multisource_control/bidirectional_z/ | v3 完整轨迹到 1.00 ns（含 0.91 ns 坍塌）|
-| `lif_phase1_pass.png` | P24 | lif_neuron_hopfion/gradient_ku_verification/analysis/ | gradient vs uniform Ku 对比 |
-| `lif_phase2_f1_failed.png` | P25 | lif_neuron_hopfion/lif_cycle_demo/ | Phase 2 F1 失败轨迹 |
+| `lif_phase1_pass.png` | P24 | 08_lif_neuron_device_application/lif_neuron_hopfion/gradient_ku_verification/analysis/ | gradient vs uniform Ku 对比 |
+| `lif_phase2_f1_failed.png` | P25 | 08_lif_neuron_device_application/lif_neuron_hopfion/lif_cycle_demo/ | Phase 2 F1 失败轨迹 |
 
 ## 缺图情况
 
@@ -946,7 +946,7 @@ PPT (`talk.pptx`) 引用的所有插图集中在这里。
 - [ ] **Step 4: 提交**
 
 ```bash
-git add presentation/key_code/figures/
+git add 09_paper_thesis_talks/presentation/key_code/figures/
 git commit -m "feat(presentation): collect PPT figures + index README"
 ```
 
@@ -955,11 +955,11 @@ git commit -m "feat(presentation): collect PPT figures + index README"
 ### Task 13: 顶层 key_code/README.md
 
 **Files:**
-- Create: `presentation/key_code/README.md`
+- Create: `09_paper_thesis_talks/presentation/key_code/README.md`
 
 - [ ] **Step 1: 写总索引**
 
-Write `presentation/key_code/README.md`:
+Write `09_paper_thesis_talks/presentation/key_code/README.md`:
 
 ```markdown
 # Hopfion 项目代码包
@@ -996,7 +996,7 @@ Hopfion 3D 磁性拓扑结构的微磁学仿真（mumax3）。本包含 4 个体
 
 本包不含：
 - `*.out/` 仿真输出（含 `.ovf` 帧、`table.txt`、`log.txt`）— 体积过大
-- 毕设 LaTeX 章节 `bishe/`
+- 毕设 LaTeX 章节 `09_paper_thesis_talks/bishe/`
 - bd / mempalace 数据库
 
 如需复现：联系作者获取完整数据快照。
@@ -1020,7 +1020,7 @@ python <subdir>/<script>.py
 - [ ] **Step 2: 提交**
 
 ```bash
-git add presentation/key_code/README.md
+git add 09_paper_thesis_talks/presentation/key_code/README.md
 git commit -m "feat(presentation): top-level key_code README"
 ```
 
@@ -1029,11 +1029,11 @@ git commit -m "feat(presentation): top-level key_code README"
 ### Task 14: presentation 顶层 README
 
 **Files:**
-- Create: `presentation/README.md`
+- Create: `09_paper_thesis_talks/presentation/README.md`
 
 - [ ] **Step 1: 写说明**
 
-Write `presentation/README.md`:
+Write `09_paper_thesis_talks/presentation/README.md`:
 
 ```markdown
 # Hopfion 项目导师汇报包 (2026-06-01)
@@ -1068,7 +1068,7 @@ Write `presentation/README.md`:
 - [ ] **Step 2: 提交**
 
 ```bash
-git add presentation/README.md
+git add 09_paper_thesis_talks/presentation/README.md
 git commit -m "feat(presentation): top-level README"
 ```
 
@@ -1077,11 +1077,11 @@ git commit -m "feat(presentation): top-level README"
 ### Task 15: 写 talk_outline.md（页对页文字稿）
 
 **Files:**
-- Create: `presentation/talk_outline.md`
+- Create: `09_paper_thesis_talks/presentation/talk_outline.md`
 
 - [ ] **Step 1: 写 29 页文字稿骨架**
 
-Write `presentation/talk_outline.md`：每页一节，每节包含 (a) 标题, (b) 正文文本（150 字内）, (c) 插图引用 `![](key_code/figures/xxx.png)` 或 "无图". 内容直接复制 spec 第 2 节 PPT 大纲表格的"内容性质"字段，扩成 1-2 段文字。
+Write `09_paper_thesis_talks/presentation/talk_outline.md`：每页一节，每节包含 (a) 标题, (b) 正文文本（150 字内）, (c) 插图引用 `![](key_code/figures/xxx.png)` 或 "无图". 内容直接复制 spec 第 2 节 PPT 大纲表格的"内容性质"字段，扩成 1-2 段文字。
 
 按以下模板执行（执行者按 spec PPT 大纲 P1-P29 逐页填）：
 
@@ -1097,7 +1097,7 @@ Write `presentation/talk_outline.md`：每页一节，每节包含 (a) 标题, (
 
 ![DMI-FM 2ns 稳定截面](key_code/figures/dmi_fm_stable.png)
 
-来源仿真：`20251219_dmi_fm/successful_simulation/run_analytic_relax.out/`
+来源仿真：`02_early_dmi_fm_feasibility/20251219_dmi_fm/successful_simulation/run_analytic_relax.out/`
 
 ---
 
@@ -1109,7 +1109,7 @@ Write `presentation/talk_outline.md`：每页一节，每节包含 (a) 标题, (
 
 无图。
 
-来源：`20251219_dmi_fm/failed_attempts/bulk_pbc_tests/` (2 runs)
+来源：`02_early_dmi_fm_feasibility/20251219_dmi_fm/failed_attempts/bulk_pbc_tests/` (2 runs)
 
 ---
 
@@ -1121,7 +1121,7 @@ Write `presentation/talk_outline.md`：每页一节，每节包含 (a) 标题, (
 - [ ] **Step 2: 验证 29 节齐**
 
 ```bash
-grep -c "^## P" presentation/talk_outline.md
+grep -c "^## P" 09_paper_thesis_talks/presentation/talk_outline.md
 ```
 
 Expected: 29
@@ -1129,7 +1129,7 @@ Expected: 29
 - [ ] **Step 3: 提交**
 
 ```bash
-git add presentation/talk_outline.md
+git add 09_paper_thesis_talks/presentation/talk_outline.md
 git commit -m "feat(presentation): 29-page talk outline"
 ```
 
@@ -1138,11 +1138,11 @@ git commit -m "feat(presentation): 29-page talk outline"
 ### Task 16: 生成 talk.pptx
 
 **Files:**
-- Create: `presentation/talk.pptx`
+- Create: `09_paper_thesis_talks/presentation/talk.pptx`
 
 - [ ] **Step 1: 调用 pptx skill**
 
-调 `superpowers:pptx` skill（已存在），输入 `presentation/talk_outline.md`，要求：
+调 `superpowers:pptx` skill（已存在），输入 `09_paper_thesis_talks/presentation/talk_outline.md`，要求：
 - 朴素布局：标题 + 文本框 + 单张图（如有）
 - 不套配色模板，白底黑字
 - 中文字体（系统默认或宋体）
@@ -1161,7 +1161,7 @@ prs = Presentation()
 prs.slide_width = Inches(13.33)  # 16:9
 prs.slide_height = Inches(7.5)
 
-with open('presentation/talk_outline.md', encoding='utf-8') as f:
+with open('09_paper_thesis_talks/presentation/talk_outline.md', encoding='utf-8') as f:
     md = f.read()
 
 # 按 ## P 切页
@@ -1181,13 +1181,13 @@ for i in range(0, len(pages), 2):
     for p in txt.text_frame.paragraphs:
         p.font.size = Pt(14)
     if fig_match:
-        img_path = 'presentation/' + fig_match.group(1) if not fig_match.group(1).startswith('presentation') else fig_match.group(1)
+        img_path = '09_paper_thesis_talks/presentation/' + fig_match.group(1) if not fig_match.group(1).startswith('presentation') else fig_match.group(1)
         try:
             slide.shapes.add_picture(img_path, Inches(8.3), Inches(1.5), width=Inches(4.7))
         except Exception as e:
             print(f"Missing image: {img_path}: {e}")
 
-prs.save('presentation/talk.pptx')
+prs.save('09_paper_thesis_talks/presentation/talk.pptx')
 ```
 
 执行：
@@ -1201,7 +1201,7 @@ python -c "<上面脚本>" 或写到临时 build_pptx.py
 - [ ] **Step 2: 验证 29 页**
 
 ```bash
-python -c "from pptx import Presentation; p=Presentation('presentation/talk.pptx'); print(len(p.slides))"
+python -c "from pptx import Presentation; p=Presentation('09_paper_thesis_talks/presentation/talk.pptx'); print(len(p.slides))"
 ```
 
 Expected: 29
@@ -1214,7 +1214,7 @@ Expected: 29
 - [ ] **Step 4: 提交**
 
 ```bash
-git add presentation/talk.pptx
+git add 09_paper_thesis_talks/presentation/talk.pptx
 git commit -m "feat(presentation): generate talk.pptx (29 pages)"
 ```
 
@@ -1231,23 +1231,23 @@ git commit -m "feat(presentation): generate talk.pptx (29 pages)"
 cd /mnt/d/Research/Hopfion
 
 # 1. key_code 树齐
-ls -d presentation/key_code/*/
+ls -d 09_paper_thesis_talks/presentation/key_code/*/
 # Expected: 11 entries (10 code subdirs + figures)
 
 # 2. 每子目录有 README
-for d in presentation/key_code/*/; do test -f "$d/README.md" && echo "OK: $d" || echo "MISS: $d"; done
+for d in 09_paper_thesis_talks/presentation/key_code/*/; do test -f "$d/README.md" && echo "OK: $d" || echo "MISS: $d"; done
 
 # 3. 顶层 README 齐
-ls presentation/{README.md,talk_outline.md,talk.pptx} presentation/key_code/README.md
+ls 09_paper_thesis_talks/presentation/{README.md,talk_outline.md,talk.pptx} 09_paper_thesis_talks/presentation/key_code/README.md
 # Expected: 4 files present
 
 # 4. PPT 页数
-python -c "from pptx import Presentation; p=Presentation('presentation/talk.pptx'); print('Pages:', len(p.slides))"
+python -c "from pptx import Presentation; p=Presentation('09_paper_thesis_talks/presentation/talk.pptx'); print('Pages:', len(p.slides))"
 # Expected: Pages: 29
 
 # 5. 图引用与实际图对应
-grep -oE "key_code/figures/[a-z_]+\.png" presentation/talk_outline.md | sort -u > /tmp/refs.txt
-ls presentation/key_code/figures/*.png | sed 's|.*/|key_code/figures/|' | sort -u > /tmp/exist.txt
+grep -oE "key_code/figures/[a-z_]+\.png" 09_paper_thesis_talks/presentation/talk_outline.md | sort -u > /tmp/refs.txt
+ls 09_paper_thesis_talks/presentation/key_code/figures/*.png | sed 's|.*/|key_code/figures/|' | sort -u > /tmp/exist.txt
 diff /tmp/refs.txt /tmp/exist.txt
 # Expected: 无差异（或差异都标注在 figures/README.md 缺图段）
 ```
@@ -1267,8 +1267,8 @@ git commit -m "fix(presentation): final walkthrough corrections" || echo "no cha
 - [ ] **Step 4: 通知用户完工**
 
 向用户报告：
-- `presentation/talk.pptx` 29 页
-- `presentation/key_code/` 树齐 + 所有 README
+- `09_paper_thesis_talks/presentation/talk.pptx` 29 页
+- `09_paper_thesis_talks/presentation/key_code/` 树齐 + 所有 README
 - 已 commit 到 master
 - 等待用户最终人工 review
 

@@ -1,0 +1,108 @@
+% !TEX program = xelatex
+% !TEX recipe = xe->bib->xe->xe (论文全流程)
+% 杭州电子科技大学 2026 届 本科毕业设计（论文）
+% 使用官方 hduthesis LaTeX3 模板
+%
+% ============================================================
+% 首次编译前请先生成类文件，
+%   xelatex hduthesis.ins
+% 这会从 hduthesis.dtx / hdu-graphics.dtx 生成 hduthesis.cls
+% 之后按正常流程编译（本科模式使用 gbt7714 + BibTeX），
+%   xelatex main -> bibtex main -> xelatex main -> xelatex main
+% ============================================================
+
+\documentclass
+  [
+    math-font    = STIX Two Math, agreed,
+    CJKmain-font = { {FandolSong}[ItalicFont=FandolKai] },
+    CJKsans-font = { {FandolHei} }
+  ] {hduthesis}
+
+\usepackage{siunitx}
+\usepackage{float}
+\usepackage{subcaption}
+
+% ============================================================
+%                     封 面 信 息
+% ============================================================
+\hduset
+  {
+    title      = 磁性拓扑结构的动力学调控/及其在神经形态计算中的应用,
+    department = 电子信息学院\break（集成电路科学与工程学院）,
+    major      = 电子科学与技术,
+    class      = 22042011,
+    stdntid    = 22040338,
+    author     = 吴佳乐,
+    supervisor = :金蒙豪,
+    bibsource  = refs,
+  }
+
+\setlength{\textfloatsep}{16pt plus 3pt minus 2pt}
+
+\begin{document}
+
+\maketitle
+\raggedbottom
+\setlength{\parskip}{0pt plus 1pt minus 0pt}
+\commitment
+
+% ============================================================
+%                      中 文 摘 要
+% ============================================================
+\begin{abstract}[cn]
+磁性霍普夫子是一种三维纽结构型的拓扑磁性准粒子，有自旋分布的特征。受拓扑保护机制影响，它具有高的结构稳定性和多样的动力学特征，在磁存储与神经形态计算中有未来应用的前景。
+
+本研究以 Mumax3 微磁学仿真平台为基础，研究了霍普夫子在阻挫交换铁磁体系中的稳定条件和自旋波驱动下的运动特性。在模型构建方面，本研究结合局域旋转矩阵与环面坐标映射，提出一种生成任意拓扑荷及反铁磁背景霍普夫子初始自旋构型的方法，并做到程序化以及配套实现其结构可视化。在阻挫交换铁磁体系的稳态分析中，不同尺寸的理想初始态经能量弛豫后均收敛至同一固有尺寸。仿真结果表明，背景磁化取向对其动力学过程无显著影响。同时，通过扫描磁晶各向异性参数，确定了霍普夫子稳定存在的边界条件。针对自旋波驱动的动力学响应，仿真数据显示其具有极化依赖特性，面内极化磁振子能够激发霍普夫子发生平动，面外极化分量则无法产生有效驱动。在轴向传播模式下，系统的频率响应谱存在着多峰共振现象，位移响应在特定共振频率处达到最大，且霍普夫子的稳态移动和自旋波驱动幅度关系紧密。在面内传播模式下，霍普夫子沿垂直于传播方向运动，与轴向传播模式下沿传播方向的运动形成方向互补。基于上述轴向与面内传播模式的运动情况差异，提出了一种依靠频率切换实现霍普夫子的运动控制方案，能够实现轴向双向可逆运动，并通过模拟证实了该方案的有效性。
+
+本文研究了霍普夫子动力学过程中的幅度驱动、频率驱动以及方向控制等特征。通过建立微磁学运动特性与生物神经元核心功能的对应关系，提出了一种霍普夫子神经形态器件逻辑架构，实现由自旋波自由操控。
+
+\keywords{霍普夫子, 微磁学模拟, 拓扑稳定性, 自旋波驱动, 双向轴向控制, 神经形态计算}
+\end{abstract}
+
+% ============================================================
+%                    英 文 摘 要
+% ============================================================
+\begin{abstract}[en]
+Magnetic hopfions are topological quasi-particles with three-dimensional knotted spin textures. Influenced by topological protection mechanisms, they exhibit high structural stability and rich dynamic features, offering prospects for future applications in magnetic storage and neuromorphic computing.
+
+Using the Mumax3 framework, this study analyzes hopfion stability conditions and spin-wave-driven motion characteristics within a frustrated exchange ferromagnetic system. Regarding model construction, a method combining local rotation matrices and toroidal coordinate mapping is proposed. It programmatically generates initial hopfion spin textures with arbitrary topological charges and antiferromagnetic backgrounds, facilitating three-dimensional visualization. In the steady-state analysis of the frustrated exchange ferromagnetic system, ideal initial states of varying sizes relax to an identical intrinsic size. Simulation results confirm the background magnetization orientation has no significant impact on the dynamic process. Additionally, scanning magnetocrystalline anisotropy parameters determines the boundary conditions for stable hopfion existence. For spin-wave-driven responses, simulation data demonstrate polarization dependence. In-plane polarized magnons effectively excite hopfion translation, whereas out-of-plane components produce no effective driving. Under the axial propagation mode, the frequency response spectrum shows multi-peak resonance, with maximum displacement at a specific resonance frequency, and the steady-state hopfion motion is closely tied to the spin-wave driving amplitude. Under in-plane propagation, the hopfion migrates perpendicularly, directionally complementing the parallel movement under the axial mode. Based on the motion contrast between axial and in-plane propagation, a bidirectional reversible axial motion control scheme relying on frequency switching is proposed, and its effectiveness is confirmed via numerical simulation.
+
+This study examines amplitude-dependent driving, frequency-dependent driving, and directional control throughout hopfion dynamics. By mapping these micromagnetic characteristics to core functions of biological neurons, a logical architecture for a hopfion neuromorphic device enabling flexible control by spin waves is proposed.
+
+\keywords{hopfion, micromagnetic simulation, topological stability, spin-wave driving, bidirectional axial control, neuromorphic computing}
+\end{abstract}
+
+% ============================================================
+%                        目 录
+% ============================================================
+\setcounter{tocdepth}{2}  % 显示到三级标题 (chapter / section / subsection)
+\makeatletter
+\renewcommand*\l@subsection{%
+  \linespread{1}\fontsize{12pt}{20pt}\selectfont
+  \@dottedtocline{2}{4.6em}{2.8em}%
+}
+\makeatother
+\tableofcontents
+
+% ============================================================
+%                        正 文
+% ============================================================
+\input{chapters/ch01-intro}
+\input{chapters/ch02-theory}
+\input{chapters/ch03-construction}
+\input{chapters/ch04-stability}
+\input{chapters/ch05-dynamics}
+\input{chapters/ch06-neuromorphic}
+\input{chapters/ch07-conclusion}
+
+% ============================================================
+%                        致 谢
+% ============================================================
+\input{chapters/acknowledgements}
+
+% ============================================================
+%                      参 考 文 献
+% ============================================================
+\printbibliography
+
+\end{document}

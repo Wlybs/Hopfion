@@ -1,0 +1,53 @@
+// Néel Hopfion - 磁多层膜（Ir/Co/Pt 类）第二版
+//
+// 参考: Khodzhaev & Turgut 2022, J. Phys.: Condens. Matter 34, 225805
+//       Section 3. Neel hopfion
+//
+// 参数:
+//   Dind   = 1.15e-3 J/m²  (界面 DMI，产生 Néel 型织构)
+//   Aex    = 1.1e-12 J/m
+//   Ku1    = 1e6 J/m³      (PMA，保证背景 mz=+1，替代 frozenspins)
+//   Msat   = 3e5 A/m
+//   B_ext  = -0.12 T (z 方向，负值，论文稳定范围 -30~-440 mT)
+//
+// 几何: 圆柱盘 d=64nm, h=8nm, cell=0.5nm
+//
+// v2 修改：用高阻尼动力学替代 Relax()，保护拓扑不被破坏
+//   阶段1: alpha=5.0, Run(0.5ns) → 高阻尼弛豫（保守拓扑）
+//   阶段2: alpha=0.02, Run(2ns) → 低阻尼验证稳定性
+
+Nx := 128; Ny := 128; Nz := 16
+SetGridSize(Nx, Ny, Nz)
+SetCellSize(0.5e-9, 0.5e-9, 0.5e-9)
+SetGeom(Cylinder(64e-9, 8e-9))
+
+// 磁多层膜参数（Khodzhaev 2022, Section 3）
+Msat  = 3e5
+Aex   = 1.1e-12
+Dind  = 1.15e-3          // 界面 DMI（Néel 型）
+Ku1   = 1e6              // PMA：强制背景 mz=+1
+anisU = vector(0, 0, 1)
+// EnableDemag = true（默认）
+
+// 外场 -120mT（论文稳定范围中值）
+B_ext = vector(0, 0, -0.12)
+
+m.LoadFile("neel_hopfion_init.ovf")
+
+TableAdd(E_Total)
+TableAdd(E_demag)
+tableautosave(1e-12)
+
+// 阶段1：高阻尼动力学弛豫（替代 Relax()，保护拓扑）
+// Relax() 是能量下降优化器，可翻越拓扑势垒 → 湮灭 Hopfion
+// Run() 保守哈密顿流，高阻尼收敛但不跨越拓扑障碍
+alpha = 5.0
+autosave(m, 5e-11)
+Run(0.5e-9)
+saveas(m, "neel_hopfion_relaxed")
+
+// 阶段2：低阻尼动力学验证稳定性
+alpha = 0.02
+autosave(m, 2e-11)
+Run(2e-9)
+saveas(m, "neel_hopfion_final")

@@ -1,0 +1,132 @@
+#MIF 2.2
+#斯格明子+驱动电流  DMI划分10格
+
+Parameter D 3.2
+set DD [expr {$D/1000.}]      
+
+Parameter film_thickness 0.6e-9
+
+Parameter xcell 2.0e-9
+Parameter ycell 2.0e-9
+Parameter zcell $film_thickness
+
+set Ms 1.1e6
+
+set init_skyrmion_r 50e-9
+
+set init_skyrmion_rsq_inner [expr {0.1*$init_skyrmion_r*$init_skyrmion_r}]
+set init_skyrmion_rsq_outer [expr {0.2*$init_skyrmion_r*$init_skyrmion_r}]
+
+set xmax [expr {10*$init_skyrmion_r}]
+set ymax [expr {3*$init_skyrmion_r}]
+set init_skyrmion_x [expr {$xmax*0.6}] 
+set init_skyrmion_y [expr {$ymax*0.5}] 
+
+Parameter region_count 10000
+
+set divot_r [expr {4*$xcell}]
+
+set region_width [expr {$xmax/10.}]
+set region_period $region_width
+for {set i 0} {$i<$region_count} {incr i} {
+    set atlas_string [subst {Oxs_BoxAtlas {
+          xrange {[expr {$i*$region_period}] 
+                  [expr {$i*$region_period+$region_width}]}
+          yrange {0 $ymax}
+          zrange {0 $zcell}
+          name   {region_$i}
+     }}]
+     lappend regions_list "atlas" $atlas_string
+}
+
+
+Specify Oxs_MultiAtlas:atlas [subst {
+  $regions_list
+  xrange {0 $xmax}
+  yrange {0 $ymax}
+  zrange {0 $film_thickness}
+}]
+
+Specify Oxs_RectangularMesh:mesh [subst {
+  cellsize { $xcell $ycell $zcell }
+  atlas :atlas
+}]
+
+Specify Oxs_UniformExchange:HeisenbergEx {
+  A 1.6e-11
+}
+
+for {set i 0} {$i<[expr {$region_count-1}]} {incr i} {
+set D_value [expr {$DD+$DD/50.*$i}]
+set ex_i [expr {$i+1}]
+lappend D_list region_$i region_$i $D_value
+lappend D_list region_$i region_$ex_i $D_value
+}
+
+
+#uniform DMI is used here
+Specify Oxs_DMExchange6Ngbr:DMEx [subst {
+  default_D [expr {$DD-$DD/50.*10}]
+  atlas :atlas
+  D [list $D_list]
+}]
+
+# Specify Oxs_DMExchange6Ngbr:DMEx [subst {
+#   default_D $DD
+#   atlas :atlas
+#   D {
+#    region_0 region_0 $DD
+#   }
+# }]
+
+set K1 0.51e6
+set K1_divot [expr {1.00*$K1}]
+Specify Oxs_UniaxialAnisotropy:Anisotropy [subst {
+   axis {0 0 1}
+   K1 $K1
+}]
+
+proc Skyrmion { x y z } {
+   global init_skyrmion_x init_skyrmion_y
+   global init_skyrmion_rsq_inner init_skyrmion_rsq_outer
+   set xoff [expr {$init_skyrmion_x-$x}]
+   set yoff [expr {$init_skyrmion_y-$y}]
+   set rsq [expr {$xoff*$xoff+$yoff*$yoff}]
+   if {$rsq<$init_skyrmion_rsq_inner} { return [list 0. 0.  1.] }
+   if {$rsq>$init_skyrmion_rsq_outer} { return [list 0. 0. -1.] }
+   return [list $xoff $yoff 0]
+}
+
+# Specify Oxs_RungeKuttaEvolve {}
+
+Specify Oxs_SpinXferEvolve:evolve [subst {
+  alpha 0.014
+  start_dm 0.01
+  mp {1 0 0}
+  J 0
+  P 0.4
+}]
+
+Specify Oxs_TimeDriver [subst {
+   evolver Oxs_SpinXferEvolve
+   mesh :mesh
+   Ms $Ms
+   m0 { Oxs_ScriptVectorField { 
+     script Skyrmion
+     atlas :atlas
+     script_args rawpt
+   } }
+}]
+
+#Specify Oxs_CGEvolve {}
+#Specify Oxs_MinDriver [subst {
+#  evolver Oxs_CGEvolve
+#  stopping_mxHxm 1e-5
+#  mesh :mesh
+#  Ms $Ms
+#  m0 { Oxs_ScriptVectorField { 
+#     script Skyrmion
+#     atlas :atlas
+#     script_args rawpt
+#  } }
+#}]

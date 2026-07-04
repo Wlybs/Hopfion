@@ -1,0 +1,74 @@
+[2026-03-26 10:45:06] === srcZ_vibX Freq Sweep Device B ===
+[2026-03-26 10:45:06] >>> f=100GHz start
+[2026-03-26 14:29:34] <<< f=100GHz done (exit=0)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+
+[2026-03-26 14:29:34] >>> f=300GHz start
+[2026-03-26 18:14:12] <<< f=300GHz done (exit=0)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+
+[2026-03-26 18:14:12] >>> f=400GHz start
+[2026-03-26 21:54:28] <<< f=400GHz done (exit=0)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+
+[2026-03-26 21:54:28] >>> f=500GHz start
+[2026-03-27 01:23:50] <<< f=500GHz done (exit=0)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+
+[2026-03-27 01:23:50] >>> f=600GHz start
+[2026-03-27 04:53:05] <<< f=600GHz done (exit=0)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+
+[2026-03-27 04:53:05] >>> f=700GHz start
+[2026-03-27 08:22:06] <<< f=700GHz done (exit=0)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+
+[2026-03-27 08:22:06] >>> f=800GHz start
+[2026-03-27 12:02:18] <<< f=800GHz done (exit=0)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+
+[2026-03-27 12:02:18] >>> f=900GHz start
+[2026-03-27 15:47:07] <<< f=900GHz done (exit=0)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+
+[2026-03-27 15:47:07] >>> f=1000GHz start
+[2026-03-27 19:32:02] <<< f=1000GHz done (exit=0)
+//********************************************************************//
+//Please cite the following references, relevant for your simulation. //
+//See bibtex file in output folder for justification.                 //
+//********************************************************************//
+//   * Vansteenkiste et al., AIP Adv. 4, 107133 (2014).
+
+[2026-03-27 19:32:02] === ALL COMPLETE ===

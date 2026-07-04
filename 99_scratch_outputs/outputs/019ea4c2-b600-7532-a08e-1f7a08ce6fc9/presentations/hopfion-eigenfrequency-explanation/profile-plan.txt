@@ -1,0 +1,8 @@
+task mode: create
+primary deck-profile: engineering-platform
+secondary gates: scientific accuracy, beginner-friendly Chinese explanation
+required proof objects: research timeline, method flow, frequency comparison table, amplitude bar charts, evidence boundary summary
+source requirements: only verified project results and machine-readable outputs
+brand assets: none
+QA gates: no invented values; Chinese text renders; no overflow; all diagrams remain editable; simple visual system
+known missing inputs: no confirmed Hopfion eigenfrequency, explicitly treated as the conclusion rather than filled in

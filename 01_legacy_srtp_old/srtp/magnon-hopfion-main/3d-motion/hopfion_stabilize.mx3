@@ -1,0 +1,41 @@
+// ---------- hopfion_stabilize.mx3 ----------
+// 几何与网格（取一个≈(2λ,2λ,λ)大小的盒子；可按你的 lam 调）:
+nx := 256; ny := 256; nz := 64
+SetGridsize(nx, ny, nz)
+SetCellsize(1e-9, 1e-9, 1e-9) // 1 nm 网格
+
+// 材料参数（手性磁体；用 helical period L = 70 nm 作一致性约束：D = 4πA/L）
+Msat = 3.8e5          // A/m（可按材料修；此值常用于 FeGe 级别）
+Aex  = 8e-12          // J/m 交换刚度（可改）
+L    := 70e-9         // 目标螺旋周期
+Dbulk = 4*Pi*Aex/L    // J/m^2 体 DMI（Bloch 型）
+
+// 退磁能开着（会帮助稳定）:
+SetPBC(0,0,0)
+
+// 顶/底“强 PMA”层（界面各向异性），把背景钉成 +z；厚度你按样品设：
+cap := 8 // 单位=网格层
+defregion(1, z<cap)
+defregion(2, z>=(nz-cap))
+anisU = vector(0,0,1)
+Ku1.SetRegion(1, 1.0e6) // J/m^3，强一点；可在 0.5~2e6 调
+Ku1.SetRegion(2, 1.0e6)
+
+// 载入你生成的 Hopfion 初态（OVF1 文本）:
+m.LoadFile("hopfion_Qh1_simple.ovf")
+
+// ----------- 先高阻尼弛豫，后低阻尼验证稳定 -----------
+// 高阻尼找局部能量极小
+alpha = 0.5
+Minimize()    // 或 Relax()
+
+// 切到低阻尼，时间步推进一段验证纹理稳态（能量/形状不变）
+alpha = 0.02
+tableadd(E_total)
+tableadd(mz)           // 粗略监测
+autosave(m, 1e-9)      // 每 1 ns 存一次 m（方便你之后做 Hopf 指数/预像可视化）
+run(5e-9)              // 跑 5 ns；需要更久就把时间拉长
+
+// 保存最终场
+save(m)
+save(B_eff)            // 可视化有效场

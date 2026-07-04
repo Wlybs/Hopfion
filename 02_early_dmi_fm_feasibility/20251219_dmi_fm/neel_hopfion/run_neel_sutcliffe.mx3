@@ -1,0 +1,29 @@
+// Néel Hopfion v5 - Sutcliffe 公式初始态（L=h=8nm）+ 直接 Relax()
+//
+// 策略: Sutcliffe eq.3.3 以盘高 L=8nm 为尺度 → 旋转 90° 得 Néel 初始态
+//       理论上这是 Hopf 纤维化的精确映射，应在正确的能量盆内
+
+Nx := 128; Ny := 128; Nz := 16
+SetGridSize(Nx, Ny, Nz)
+SetCellSize(0.5e-9, 0.5e-9, 0.5e-9)
+SetGeom(Cylinder(64e-9, 8e-9))
+
+Msat = 3e5; Aex = 1.1e-12; Dind = 1.15e-3; Ku1 = 1e6
+anisU = vector(0, 0, 1)
+B_ext = vector(0, 0, -0.12)
+
+m.LoadFile("neel_hopfion_sutcliffe.ovf")
+
+TableAdd(E_Total); TableAdd(E_demag)
+tableautosave(1e-12)
+
+// 先尝试直接 Relax()（若 Sutcliffe 态在正确盆内，Relax 应该可以）
+alpha = 0.5
+Relax()
+saveas(m, "neel_sutcliffe_relax")
+
+// 低阻尼验证
+alpha = 0.02
+autosave(m, 2e-11)
+Run(2e-9)
+saveas(m, "neel_sutcliffe_final")

@@ -1,0 +1,30 @@
+[1] Göbel B, Mertig I, Tretiakov O A. Beyond skyrmions: review and perspectives of alternative magnetic quasiparticles[J/OL]. Physics Reports, 2021, 895: 1-28. DOI: 10.1016/j.physrep.2020.10.001.
+[2] Guslienko K. Magnetic hopfions: a review[J/OL]. Magnetism, 2024, 4(4): 383-399. DOI: 10.3390/magnetism4040025.
+[3] 刘艺舟, 韩秀峰. 磁霍普夫子及其三维自旋动力学研究[J/OL]. 物理, 2020, 49(12): 793-803. DOI: 10.7693/wl20201205.
+[4] Hopf H. Über die abbildungen der dreidimensionalen Sphäre auf die Kugelfläche[J/OL]. Mathematische Annalen, 1931, 104(1): 637-665. DOI: 10.1007/BF01457962.
+[5] Faddeev L, Niemi A J. Stable knot-like structures in classical field theory[J/OL]. Nature, 1997, 387: 58-61. DOI: 10.1038/387058a0.
+[6] Tai J S B, Smalyukh I I. Static Hopf solitons and knotted emergent fields in solidstate noncentrosymmetric magnetic nanostructures[J/OL]. Physical Review Letters, 2018, 121(18): 187201. DOI: 10.1103/PhysRevLett.121.187201.
+[7] Kent N, Reynolds N, Raftrey D, et al. Creation and observation of Hopfions in magnetic multilayer systems[J/OL]. Nature Communications, 2021, 12: 1562. DOI: 10.1038/s41467-021-21846-5.
+[8] Zheng F, Kiselev N S, Rybakov F N, et al. Hopfion rings in a cubic chiral magnet [J/OL]. Nature, 2023, 623(7988): 718-723. DOI: 10.1038/s41586-023-06658-5.
+[9] Sutcliffe P. Hopfions in chiral magnets[J/OL]. Journal of Physics A: Mathematical and Theoretical, 2018, 51(37): 375401. DOI: 10.1088/1751-8121/aad521.
+[10] Liu Y, Lake R K, Zang J. Binding a hopfion in a chiral magnet nanodisk[J/OL]. Physical Review B, 2018, 98(17): 174437. DOI: 10.1103/PhysRevB.98.174437.
+[11] Metlov K L. Elliptical stability of hopfions in bulk helimagnets[J/OL]. Physical Review B, 2025, 111(17): 174450. DOI: 10.1103/PhysRevB.111.174450.
+[12] Yu X, Liu Y, Iakoubovskii K V, et al. Realization and current-driven dynamics of fractional hopfions and their ensembles in a helimagnet FeGe[J/OL]. Advanced Materials, 2023, 35(12): 2210646. DOI: 10.1002/adma.202210646.
+[13] Sallermann M, Jönsson H, Blügel S. Stability of hopfions in bulk magnets with competing exchange interactions[J/OL]. Physical Review B, 2023, 107(10): 104404. DOI: 10.1103/PhysRevB.107.104404.
+[14] Lobanov I S, Uzdin V M. Lifetime, collapse, and escape paths for hopfions in bulk magnets with competing exchange interactions[J/OL]. Physical Review B, 2023, 107(10): 104405. DOI: 10.1103/PhysRevB.107.104405.
+[15] Wang X S, Qaiumzadeh A, Brataas A. Current-driven dynamics of magnetic hopfions[J/OL]. Physical Review Letters, 2019, 123(14): 147203. DOI: 10.1103/PhysRevLett.123.147203.
+[16] Liu Y, Hou W, Han X, et al. Three-dimensional dynamics of a magnetic hopfion driven by spin transfer torque[J/OL]. Physical Review Letters, 2020, 124(12): 127204. DOI: 10.1103/PhysRevLett.124.127204.
+[17] Liu Y, Watanabe H, Nagaosa N. Emergent magnetomultipoles and nonlinear responses of a magnetic hopfion[J/OL]. Physical Review Letters, 2022, 129(26): 267201. DOI: 10.1103/PhysRevLett.129.267201.
+[18] Ding J, Yang X, Zhu T. The motion of magnetic skyrmions driven by propagating spin waves[J/OL]. IEEE Transactions on Magnetics, 2015, 51(11): 1500504. DOI: 10.1109/TMAG.2015.2446516.
+[19] Huang L, Burnell G, Marrows C H. Transient retrograde motion of spin wave driven skyrmions in magnetic nanotracks[J/OL]. Physical Review B, 2023, 107(22): 224418. DOI: 10.1103/PhysRevB.107.224418.
+[20] Shen M, Zhang Y, Yang X, et al. Motion of a skyrmionium driven by spin wave [J/OL]. Applied Physics Letters, 2018, 112(6): 062403. DOI: 10.1063/1.5010605.
+[21] Saji C, Troncoso R E, Carvalho-Santos V L, et al. Hopfion-driven magnonic Hall effect and magnonic focusing[J/OL]. Physical Review Letters, 2023, 131(16): 166702. DOI: 10.1103/PhysRevLett.131.166702.
+[22] Zhang Z, Lin K, Zhang Y, et al. Magnon scattering modulated by omnidirectional hopfion motion in antiferromagnets for meta-learning[J/OL]. Science Advances, 2023, 9(6): eade7439. DOI: 10.1126/sciadv.ade7439.
+[23] Pershoguba S S, Andreoli D, Zang J. Electronic scattering off a magnetic hopfion[J/OL]. Physical Review B, 2021, 104(7): 075102. DOI: 10.1103/PhysRevB.104.075102.
+[24] Souza J C B, Reichhardt C J O, Reichhardt C, et al. Topological transitions, pinning and ratchets for driven magnetic hopfions in nanostructures[J/OL]. Scientific Reports, 2025, 15: 16802. DOI: 10.1038/s41598-025-01349-9.
+[25] Metlov K L, Tarasenko A S, Bezus Y A, et al. Control of the magnetic hopfion lattice in helimagnet with the external field and anisotropy[A/OL]. arXiv (2025). https://arxiv.org/abs/2503.23481.
+[26] Kasai S, Okumura S, Motome Y. Nonequilibrium dynamics of magnetic hopfions driven by spin-orbit torque[A/OL]. arXiv (2025). https://arxiv.org/abs/2511.23045.
+[27] Göbel B, Lounis S. Three-dimensional topological orbital hall effect caused by magnetic hopfions[A/OL]. arXiv (2025). https://arxiv.org/abs/2506.11448.
+[28] Rybakov F N, Kiselev N S, Borisov A B, et al. Magnetic hopfions in solids[J/OL]. APL Materials, 2022, 10(11): 111113. DOI: 10.1063/5.0099942.
+[29] Vansteenkiste A, Leliaert J, Dvornik M, et al. The design and verification of MuMax3[J/OL]. AIP Advances, 2014, 4(10): 107133. DOI: 10.1063/1.4899186.
+[30] Guslienko K Y. Magnetic hopfions as local rotations of the uniform magnetization background[J/OL]. physica status solidi (RRL) - Rapid Research Letters, 2025, 2500022. DOI: 10.1002/pssr.202500022.

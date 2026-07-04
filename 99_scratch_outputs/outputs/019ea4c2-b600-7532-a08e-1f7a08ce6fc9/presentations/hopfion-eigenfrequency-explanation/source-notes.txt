@@ -1,0 +1,11 @@
+Primary project sources:
+- /mnt/d/Research/Hopfion/06_eigenmode_frequency_mechanism/hopfion_eigenmode_ringdown_20260608/results/ringdown_peak_candidates.csv
+- /mnt/d/Research/Hopfion/06_eigenmode_frequency_mechanism/hopfion_eigenmode_ringdown_20260608/results/drive_vs_ringdown_comparison.csv
+- /mnt/d/Research/Hopfion/06_eigenmode_frequency_mechanism/hopfion_eigenmode_ringdown_20260608/PARAMETER_CONFIRMATION.md
+- /home/wujiale/.config/superpowers/worktrees/Hopfion/codex-hopfion-eigenmode-mechanism-20260612/hopfion_eigenmode_mechanism_20260612/results/control_quench_audit.json
+- /home/wujiale/.config/superpowers/worktrees/Hopfion/codex-hopfion-eigenmode-mechanism-20260612/hopfion_eigenmode_mechanism_20260612/results/clean_linearity_gate.json
+- /home/wujiale/.config/superpowers/worktrees/Hopfion/codex-hopfion-eigenmode-mechanism-20260612/hopfion_eigenmode_mechanism_20260612/notes/boundary_quench_audit.md
+- /mnt/d/Obsidian/20-Research/Hopfion-Physics/progress.md
+
+All quantitative claims in the deck are copied or rounded from these files.
+No external images, logos, or identity assets are used.
