@@ -20,9 +20,11 @@
 
 ## B3. 可借鉴的 skyrmion 自旋波驱动文献
 
+更完整的扩展库见同目录 `D_skyrmion_spinwave_theory_library_20260705.md`。下面只保留与“点源/平面源、波前几何、散射通道”最直接相关的写作线索。
+
 ### Zhang et al. 2018
 
-论文：*Spin-Wave-Driven Skyrmion Motion in Magnetic Nanostrip*, Journal of Nanotechnology 2018, 2602913.  
+论文：*Spin-Wave-Driven Skyrmion Motion in Magnetic Nanostrip*, Journal of Nanotechnology 2018, 2602913.
 链接：https://doi.org/10.1155/2018/2602913
 
 主要结论：
@@ -37,8 +39,8 @@
 
 ### Zhang et al. 2017
 
-论文：*Motion of skyrmions in nanowires driven by magnonic momentum-transfer forces*, New Journal of Physics 19, 065001.  
-链接：https://arxiv.org/abs/1701.02430  
+论文：*Motion of skyrmions in nanowires driven by magnonic momentum-transfer forces*, New Journal of Physics 19, 065001.
+链接：https://arxiv.org/abs/1701.02430
 DOI：https://doi.org/10.1088/1367-2630/aa6b70
 
 主要结论：
@@ -54,8 +56,8 @@ DOI：https://doi.org/10.1088/1367-2630/aa6b70
 
 ### Schuette & Garst 2014
 
-论文：*Magnon-skyrmion scattering in chiral magnets*, Phys. Rev. B 90, 094423.  
-链接：https://arxiv.org/abs/1405.1568  
+论文：*Magnon-skyrmion scattering in chiral magnets*, Phys. Rev. B 90, 094423.
+链接：https://arxiv.org/abs/1405.1568
 DOI：https://doi.org/10.1103/PhysRevB.90.094423
 
 主要结论：
@@ -69,7 +71,7 @@ DOI：https://doi.org/10.1103/PhysRevB.90.094423
 
 ### Schroeter & Garst 2015
 
-论文：*Scattering of high-energy magnons off a magnetic skyrmion*.  
+论文：*Scattering of high-energy magnons off a magnetic skyrmion*.
 链接：https://arxiv.org/abs/1504.02108
 
 主要结论：
@@ -81,6 +83,66 @@ DOI：https://doi.org/10.1103/PhysRevB.90.094423
 对我们的启发：
 
 Hopfion 的运动方向不能只用“自旋波从哪来就往哪走”解释。源几何改变入射角分布后，合力方向也会改变。
+
+### Kotus et al. 2022
+
+论文：*Scattering of spin waves in a multimode waveguide under the influence of confined magnetic skyrmion*, APL Materials 10, 091101.
+链接：https://doi.org/10.1063/5.0100594
+
+主要结论：
+
+- 通过选定频率、波矢和横向量子数的 spin-wave source，研究 skyrmion-imprint hybrid 对入射波的反射、透射和 mode conversion。
+- scattering efficiency 同时依赖 spin wave frequency 和 width-quantization mode number。
+- 低频可保留 incident mode 性质；更高频时更容易发生模式转换和复杂干涉。
+
+对我们的启发：
+
+这篇比传统“单个 skyrmion 散射平面波”更接近真实器件源。它支持我们把点源/面源差异写成“源几何改变入射模式集合，从而改变 scattering/loading channel”，而不是写成 Hopfion 固有频率移动。
+
+### Mansell, Qin & van Dijken 2022
+
+论文：*Interaction of propagating spin waves with extended skyrmions*, Applied Physics Letters 121, 242402.
+链接：https://doi.org/10.1063/5.0121363
+
+主要结论：
+
+- propagating spin wave 会使 extended skyrmion 重新发射 secondary spin wave。
+- 低频、长波长极限下 re-emitted wave 接近圆形；高频时波长接近 skyrmion size，发射图样变复杂。
+- 改变 DMI 进而改变 skyrmion size，可调控 emitted spin-wave profile。
+
+对我们的启发：
+
+这直接支持“入射波长相对纹理尺寸”和“纹理尺寸/源几何”会改变再辐射和散射图样。对 Hopfion 的点源 `srcZ` 方向分布复杂现象尤其有参考价值。
+
+### Ai & Lan 2023
+
+论文：*Anatomy of spin-wave-driven magnetic texture motion via magnonic torques*, Phys. Rev. B 107, 054441.
+链接：https://doi.org/10.1103/PhysRevB.107.054441
+
+主要结论：
+
+- 从快速进动的 spin wave 中提取 time-invariant magnonic torques，用局域 torque 而不只是全局动量守恒解释 magnetic texture motion。
+- 对 DMI 破坏旋转对称、damping 破坏平移对称两类情况给出理论和微磁仿真解释。
+
+对我们的启发：
+
+这可以补上“scattering → force”的微观语言。我们的 Hopfion 论文可用它作为理论框架背景，但不能直接套用其 domain-wall 公式。
+
+### Wu, Wang & Lan 2025/2026
+
+论文：
+
+- *Spin wave reconstruction with ray magnonics*, Phys. Rev. B 112, 014428 (2025). DOI: https://doi.org/10.1103/5bqm-n4j2
+- *Antiferromagnetic skyrmion as a magnonic lens*, Phys. Rev. B 113, 174431 (2026). DOI: https://doi.org/10.1103/j5hs-wsb7
+
+主要结论：
+
+- ray magnonics 文章把 spin wave 分解为 magnon rays，并用 ray-by-ray 方式分析 skyrmion 上的 spin-wave profile。
+- magnonic lens 文章提出 AFM skyrmion 可在 DMI 超过阈值后作为 lens，有组织地转换 spin wave propagation directions。
+
+对我们的启发：
+
+这是目前与“波前几何、点源/面波转换、入射方向分布”最贴近的新理论资源。使用时要明确体系差异：它们主要是 ray/lens/probe 语境，且 magnonic lens 是 AFM skyrmion，不是 FM Hopfion。
 
 ## B4. 平面源和点源的物理差别
 
@@ -126,4 +188,3 @@ Hopfion 的运动方向不能只用“自旋波从哪来就往哪走”解释。
 2. 在有 Hopfion 情况下，分析入射波、散射波和 Hopfion 近场的频谱。
 3. 用输入能量或 `E_total` 增量归一化位移/速度，而不是直接比较 B_amp。
 4. 对点源位置做少量扫描，判断红移是否稳定，还是源-Hopfion 几何偶然性。
-
