@@ -4,9 +4,19 @@
 
 ## 使用边界
 
-这份表是为 Hopfion 自旋波驱动论文准备的 skyrmion/spin-wave 理论资源库。当前状态是 abstract-level 与网页/DOI 初核，不等于全文 claim ledger。写进论文正文前还需要逐篇用 Zotero/BBT 核 citekey，并用 PDF/MinerU 核对具体公式、图号和段落。
+这份表是为 Hopfion 自旋波驱动论文准备的 skyrmion/spin-wave 理论资源库。当前状态是分层核查：部分核心文献已经完成 PDF/MinerU 或 PDF 文本核对，AIP 两篇因 PDF 直链被 Cloudflare/SSL 阻断暂按 publisher article page 使用，2025/2026 前沿条目仍有若干只到 DOI/abstract/page 级。
+
+逐条可写 claim 与禁用边界见同目录 `E_skyrmion_spinwave_source_geometry_claim_ledger_20260705.md`。写进论文正文前还需要用 Zotero/BBT 核 citekey；本 Codex 环境未发现 Zotero/BBT connector，因此 citekey 尚未声称完成核对。
 
 当前仍未找到可以直接证明“skyrmion 点源必然相对面源红移”的标准理论论文。安全写法仍是：已有 skyrmion 和 magnetic-texture 文献支持 magnon-texture interaction 对频率、波矢、极化、模式数、散射角、反射/透射和源/波前几何敏感；Hopfion 的点源/面源峰位差异应先写成源几何改变有效入射谱和散射通道的合理假说，直到 TB.1/TB.2 给出本项目自己的 `I(k,f)` 证据。
+
+## 2026-07-05 全文核查补充
+
+| 证据等级 | 文献 | 当前状态 |
+|---|---|---|
+| A | Iwasaki 2014; Schutte & Garst 2014; Zhang et al. 2017; Ai & Lan 2023; Wu/Wang/Lan 2026 | PDF 已下载，MinerU 已解析，claim ledger 已定位到段落/图号 |
+| B | Zhang/Ezawa/Xiao 2015; Schroeter & Garst 2015; Wang et al. 2021; Jin et al. 2021; Lau/Hausler/Thorwart 2024 | PDF 已下载，PyMuPDF 文本已抽取，claim ledger 已定位到文本行 |
+| C | Kotus et al. 2022; Mansell et al. 2022; Wu/Wang/Lan 2025 ray magnonics | DOI/publisher/APS/arXiv 页面核查；Kotus/Mansell PDF 直链本轮未能获取 |
 
 ## 一眼分组
 
@@ -80,12 +90,11 @@
 3. K1/K3 极化和偏转角类比：Jin 2021、Liu 2022、Lau 2024。
 4. 只作前沿背景，不进核心论证：S5 全部候选。
 
-## 仍需 BD 跟踪的全文核对
+## 仍需 BD 跟踪的核对
 
-这些新增资源应并入 `Hopfion-6cm` 的后续 claim ledger，而不是直接写进论文正文。最低全文核对顺序建议：
+这些新增资源已经并入 `Hopfion-6cm` 的 claim ledger，但仍有几个收尾核对项：
 
-1. Kotus 2022：记录 scattering efficiency matrix 的定义、频率分区和与 skyrmion/imprint resonance 的关系。
-2. Mansell 2022：记录 low-frequency circular re-emission 与 high-frequency complex pattern 的图号。
-3. Ai & Lan 2023：提取 magnonic torque 公式与其适用边界。
-4. Wu/Wang/Lan 2025 + Wu/Wang/Lan 2026：核 point/plane/ray/lens 相关公式，避免过度类比。
-5. Lau 2024 + Jin 2021 + Liu 2022：核 polarization/Hall-angle 结论。
+1. Zotero/BBT：核 citekey、作者顺序、期刊卷页、DOI。
+2. Kotus 2022 与 Mansell 2022：如能通过浏览器或学校网络下载 PDF，补 PDF/MinerU 级核查；当前只按 AIP article page 使用。
+3. Wu/Wang/Lan 2025 ray magnonics：若要放进正文核心论证，需要补全文公式/图号核查；当前更适合作为前沿背景。
+4. Liu 2022 FiM：本轮未下载 PDF，暂保持 abstract/DOI 级候选。

@@ -14,24 +14,28 @@
 
 客观记录：目前没有找到一篇可以直接照搬的“单个 skyrmion 点源 vs 平面源自旋波驱动对比”的标准理论论文。
 
+2026-07-05 已补充逐条证据账本：`E_skyrmion_spinwave_source_geometry_claim_ledger_20260705.md`。写正文时应优先使用该 ledger 中的安全 claim，并保留其中的“不能写成”边界。
+
 因此这条线不能写成“已有 skyrmion 文献已经证明点源会红移”。更真实的写法应是：
 
 > Although a direct one-to-one skyrmion point-source versus plane-source theory is not established, existing studies on spin-wave-driven skyrmion motion and magnon-skyrmion scattering show that the response is controlled by magnon propagation, reflectivity, scattering angle and momentum transfer. This supports interpreting the point/plane-source difference as a k-spectrum and source-geometry effect.
 
 ## B3. 可借鉴的 skyrmion 自旋波驱动文献
 
-更完整的扩展库见同目录 `D_skyrmion_spinwave_theory_library_20260705.md`。下面只保留与“点源/平面源、波前几何、散射通道”最直接相关的写作线索。
+更完整的扩展库见同目录 `D_skyrmion_spinwave_theory_library_20260705.md`，逐条可引用证据见 `E_skyrmion_spinwave_source_geometry_claim_ledger_20260705.md`。下面只保留与“点源/平面源、波前几何、散射通道”最直接相关的写作线索。
 
 ### Zhang et al. 2018
 
 论文：*Spin-Wave-Driven Skyrmion Motion in Magnetic Nanostrip*, Journal of Nanotechnology 2018, 2602913.
 链接：https://doi.org/10.1155/2018/2602913
 
+状态：旧 note 候选，原文尚未在本轮成功 PDF/MinerU 核查。定稿前需要重新打开全文确认图号与具体表述。
+
 主要结论：
 
-- skyrmion 速度随 spin wave 频率和幅度变化。
-- spin wave 被 skyrmion 反射的程度对运动速度有很大影响。
-- 这说明频率响应峰不是单纯“固有频率峰”，还包含传播和反射因素。
+- [未核实，旧 note 候选] skyrmion 速度随 spin wave 频率和幅度变化。
+- [未核实，旧 note 候选] spin wave 被 skyrmion 反射的程度对运动速度有很大影响。
+- [推断，待原文复核] 这说明频率响应峰不是单纯“固有频率峰”，还包含传播和反射因素。
 
 对我们的启发：
 
@@ -50,6 +54,8 @@ DOI：https://doi.org/10.1088/1367-2630/aa6b70
 - transverse magnon current 可形成稳态运动；低 current density 下速度近似 `v ~ J/alpha`。
 - 强驱动会把 skyrmion 推向源/边界，导致速度下降甚至毁灭。
 
+证据定位：`E` ledger 的 `B-04` 和 `B-05`。
+
 对我们的启发：
 
 点源局域驱动不只是“弱一点的平面源”。源附近强近场、衰减、边界/几何力都可能改变运动方式。我们的点源 500 T 单格与平面源 1 T 薄层不能直接比较绝对效率。
@@ -64,6 +70,9 @@ DOI：https://doi.org/10.1103/PhysRevB.90.094423
 
 - skyrmion 与小振幅 magnon 的相互作用可以看作 magnon 在 skyrmion 拓扑纹理产生的有效场中散射。
 - 散射具有非平庸角分布，和 skyrmion 拓扑结构相关。
+- 散射截面进入 magnon pressure force 与 Thiele-type equation。
+
+证据定位：`E` ledger 的 `B-02` 和 `B-03`。
 
 对我们的启发：
 
@@ -80,6 +89,8 @@ DOI：https://doi.org/10.1103/PhysRevB.90.094423
 - 横向动量转移具有拓扑普适性，纵向动量转移在高能极限较小。
 - 导致 magnon-driven skyrmion motion 与入射 magnon current 有非直观方向关系。
 
+证据定位：`E` ledger 的 `B-06`。
+
 对我们的启发：
 
 Hopfion 的运动方向不能只用“自旋波从哪来就往哪走”解释。源几何改变入射角分布后，合力方向也会改变。
@@ -88,6 +99,8 @@ Hopfion 的运动方向不能只用“自旋波从哪来就往哪走”解释。
 
 论文：*Scattering of spin waves in a multimode waveguide under the influence of confined magnetic skyrmion*, APL Materials 10, 091101.
 链接：https://doi.org/10.1063/5.0100594
+
+状态：本轮核到 AIP article page，PDF 直链被 Cloudflare 阻断，暂按页面内容使用。
 
 主要结论：
 
@@ -99,10 +112,14 @@ Hopfion 的运动方向不能只用“自旋波从哪来就往哪走”解释。
 
 这篇比传统“单个 skyrmion 散射平面波”更接近真实器件源。它支持我们把点源/面源差异写成“源几何改变入射模式集合，从而改变 scattering/loading channel”，而不是写成 Hopfion 固有频率移动。
 
+证据定位：`E` ledger 的 `B-07`。
+
 ### Mansell, Qin & van Dijken 2022
 
 论文：*Interaction of propagating spin waves with extended skyrmions*, Applied Physics Letters 121, 242402.
 链接：https://doi.org/10.1063/5.0121363
+
+状态：本轮核到 AIP article page 摘要，PDF 直链被 SSL/Cloudflare 阻断，暂按页面摘要级证据使用。
 
 主要结论：
 
@@ -113,6 +130,8 @@ Hopfion 的运动方向不能只用“自旋波从哪来就往哪走”解释。
 对我们的启发：
 
 这直接支持“入射波长相对纹理尺寸”和“纹理尺寸/源几何”会改变再辐射和散射图样。对 Hopfion 的点源 `srcZ` 方向分布复杂现象尤其有参考价值。
+
+证据定位：`E` ledger 的 `B-08`。
 
 ### Ai & Lan 2023
 
@@ -127,6 +146,8 @@ Hopfion 的运动方向不能只用“自旋波从哪来就往哪走”解释。
 对我们的启发：
 
 这可以补上“scattering → force”的微观语言。我们的 Hopfion 论文可用它作为理论框架背景，但不能直接套用其 domain-wall 公式。
+
+证据定位：`E` ledger 的 `B-09`。
 
 ### Wu, Wang & Lan 2025/2026
 
@@ -143,6 +164,8 @@ Hopfion 的运动方向不能只用“自旋波从哪来就往哪走”解释。
 对我们的启发：
 
 这是目前与“波前几何、点源/面波转换、入射方向分布”最贴近的新理论资源。使用时要明确体系差异：它们主要是 ray/lens/probe 语境，且 magnonic lens 是 AFM skyrmion，不是 FM Hopfion。
+
+证据定位：`E` ledger 的 `B-12`。
 
 ## B4. 平面源和点源的物理差别
 

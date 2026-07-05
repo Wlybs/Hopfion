@@ -96,11 +96,27 @@
 
 ## MinerU 临时解析
 
-本次使用 MinerU 解析了两篇关键 PDF，临时输出位于：
+前期使用 MinerU 解析的关键 PDF，临时输出位于：
 
 - `/tmp/skyrmion_hopfion_freq_mineru/mochizuki_2012_skyrmion_modes/auto/mochizuki_2012_skyrmion_modes.md`
 - `/tmp/skyrmion_hopfion_freq_mineru/kravchuk_2018_skyrmion_eigenmodes/auto/kravchuk_2018_skyrmion_eigenmodes.md`
 - `/tmp/skyrmion_hopfion_freq_mineru/raftrey_2021_field_hopfions/auto/raftrey_2021_field_hopfions.md`
+
+2026-07-05 针对 skyrmion 自旋波源几何 claim ledger 新增解析：
+
+- `/tmp/hopfion_skyrmion_spinwave_mineru_20260705/iwasaki_2014_magnon_skyrmion_scattering/auto/iwasaki_2014_magnon_skyrmion_scattering.md`
+- `/tmp/hopfion_skyrmion_spinwave_mineru_20260705/schutte_garst_2014_magnon_skyrmion_scattering/auto/schutte_garst_2014_magnon_skyrmion_scattering.md`
+- `/tmp/hopfion_skyrmion_spinwave_mineru_20260705/zhang_2017_magnonic_momentum_transfer/auto/zhang_2017_magnonic_momentum_transfer.md`
+- `/tmp/hopfion_skyrmion_spinwave_mineru_20260705/ai_lan_2023_magnonic_torques/auto/ai_lan_2023_magnonic_torques.md`
+- `/tmp/hopfion_skyrmion_spinwave_mineru_20260705/wu_2026_afm_skyrmion_magnonic_lens/auto/wu_2026_afm_skyrmion_magnonic_lens.md`
+
+同轮 PDF 文本抽取目录：
+
+- `/tmp/hopfion_skyrmion_spinwave_txt_20260705/`
+
+逐条 claim ledger：
+
+- `/mnt/d/Research/Hopfion/09_paper_thesis_talks/hopfion_spinwave_paper_theory_guidance_20260608/E_skyrmion_spinwave_source_geometry_claim_ledger_20260705.md`
 
 这些临时文件不纳入交付文件夹，避免结果包过重。
 
