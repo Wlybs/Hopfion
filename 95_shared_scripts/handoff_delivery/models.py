@@ -93,10 +93,12 @@ def require_unique_key(
         if key not in row:
             raise ManifestError(f"{context}: row {row_number} has no {key!r} key")
         value = row[key]
-        if not isinstance(value, Hashable):
+        try:
+            hash(value)
+        except TypeError as error:
             raise ManifestError(
                 f"{context}: row {row_number} has an unhashable {key!r} value"
-            )
+            ) from error
         if value in seen:
             raise ManifestError(
                 f"{context}: duplicate {key} value {value!r} "

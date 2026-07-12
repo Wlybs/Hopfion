@@ -77,6 +77,11 @@ def test_unique_key_check_rejects_duplicate_values():
         require_unique_key((*rows, {"figure_id": "fig-1"}), "figure_id")
 
 
+def test_unique_key_check_wraps_recursively_unhashable_values():
+    with pytest.raises(ManifestError, match="unhashable.*figure_id"):
+        require_unique_key(({"figure_id": ([],)},), "figure_id")
+
+
 def test_foreign_key_check_rejects_unknown_references():
     require_foreign_keys(("data-1", "data-2"), ("data-1", "data-2", "data-3"))
 
