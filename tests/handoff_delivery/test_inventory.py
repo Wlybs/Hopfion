@@ -7,6 +7,7 @@ import struct
 import subprocess
 import tarfile
 import zipfile
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -87,6 +88,29 @@ def _corrupt_first_zip_member_compressed_middle(path: Path) -> None:
     name_length, extra_length = struct.unpack_from("<HH", payload, local + 26)
     data_start = local + 30 + name_length + extra_length
     payload[data_start + info.compress_size // 2] ^= 0xFF
+    path.write_bytes(payload)
+
+
+def _set_first_zip_declared_output(path: Path, visible: bytes) -> None:
+    payload = bytearray(path.read_bytes())
+    local = payload.index(b"PK\x03\x04")
+    central = payload.index(b"PK\x01\x02")
+    crc = zlib.crc32(visible) & 0xFFFFFFFF
+    struct.pack_into("<L", payload, local + 14, crc)
+    struct.pack_into("<L", payload, local + 22, len(visible))
+    struct.pack_into("<L", payload, central + 16, crc)
+    struct.pack_into("<L", payload, central + 24, len(visible))
+    path.write_bytes(payload)
+
+
+def _shorten_first_zip_compressed_size(path: Path) -> None:
+    payload = bytearray(path.read_bytes())
+    local = payload.index(b"PK\x03\x04")
+    central = payload.index(b"PK\x01\x02")
+    compressed_size = struct.unpack_from("<L", payload, central + 20)[0]
+    assert compressed_size > 1
+    struct.pack_into("<L", payload, local + 18, compressed_size - 1)
+    struct.pack_into("<L", payload, central + 20, compressed_size - 1)
     path.write_bytes(payload)
 
 
@@ -383,6 +407,148 @@ def test_zip_crc_is_verified_past_the_member_prefix(tmp_path: Path):
 
     assert result.decision == "exclude"
     assert result.reason == "corrupt-archive"
+
+
+@pytest.mark.parametrize("visible", (b"", b"ok"))
+def test_zip_decoder_rejects_output_hidden_past_declared_size(
+    tmp_path: Path, visible: bytes
+):
+    path = _write_zip(
+        tmp_path / "hidden-output.zip",
+        {"notes.txt": visible + b"# OOMMF: rectangular mesh\n"},
+    )
+    _set_first_zip_declared_output(path, visible)
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "exclude"
+    assert result.reason == "corrupt-archive"
+
+
+def test_zip_decoder_requires_eof_at_declared_compressed_size(tmp_path: Path):
+    path = _write_zip(
+        tmp_path / "short-compressed-stream.zip",
+        {"notes.txt": bytes(range(256)) * 16},
+    )
+    _shorten_first_zip_compressed_size(path)
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "exclude"
+    assert result.reason == "corrupt-archive"
+
+
+def test_npz_member_cannot_hide_output_past_declared_npy(tmp_path: Path):
+    visible = _npy_bytes(np.zeros((8, 8, 3)))
+    path = _write_zip(
+        tmp_path / "hidden-output.npz",
+        {"m.npy": visible + b"hidden compressed output"},
+    )
+    _set_first_zip_declared_output(path, visible)
+
+    result = inspect_candidate(path, declaration=_derived_declaration())
+
+    assert result.decision == "exclude"
+    assert result.reason == "unsafe-or-corrupt-numpy"
+
+
+def test_zip_local_and_central_metadata_must_match(tmp_path: Path):
+    path = _write_zip(tmp_path / "metadata-mismatch.zip", {"notes.txt": b"safe"})
+    payload = bytearray(path.read_bytes())
+    local = payload.index(b"PK\x03\x04")
+    local_crc = struct.unpack_from("<L", payload, local + 14)[0]
+    struct.pack_into("<L", payload, local + 14, local_crc ^ 1)
+    path.write_bytes(payload)
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "exclude"
+    assert result.reason == "corrupt-archive"
+
+
+@pytest.mark.parametrize(
+    "compression",
+    (
+        zipfile.ZIP_STORED,
+        zipfile.ZIP_DEFLATED,
+        zipfile.ZIP_BZIP2,
+        zipfile.ZIP_LZMA,
+    ),
+)
+def test_zip_supported_codecs_pass_independent_stream_validation(
+    tmp_path: Path, compression: int
+):
+    path = tmp_path / f"codec-{compression}.zip"
+    with zipfile.ZipFile(path, "w", compression=compression) as archive:
+        archive.writestr("notes.txt", bytes(range(256)) * 32)
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "include"
+    assert result.reason == "approved-archive"
+
+
+@pytest.mark.parametrize("nested", (False, True))
+def test_concatenated_zip_cannot_hide_an_earlier_archive(
+    tmp_path: Path, nested: bool
+):
+    hidden = _zip_bytes({"hidden/state.ovf": b"field"})
+    benign = _zip_bytes({"notes.txt": b"safe"})
+    combined = hidden + benign
+    if nested:
+        path = _write_tar(tmp_path / "outer.tar", {"inner.zip": combined})
+    else:
+        path = tmp_path / "combined.zip"
+        path.write_bytes(combined)
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "exclude"
+    assert result.reason == "corrupt-archive"
+
+
+@pytest.mark.parametrize("nested", (False, True))
+def test_zip_preamble_is_rejected_by_physical_layout(
+    tmp_path: Path, nested: bool
+):
+    payload = b"MZ" + b"X" * 100 + _zip_bytes({"notes.txt": b"safe"})
+    if nested:
+        path = _write_tar(tmp_path / "outer.tar", {"inner.zip": payload})
+    else:
+        path = tmp_path / "self-extracting.zip"
+        path.write_bytes(payload)
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "exclude"
+    assert result.reason == "corrupt-archive"
+
+
+@pytest.mark.parametrize("nested", (False, True))
+def test_zip_bytes_after_eocd_are_rejected(tmp_path: Path, nested: bool):
+    payload = _zip_bytes({"notes.txt": b"safe"}) + b"unregistered tail"
+    if nested:
+        path = _write_tar(tmp_path / "outer.tar", {"inner.zip": payload})
+    else:
+        path = tmp_path / "trailing.zip"
+        path.write_bytes(payload)
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "exclude"
+    assert result.reason == "corrupt-archive"
+
+
+def test_zip_custom_comment_is_valid_layout(tmp_path: Path):
+    path = tmp_path / "commented.zip"
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("notes.txt", b"safe")
+        archive.comment = b"custom archive comment"
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "include"
+    assert result.reason == "approved-archive"
 
 
 @pytest.mark.parametrize("nested", (False, True))
@@ -752,6 +918,62 @@ def test_declared_ordinary_table_schema_is_not_misclassified_as_field(tmp_path: 
     assert result.reason == "declared-tabular-data"
 
 
+@pytest.mark.parametrize("width", (3, 6))
+@pytest.mark.parametrize(
+    "schema_error",
+    ("blank-column", "wrong-column-count", "blank-unit", "wrong-unit-count"),
+)
+def test_ordinary_three_and_six_column_tables_reject_invalid_schema(
+    tmp_path: Path, width: int, schema_error: str
+):
+    path = tmp_path / f"table-{width}.csv"
+    path.write_text((" ".join(str(index) for index in range(width)) + "\n") * 10)
+    columns = [f"c{index}" for index in range(width)]
+    units = ["1"] * width
+    if schema_error == "blank-column":
+        columns[1] = " "
+    elif schema_error == "wrong-column-count":
+        columns.pop()
+    elif schema_error == "blank-unit":
+        units[1] = " "
+    else:
+        units = ["1", "1"]
+    declaration = {
+        "data_kind": "timeseries",
+        "columns": ";".join(columns),
+        "units": ";".join(units),
+    }
+
+    result = inspect_candidate(
+        path, declaration=declaration, limits=_small_text_limits()
+    )
+
+    assert result.decision == "exclude"
+    assert result.reason == "complete-field-text"
+
+
+@pytest.mark.parametrize("width", (3, 6))
+@pytest.mark.parametrize("unit_count", (1, "width"))
+def test_ordinary_table_units_may_be_scalar_or_per_column(
+    tmp_path: Path, width: int, unit_count: int | str
+):
+    path = tmp_path / f"valid-table-{width}.csv"
+    path.write_text((" ".join(str(index) for index in range(width)) + "\n") * 10)
+    units = ["1"] * (width if unit_count == "width" else 1)
+    declaration = {
+        "data_kind": "timeseries",
+        "columns": ";".join(f"c{index}" for index in range(width)),
+        "units": ";".join(units),
+    }
+
+    result = inspect_candidate(
+        path, declaration=declaration, limits=_small_text_limits()
+    )
+
+    assert result.decision == "include"
+    assert result.reason == "declared-tabular-data"
+
+
 @pytest.mark.parametrize(
     ("data_kind", "shape", "rows"),
     (
@@ -870,6 +1092,71 @@ def test_numpy_slice_needs_complete_manifest_evidence_and_actual_safe_shape(tmp_
     assert undeclared.reason == "undeclared-derived-array"
     assert declared.decision == "include"
     assert declared.reason == "declared-figure-slice"
+
+
+@pytest.mark.parametrize(
+    ("data_kind", "shape"),
+    (
+        ("figure_slice", "mx:8x8;my:8x8;mz:8x8"),
+        ("figure_line", "8x3"),
+        ("scalar_summary", "1x3"),
+    ),
+)
+@pytest.mark.parametrize("evidence_field", ("columns", "units"))
+def test_numpy_derived_evidence_must_match_measured_logical_width(
+    tmp_path: Path, data_kind: str, shape: str, evidence_field: str
+):
+    path = tmp_path / f"{data_kind}.npz"
+    if data_kind == "figure_slice":
+        np.savez(
+            path,
+            mx=np.zeros((8, 8)),
+            my=np.zeros((8, 8)),
+            mz=np.zeros((8, 8)),
+        )
+    elif data_kind == "figure_line":
+        np.savez(path, values=np.zeros((8, 3)))
+    else:
+        np.savez(path, values=np.zeros((1, 3)))
+    declaration = _derived_declaration(shape=shape)
+    declaration["data_kind"] = data_kind
+    declaration[evidence_field] = "first;second"
+
+    result = inspect_candidate(path, declaration=declaration)
+
+    assert result.decision == "exclude"
+    assert result.reason == "undeclared-derived-array"
+
+
+@pytest.mark.parametrize(
+    ("data_kind", "shape"),
+    (
+        ("figure_slice", "mx:8x8;my:8x8;mz:8x8"),
+        ("figure_line", "8x3"),
+        ("scalar_summary", "1x3"),
+    ),
+)
+def test_numpy_derived_evidence_accepts_measured_logical_width(
+    tmp_path: Path, data_kind: str, shape: str
+):
+    path = tmp_path / f"valid-{data_kind}.npz"
+    if data_kind == "figure_slice":
+        np.savez(
+            path,
+            mx=np.zeros((8, 8)),
+            my=np.zeros((8, 8)),
+            mz=np.zeros((8, 8)),
+        )
+    elif data_kind == "figure_line":
+        np.savez(path, values=np.zeros((8, 3)))
+    else:
+        np.savez(path, values=np.zeros((1, 3)))
+    declaration = _derived_declaration(shape=shape)
+    declaration["data_kind"] = data_kind
+
+    result = inspect_candidate(path, declaration=declaration)
+
+    assert result.decision == "include"
 
 
 def test_numpy_derived_declaration_requires_nonempty_columns(tmp_path: Path):

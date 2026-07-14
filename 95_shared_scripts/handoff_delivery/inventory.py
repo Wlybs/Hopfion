@@ -8,6 +8,7 @@ source OVF files.
 
 from __future__ import annotations
 
+import bz2
 from collections import Counter
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -86,6 +87,14 @@ class InspectionResult:
 class _ArchiveBudget:
     entries: int = 0
     uncompressed_bytes: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class _ZipMemberLayout:
+    header_start: int
+    data_start: int
+    data_end: int
+    record_end: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -275,59 +284,458 @@ def _drain_archive_member(
         spool.seek(0)
 
 
-def _validate_empty_zip_directory_stream(
+def _read_exact(handle: BinaryIO, size: int, *, context: str) -> bytes:
+    payload = handle.read(size)
+    if len(payload) != size:
+        raise zipfile.BadZipFile(f"truncated {context}")
+    return payload
+
+
+def _zip_extra_field(extra: bytes, field_id: int) -> bytes | None:
+    offset = 0
+    found: bytes | None = None
+    while offset < len(extra):
+        if len(extra) - offset < 4:
+            raise zipfile.BadZipFile("truncated ZIP extra-field header")
+        current_id, size = struct.unpack_from("<HH", extra, offset)
+        offset += 4
+        if len(extra) - offset < size:
+            raise zipfile.BadZipFile("truncated ZIP extra-field payload")
+        value = extra[offset : offset + size]
+        offset += size
+        if current_id == field_id:
+            if found is not None:
+                raise zipfile.BadZipFile("duplicate ZIP extra field")
+            found = value
+    return found
+
+
+def _zip_local_sizes(
+    compressed_size_32: int,
+    uncompressed_size_32: int,
+    extra: bytes,
+) -> tuple[int, int]:
+    compressed_size = compressed_size_32
+    uncompressed_size = uncompressed_size_32
+    if 0xFFFFFFFF not in (compressed_size_32, uncompressed_size_32):
+        return compressed_size, uncompressed_size
+    zip64 = _zip_extra_field(extra, 0x0001)
+    if zip64 is None:
+        raise zipfile.BadZipFile("missing local ZIP64 size field")
+    offset = 0
+
+    def next_size() -> int:
+        nonlocal offset
+        if len(zip64) - offset < 8:
+            raise zipfile.BadZipFile("truncated local ZIP64 size field")
+        value = struct.unpack_from("<Q", zip64, offset)[0]
+        offset += 8
+        return value
+
+    if uncompressed_size_32 == 0xFFFFFFFF:
+        uncompressed_size = next_size()
+    if compressed_size_32 == 0xFFFFFFFF:
+        compressed_size = next_size()
+    return compressed_size, uncompressed_size
+
+
+def _zip_data_descriptor_end(
+    source: BinaryIO,
+    *,
+    data_end: int,
+    info: zipfile.ZipInfo,
+    zip64: bool,
+) -> int:
+    source.seek(data_end)
+    descriptor = source.read(24)
+    size_format = "<QQ" if zip64 else "<LL"
+    size_bytes = 16 if zip64 else 8
+    candidates: list[int] = []
+    for signature_bytes in (0, 4):
+        if signature_bytes and descriptor[:4] != b"PK\x07\x08":
+            continue
+        required = signature_bytes + 4 + size_bytes
+        if len(descriptor) < required:
+            continue
+        crc = struct.unpack_from("<L", descriptor, signature_bytes)[0]
+        compressed_size, uncompressed_size = struct.unpack_from(
+            size_format, descriptor, signature_bytes + 4
+        )
+        if (
+            crc == info.CRC
+            and compressed_size == info.compress_size
+            and uncompressed_size == info.file_size
+        ):
+            candidates.append(data_end + required)
+    unique_candidates = sorted(set(candidates))
+    if len(unique_candidates) != 1:
+        raise zipfile.BadZipFile("missing or ambiguous ZIP data descriptor")
+    return unique_candidates[0]
+
+
+def _read_zip_member_layout(
     archive: zipfile.ZipFile,
     info: zipfile.ZipInfo,
-    *,
-    label: str,
-    limits: InspectionLimits,
-) -> _Finding | None:
-    """Validate compressed bytes that ``ZipExtFile`` skips for a zero-size entry."""
-    if info.compress_size > limits.max_nested_member_bytes:
-        return _Finding(
-            "archive-resource-limit",
-            (label, f"compressed_bytes={info.compress_size}"),
-        )
-    if info.compress_type == zipfile.ZIP_STORED:
-        if info.compress_size != 0:
-            raise zipfile.BadZipFile("stored empty directory has compressed bytes")
-        return None
-    if info.compress_type != zipfile.ZIP_DEFLATED:
-        return _Finding("corrupt-archive", (label, "unverified directory codec"))
-
+) -> _ZipMemberLayout:
     source = archive.fp
     if source is None:
-        raise zipfile.BadZipFile("closed ZIP while validating directory")
+        raise zipfile.BadZipFile("closed ZIP while validating member")
+    if info.header_offset < 0 or info.compress_size < 0 or info.file_size < 0:
+        raise zipfile.BadZipFile("negative ZIP member offset or size")
+    source.seek(info.header_offset)
+    local_header = _read_exact(source, 30, context="local ZIP header")
+    if local_header[:4] != b"PK\x03\x04":
+        raise zipfile.BadZipFile("invalid local ZIP header signature")
+    local_flags, local_method = struct.unpack_from("<HH", local_header, 6)
+    local_crc, compressed_size_32, uncompressed_size_32 = struct.unpack_from(
+        "<LLL", local_header, 14
+    )
+    name_length, extra_length = struct.unpack_from("<HH", local_header, 26)
+    local_name_bytes = _read_exact(source, name_length, context="local ZIP name")
+    local_extra = _read_exact(source, extra_length, context="local ZIP extra field")
+    encoding = "utf-8" if local_flags & 0x800 else "cp437"
+    try:
+        local_name = local_name_bytes.decode(encoding)
+    except UnicodeError as error:
+        raise zipfile.BadZipFile("invalid local ZIP member name") from error
+    if (
+        local_name != info.orig_filename
+        or local_flags != info.flag_bits
+        or local_method != info.compress_type
+    ):
+        raise zipfile.BadZipFile("local and central ZIP metadata disagree")
+
+    local_compressed_size, local_uncompressed_size = _zip_local_sizes(
+        compressed_size_32,
+        uncompressed_size_32,
+        local_extra,
+    )
+    uses_descriptor = bool(local_flags & 0x08)
+    if uses_descriptor:
+        if local_crc not in (0, info.CRC):
+            raise zipfile.BadZipFile("local and central ZIP CRC disagree")
+        if local_compressed_size not in (0, info.compress_size):
+            raise zipfile.BadZipFile("local and central ZIP compressed sizes disagree")
+        if local_uncompressed_size not in (0, info.file_size):
+            raise zipfile.BadZipFile("local and central ZIP sizes disagree")
+    elif (
+        local_crc != info.CRC
+        or local_compressed_size != info.compress_size
+        or local_uncompressed_size != info.file_size
+    ):
+        raise zipfile.BadZipFile("local and central ZIP sizes or CRC disagree")
+
+    data_start = source.tell()
+    data_end = data_start + info.compress_size
+    record_end = data_end
+    if uses_descriptor:
+        record_end = _zip_data_descriptor_end(
+            source,
+            data_end=data_end,
+            info=info,
+            zip64=(
+                compressed_size_32 == 0xFFFFFFFF
+                or uncompressed_size_32 == 0xFFFFFFFF
+                or info.compress_size > 0xFFFFFFFF
+                or info.file_size > 0xFFFFFFFF
+            ),
+        )
+    return _ZipMemberLayout(
+        header_start=info.header_offset,
+        data_start=data_start,
+        data_end=data_end,
+        record_end=record_end,
+    )
+
+
+def _zip_output_limit(expected_size: int, actual_size: int) -> int:
+    return max(1, min(1024 * 1024, expected_size - actual_size + 1))
+
+
+def _verify_zip_member_stream(
+    archive: zipfile.ZipFile,
+    info: zipfile.ZipInfo,
+    layout: _ZipMemberLayout,
+) -> None:
+    source = archive.fp
+    if source is None:
+        raise zipfile.BadZipFile("closed ZIP while validating member")
+    source.seek(layout.data_start)
+    remaining = info.compress_size
+    actual_size = 0
+    actual_crc = 0
+
+    def account(output: bytes) -> None:
+        nonlocal actual_size, actual_crc
+        actual_size += len(output)
+        if actual_size > info.file_size:
+            raise zipfile.BadZipFile("ZIP stream expands past declared size")
+        actual_crc = zlib.crc32(output, actual_crc)
+
+    def read_chunk() -> bytes:
+        nonlocal remaining
+        if not remaining:
+            return b""
+        chunk = source.read(min(remaining, 64 * 1024))
+        if not chunk:
+            raise zipfile.BadZipFile("truncated ZIP compressed stream")
+        remaining -= len(chunk)
+        return chunk
+
+    if info.compress_type == zipfile.ZIP_STORED:
+        while remaining:
+            account(read_chunk())
+    elif info.compress_type == zipfile.ZIP_DEFLATED:
+        decoder = zlib.decompressobj(-15)
+        while remaining:
+            pending = read_chunk()
+            while pending:
+                output = decoder.decompress(
+                    pending, _zip_output_limit(info.file_size, actual_size)
+                )
+                account(output)
+                if decoder.unused_data:
+                    raise zipfile.BadZipFile("data follows ZIP deflate EOF")
+                next_pending = decoder.unconsumed_tail
+                if next_pending == pending and not output:
+                    raise zipfile.BadZipFile("stalled ZIP deflate decoder")
+                pending = next_pending
+        account(decoder.flush(_zip_output_limit(info.file_size, actual_size)))
+        if not decoder.eof or decoder.unused_data or decoder.unconsumed_tail:
+            raise zipfile.BadZipFile("ZIP deflate stream did not end cleanly")
+    elif info.compress_type == zipfile.ZIP_BZIP2:
+        decoder = bz2.BZ2Decompressor()
+        while remaining:
+            pending = read_chunk()
+            while True:
+                output = decoder.decompress(
+                    pending, _zip_output_limit(info.file_size, actual_size)
+                )
+                account(output)
+                pending = b""
+                if decoder.eof:
+                    if decoder.unused_data or remaining:
+                        raise zipfile.BadZipFile("data follows ZIP bzip2 EOF")
+                    break
+                if decoder.needs_input:
+                    break
+                if not output:
+                    raise zipfile.BadZipFile("stalled ZIP bzip2 decoder")
+        if not decoder.eof or decoder.unused_data:
+            raise zipfile.BadZipFile("ZIP bzip2 stream did not end cleanly")
+    elif info.compress_type == zipfile.ZIP_LZMA:
+        if remaining < 4:
+            raise zipfile.BadZipFile("truncated ZIP LZMA properties")
+        lzma_header = _read_exact(source, 4, context="ZIP LZMA header")
+        remaining -= 4
+        properties_size = struct.unpack_from("<H", lzma_header, 2)[0]
+        if properties_size <= 0 or properties_size > remaining:
+            raise zipfile.BadZipFile("invalid ZIP LZMA properties size")
+        properties = _read_exact(
+            source, properties_size, context="ZIP LZMA properties"
+        )
+        remaining -= properties_size
+        try:
+            filter_properties = lzma._decode_filter_properties(
+                lzma.FILTER_LZMA1, properties
+            )
+            decoder = lzma.LZMADecompressor(
+                lzma.FORMAT_RAW, filters=[filter_properties]
+            )
+        except (lzma.LZMAError, ValueError) as error:
+            raise zipfile.BadZipFile("invalid ZIP LZMA properties") from error
+        while remaining:
+            pending = read_chunk()
+            while True:
+                output = decoder.decompress(
+                    pending, _zip_output_limit(info.file_size, actual_size)
+                )
+                account(output)
+                pending = b""
+                if decoder.eof:
+                    if decoder.unused_data or remaining:
+                        raise zipfile.BadZipFile("data follows ZIP LZMA EOF")
+                    break
+                if decoder.needs_input:
+                    break
+                if not output:
+                    raise zipfile.BadZipFile("stalled ZIP LZMA decoder")
+        if not decoder.eof or decoder.unused_data:
+            raise zipfile.BadZipFile("ZIP LZMA stream did not end cleanly")
+    else:
+        raise zipfile.BadZipFile(
+            f"unsupported ZIP compression method {info.compress_type}"
+        )
+
+    if actual_size != info.file_size or actual_crc & 0xFFFFFFFF != info.CRC:
+        raise zipfile.BadZipFile("ZIP expanded size or CRC mismatch")
+
+
+def _validate_zip_member_stream(
+    archive: zipfile.ZipFile,
+    info: zipfile.ZipInfo,
+) -> _ZipMemberLayout:
+    source = archive.fp
+    if source is None:
+        raise zipfile.BadZipFile("closed ZIP while validating member")
     original_position = source.tell()
     try:
-        source.seek(info.header_offset)
-        local_header = source.read(30)
-        if len(local_header) != 30 or local_header[:4] != b"PK\x03\x04":
-            raise zipfile.BadZipFile("invalid local ZIP header")
-        local_flags, local_method = struct.unpack_from("<HH", local_header, 6)
-        name_length, extra_length = struct.unpack_from("<HH", local_header, 26)
-        if local_flags & 0x1 or local_method != info.compress_type:
-            raise zipfile.BadZipFile("ZIP local header disagrees with directory")
-        source.seek(name_length + extra_length, os.SEEK_CUR)
-
-        decompressor = zlib.decompressobj(-15)
-        remaining = info.compress_size
-        while remaining:
-            chunk = source.read(min(remaining, 1024 * 1024))
-            if not chunk:
-                raise zipfile.BadZipFile("truncated directory compression stream")
-            remaining -= len(chunk)
-            if decompressor.decompress(chunk, 1):
-                raise zipfile.BadZipFile("empty directory expands to data")
-            if decompressor.unconsumed_tail:
-                raise zipfile.BadZipFile("directory stream expands beyond zero bytes")
-        if decompressor.flush():
-            raise zipfile.BadZipFile("empty directory expands to data")
-        if not decompressor.eof or decompressor.unused_data:
-            raise zipfile.BadZipFile("invalid directory compression stream")
+        layout = _read_zip_member_layout(archive, info)
+        _verify_zip_member_stream(archive, info, layout)
+        return layout
     finally:
         source.seek(original_position)
-    return None
+
+
+def _zip_eocd(
+    archive: zipfile.ZipFile,
+) -> tuple[int, int, int]:
+    source = archive.fp
+    if source is None:
+        raise zipfile.BadZipFile("closed ZIP while validating layout")
+    source.seek(0, os.SEEK_END)
+    physical_size = source.tell()
+    tail_size = min(physical_size, 22 + 0xFFFF)
+    source.seek(physical_size - tail_size)
+    tail = _read_exact(source, tail_size, context="ZIP end record search window")
+    candidates: list[tuple[int, bytes]] = []
+    offset = 0
+    while True:
+        index = tail.find(b"PK\x05\x06", offset)
+        if index < 0:
+            break
+        if len(tail) - index >= 22:
+            comment_size = struct.unpack_from("<H", tail, index + 20)[0]
+            if index + 22 + comment_size == len(tail):
+                candidates.append((physical_size - tail_size + index, tail[index:]))
+        offset = index + 1
+    if len(candidates) != 1:
+        raise zipfile.BadZipFile("missing or ambiguous terminal ZIP end record")
+
+    eocd_offset, end_record = candidates[0]
+    (
+        _signature,
+        disk_number,
+        central_disk,
+        disk_entries,
+        total_entries,
+        central_size,
+        central_offset,
+        comment_size,
+    ) = struct.unpack_from("<4s4H2LH", end_record)
+    if disk_number != 0 or central_disk != 0 or disk_entries != total_entries:
+        raise zipfile.BadZipFile("multi-disk ZIP layout is unsupported")
+    if (
+        total_entries == 0xFFFF
+        or central_size == 0xFFFFFFFF
+        or central_offset == 0xFFFFFFFF
+    ):
+        raise zipfile.BadZipFile("ZIP64 layout requires separate verification")
+    if total_entries != len(archive.infolist()):
+        raise zipfile.BadZipFile("ZIP end-record entry count mismatch")
+    if end_record[22 : 22 + comment_size] != archive.comment:
+        raise zipfile.BadZipFile("ZIP comment disagrees with end record")
+    if central_offset != archive.start_dir:
+        raise zipfile.BadZipFile("ZIP has an unregistered physical prefix")
+    if central_offset + central_size != eocd_offset:
+        raise zipfile.BadZipFile("ZIP central directory is not adjacent to EOCD")
+    return central_offset, central_size, eocd_offset
+
+
+def _validate_zip_central_records(
+    source: BinaryIO,
+    infos: list[zipfile.ZipInfo],
+    *,
+    central_offset: int,
+    central_size: int,
+) -> None:
+    position = central_offset
+    central_end = central_offset + central_size
+    for info in infos:
+        source.seek(position)
+        fixed = _read_exact(source, 46, context="central ZIP header")
+        if fixed[:4] != b"PK\x01\x02":
+            raise zipfile.BadZipFile("invalid central ZIP header signature")
+        flags, method = struct.unpack_from("<HH", fixed, 8)
+        crc, compressed_size, uncompressed_size = struct.unpack_from(
+            "<LLL", fixed, 16
+        )
+        name_size, extra_size, comment_size, disk_start = struct.unpack_from(
+            "<HHHH", fixed, 28
+        )
+        local_offset = struct.unpack_from("<L", fixed, 42)[0]
+        if (
+            compressed_size == 0xFFFFFFFF
+            or uncompressed_size == 0xFFFFFFFF
+            or local_offset == 0xFFFFFFFF
+            or disk_start == 0xFFFF
+        ):
+            raise zipfile.BadZipFile("ZIP64 central record requires verification")
+        name_bytes = _read_exact(source, name_size, context="central ZIP name")
+        extra = _read_exact(source, extra_size, context="central ZIP extra field")
+        comment = _read_exact(source, comment_size, context="central ZIP comment")
+        encoding = "utf-8" if flags & 0x800 else "cp437"
+        try:
+            name = name_bytes.decode(encoding)
+        except UnicodeError as error:
+            raise zipfile.BadZipFile("invalid central ZIP member name") from error
+        if (
+            name != info.orig_filename
+            or flags != info.flag_bits
+            or method != info.compress_type
+            or crc != info.CRC
+            or compressed_size != info.compress_size
+            or uncompressed_size != info.file_size
+            or local_offset != info.header_offset
+            or extra != info.extra
+            or comment != info.comment
+            or disk_start != 0
+        ):
+            raise zipfile.BadZipFile("central ZIP record disagrees with parsed entry")
+        position = source.tell()
+        if position > central_end:
+            raise zipfile.BadZipFile("central ZIP record exceeds directory")
+    if position != central_end:
+        raise zipfile.BadZipFile("unregistered bytes in ZIP central directory")
+
+
+def _validate_zip_archive(
+    archive: zipfile.ZipFile,
+    infos: list[zipfile.ZipInfo],
+) -> None:
+    source = archive.fp
+    if source is None:
+        raise zipfile.BadZipFile("closed ZIP while validating layout")
+    original_position = source.tell()
+    try:
+        layouts = [_validate_zip_member_stream(archive, info) for info in infos]
+        central_offset, central_size, _eocd_offset = _zip_eocd(archive)
+        ordered = sorted(layouts, key=lambda layout: layout.header_start)
+        if len({layout.header_start for layout in ordered}) != len(ordered):
+            raise zipfile.BadZipFile("multiple entries reference one local ZIP record")
+        expected_offset = 0
+        for layout in ordered:
+            if (
+                layout.header_start != expected_offset
+                or not (
+                    layout.header_start
+                    <= layout.data_start
+                    <= layout.data_end
+                    <= layout.record_end
+                )
+            ):
+                raise zipfile.BadZipFile("ZIP local records do not uniquely cover data")
+            expected_offset = layout.record_end
+        if expected_offset != central_offset:
+            raise zipfile.BadZipFile("unregistered bytes before ZIP central directory")
+        _validate_zip_central_records(
+            source,
+            infos,
+            central_offset=central_offset,
+            central_size=central_size,
+        )
+    finally:
+        source.seek(original_position)
 
 
 def _array_shape_label(name: str, shape: tuple[int, ...]) -> str:
@@ -477,6 +885,7 @@ def _load_numpy_shapes(
                 max_archive_entries=max_archive_entries,
                 max_uncompressed_bytes=max_uncompressed_bytes,
             )
+            _validate_zip_archive(archive, infos)
             shapes: dict[str, tuple[int, ...]] = {}
             for info in infos:
                 logical_key = _canonical_archive_member(info.filename)[:-4]
@@ -507,6 +916,27 @@ def _actual_shape_value(shapes: Mapping[str, tuple[int, ...]]) -> str:
     )
 
 
+def _numpy_logical_width(
+    data_kind: object,
+    shapes: Mapping[str, tuple[int, ...]],
+) -> int | None:
+    if data_kind not in _DERIVED_KINDS or not shapes:
+        return None
+    measured_shapes = tuple(shapes.values())
+    if len(measured_shapes) > 1:
+        if len(set(measured_shapes)) != 1:
+            return None
+        return len(measured_shapes)
+    shape = measured_shapes[0]
+    if not shape:
+        return 1
+    if data_kind == "figure_slice":
+        return shape[-1] if len(shape) >= 3 else 1
+    if data_kind == "figure_line":
+        return shape[-1] if len(shape) >= 2 else 1
+    return shape[-1]
+
+
 def _valid_derived_declaration(
     declaration: Mapping[str, object] | None,
     shapes: Mapping[str, tuple[int, ...]],
@@ -516,7 +946,14 @@ def _valid_derived_declaration(
     assert declaration is not None
     if declaration["shape"] != _actual_shape_value(shapes):
         return False
-    return True
+    logical_width = _numpy_logical_width(declaration.get("data_kind"), shapes)
+    if logical_width is None:
+        return False
+    columns = tuple(
+        token.strip() for token in str(declaration["columns"]).split(";")
+    )
+    units = tuple(token.strip() for token in str(declaration["units"]).split(";"))
+    return len(columns) == logical_width and len(units) in (1, logical_width)
 
 
 def _valid_derived_metadata(
@@ -734,9 +1171,11 @@ def _inspect_zip_handle(
     if finding:
         return finding
     for info in infos:
-        member_label = f"{label}!{info.filename}"
         if info.flag_bits & 0x1:
-            return _Finding("encrypted-archive", (member_label,))
+            return _Finding("encrypted-archive", (f"{label}!{info.filename}",))
+    _validate_zip_archive(archive, infos)
+    for info in infos:
+        member_label = f"{label}!{info.filename}"
         if _unsafe_archive_member(info.filename):
             return _Finding("unsafe-archive-member", (member_label,))
         if stat.S_ISLNK(info.external_attr >> 16):
@@ -746,16 +1185,6 @@ def _inspect_zip_handle(
                 return _Finding(
                     "unsafe-archive-member", (member_label, "directory has payload")
                 )
-            with archive.open(info) as handle:
-                handle.read(1)
-            finding = _validate_empty_zip_directory_stream(
-                archive,
-                info,
-                label=member_label,
-                limits=limits,
-            )
-            if finding:
-                return finding
             continue
         if _field_name(info.filename):
             return _Finding("archive-contains-field", (member_label,))
@@ -1232,9 +1661,16 @@ def _ordinary_table_declaration(
         return False
     columns = declaration.get("columns")
     units = declaration.get("units")
-    if not isinstance(columns, str) or not columns or not isinstance(units, str) or not units:
+    if not isinstance(columns, str) or not isinstance(units, str):
         return False
-    return len(columns.split(";")) == width
+    column_tokens = tuple(token.strip() for token in columns.split(";"))
+    unit_tokens = tuple(token.strip() for token in units.split(";"))
+    return (
+        len(column_tokens) == width
+        and all(column_tokens)
+        and len(unit_tokens) in (1, width)
+        and all(unit_tokens)
+    )
 
 
 def _inspect_large_text_rows(
