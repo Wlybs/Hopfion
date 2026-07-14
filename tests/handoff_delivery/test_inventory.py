@@ -240,7 +240,9 @@ def test_tar_zstd_attempts_system_listing_and_detects_field(
     assert calls
     args, kwargs = calls[0]
     assert args[:3] == ["tar", "--zstd", "--list"]
-    assert str(path) in args
+    assert "--file=-" in args
+    assert str(path) not in args
+    assert kwargs.get("stdin") is not None
     assert kwargs.get("shell", False) is False
     assert isinstance(kwargs.get("timeout"), (int, float))
 
@@ -901,6 +903,27 @@ def test_text_line_length_is_bounded_and_fail_closed(
     assert result.reason == "text-resource-limit"
 
 
+def test_suspect_three_column_text_with_invalid_utf8_is_fail_closed(tmp_path: Path):
+    path = tmp_path / "malformed-vectors.txt"
+    path.write_bytes(b"0.1 0.2 0.3\n" * 10 + b"\xff\n")
+
+    result = inspect_candidate(path, limits=_small_text_limits())
+
+    assert result.decision == "exclude"
+    assert result.reason == "unreadable-suspect-text"
+    assert "UnicodeDecodeError" in result.evidence
+
+
+def test_small_binary_is_not_rejected_as_suspect_text(tmp_path: Path):
+    path = tmp_path / "small-binary.dat"
+    path.write_bytes(b"ordinary\xffbinary")
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "include"
+    assert result.reason == "approved"
+
+
 def test_declared_ordinary_table_schema_is_not_misclassified_as_field(tmp_path: Path):
     path = tmp_path / "table.csv"
     path.write_text("0 0 0 0.1 0.2 0.3\n" * 10)
@@ -1401,3 +1424,36 @@ def test_streaming_sha_metadata_and_symlink_inventory_do_not_follow_target(tmp_p
     assert link_result.reason == "symlink"
     assert link_result.link_target == target.name
     assert link_result.sha256 != target_result.sha256
+
+
+@pytest.mark.parametrize("mutation", ("replace-with-symlink", "continue-writing"))
+def test_candidate_mutation_during_inspection_is_fail_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mutation: str,
+):
+    path = tmp_path / "candidate.txt"
+    path.write_text("safe notes\n")
+    replacement = tmp_path / "replacement.txt"
+    replacement.write_text("different object\n")
+    original_marker_check = inventory_module._has_oommf_marker
+    mutated = False
+
+    def mutate_after_prefix(prefix: bytes) -> bool:
+        nonlocal mutated
+        if not mutated:
+            mutated = True
+            if mutation == "replace-with-symlink":
+                path.unlink()
+                path.symlink_to(replacement.name)
+            else:
+                with path.open("ab") as handle:
+                    handle.write(b"continued write\n")
+        return original_marker_check(prefix)
+
+    monkeypatch.setattr(inventory_module, "_has_oommf_marker", mutate_after_prefix)
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "exclude"
+    assert result.reason == "unstable-file-identity"

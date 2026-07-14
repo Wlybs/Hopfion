@@ -144,6 +144,33 @@ class _TextResourceError(ValueError):
     """Raised before an untrusted text line can consume unbounded memory."""
 
 
+class _UnstableFileError(OSError):
+    """Raised when one inspection cannot stay bound to one regular file."""
+
+
+def _stream_sha256_fileobj(
+    handle: BinaryIO,
+    *,
+    expected_size: int,
+    chunk_size: int = 1024 * 1024,
+) -> str:
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+    handle.seek(0)
+    remaining = expected_size
+    digest = hashlib.sha256()
+    while remaining:
+        chunk = handle.read(min(chunk_size, remaining))
+        if not chunk:
+            raise _UnstableFileError("file became shorter while hashing")
+        remaining -= len(chunk)
+        digest.update(chunk)
+    if handle.read(1):
+        raise _UnstableFileError("file became longer while hashing")
+    handle.seek(0)
+    return digest.hexdigest()
+
+
 def stream_sha256(path: Path | str, *, chunk_size: int = 1024 * 1024) -> str:
     """Hash a regular file without loading it into memory."""
     if chunk_size <= 0:
@@ -191,11 +218,6 @@ def _magic_container_kind(prefix: bytes) -> str | None:
     if len(prefix) >= 262 and prefix[257:262] == b"ustar":
         return "tar"
     return None
-
-
-def _read_prefix(path: Path, length: int = 4096) -> bytes:
-    with path.open("rb") as handle:
-        return handle.read(length)
 
 
 def _has_oommf_marker(payload: bytes) -> bool:
@@ -870,15 +892,18 @@ def _read_npy_shape(
     return normalized_shape
 
 
-def _load_numpy_shapes(
-    path: Path,
+def _load_numpy_shapes_fileobj(
+    handle: BinaryIO,
     *,
+    declared_size: int,
     max_archive_entries: int,
     max_uncompressed_bytes: int,
 ) -> dict[str, tuple[int, ...]]:
-    is_npz = zipfile.is_zipfile(path)
+    handle.seek(0)
+    is_npz = zipfile.is_zipfile(handle)
+    handle.seek(0)
     if is_npz:
-        with zipfile.ZipFile(path) as archive:
+        with zipfile.ZipFile(handle) as archive:
             infos = archive.infolist()
             _validate_npz_infos(
                 infos,
@@ -896,15 +921,14 @@ def _load_numpy_shapes(
                         max_uncompressed_bytes=max_uncompressed_bytes,
                     )
             return shapes
-    declared_size = path.stat().st_size
-    with path.open("rb") as handle:
-        return {
-            "": _read_npy_shape(
-                handle,
-                declared_size=declared_size,
-                max_uncompressed_bytes=max_uncompressed_bytes,
-            )
-        }
+    handle.seek(0)
+    return {
+        "": _read_npy_shape(
+            handle,
+            declared_size=declared_size,
+            max_uncompressed_bytes=max_uncompressed_bytes,
+        )
+    }
 
 
 def _actual_shape_value(shapes: Mapping[str, tuple[int, ...]]) -> str:
@@ -987,14 +1011,16 @@ def _valid_derived_metadata(
 
 
 def _inspect_numpy(
-    path: Path,
+    handle: BinaryIO,
     *,
+    declared_size: int,
     declaration: Mapping[str, object] | None,
     limits: InspectionLimits,
 ) -> tuple[_Finding | None, tuple[str, ...], bool]:
     try:
-        shapes_by_name = _load_numpy_shapes(
-            path,
+        shapes_by_name = _load_numpy_shapes_fileobj(
+            handle,
+            declared_size=declared_size,
             max_archive_entries=limits.max_archive_entries,
             max_uncompressed_bytes=limits.max_numpy_uncompressed_bytes,
         )
@@ -1040,12 +1066,16 @@ def _inspect_numpy(
     return None, shape_labels, True
 
 
-def _zip_looks_like_npz(path: Path) -> bool:
+def _zip_looks_like_npz(handle: BinaryIO) -> bool:
+    original_position = handle.tell()
     try:
-        with zipfile.ZipFile(path) as archive:
+        handle.seek(0)
+        with zipfile.ZipFile(handle) as archive:
             names = [info.filename for info in archive.infolist() if not info.is_dir()]
     except (OSError, zipfile.BadZipFile):
         return False
+    finally:
+        handle.seek(original_position)
     return bool(names) and all(name.casefold().endswith(".npy") for name in names)
 
 
@@ -1270,8 +1300,11 @@ def _tar_has_standard_trailer(handle: BinaryIO) -> bool:
         handle.seek(original_position)
 
 
-def _inspect_tar_zstd_path(
-    path: Path, *, limits: InspectionLimits
+def _inspect_tar_zstd_fileobj(
+    handle: BinaryIO,
+    *,
+    label: str,
+    limits: InspectionLimits,
 ) -> _Finding:
     listing_limit = min(
         _MAX_TAR_ZSTD_LISTING_BYTES,
@@ -1282,8 +1315,7 @@ def _inspect_tar_zstd_path(
         "--zstd",
         "--list",
         "--quoting-style=escape",
-        "--file",
-        str(path),
+        "--file=-",
     ]
     environment = dict(os.environ)
     environment["LC_ALL"] = "C"
@@ -1293,11 +1325,13 @@ def _inspect_tar_zstd_path(
         max_size=_MEMBER_SPOOL_MEMORY_BYTES, mode="w+b"
     ) as error_output:
         try:
+            handle.seek(0)
             completed = subprocess.run(
                 command,
                 check=False,
                 env=environment,
                 shell=False,
+                stdin=handle,
                 stderr=error_output,
                 stdout=listing_output,
                 timeout=_TAR_ZSTD_LIST_TIMEOUT_SECONDS,
@@ -1305,7 +1339,7 @@ def _inspect_tar_zstd_path(
         except (OSError, subprocess.SubprocessError) as error:
             return _Finding(
                 "unsupported-zstd-container",
-                (path.name, f"tar listing failed: {type(error).__name__}"),
+                (label, f"tar listing failed: {type(error).__name__}"),
             )
         returned_stdout = completed.stdout
         returned_stderr = completed.stderr
@@ -1315,7 +1349,7 @@ def _inspect_tar_zstd_path(
             if listing_output.tell() > listing_limit:
                 return _Finding(
                     "archive-resource-limit",
-                    (path.name, f"listing_bytes>{listing_limit}"),
+                    (label, f"listing_bytes>{listing_limit}"),
                 )
             listing_output.seek(0)
             stdout = listing_output.read(listing_limit + 1)
@@ -1325,39 +1359,39 @@ def _inspect_tar_zstd_path(
             if error_output.tell() > listing_limit:
                 return _Finding(
                     "archive-resource-limit",
-                    (path.name, f"listing_bytes>{listing_limit}"),
+                    (label, f"listing_bytes>{listing_limit}"),
                 )
             error_output.seek(0)
             stderr = error_output.read(listing_limit + 1)
     if not isinstance(stdout, bytes) or not isinstance(stderr, bytes):
         return _Finding(
-            "unsupported-zstd-container", (path.name, "unparseable tar output")
+            "unsupported-zstd-container", (label, "unparseable tar output")
         )
     if len(stdout) > listing_limit or len(stderr) > listing_limit:
         return _Finding(
             "archive-resource-limit",
-            (path.name, f"listing_bytes>{listing_limit}"),
+            (label, f"listing_bytes>{listing_limit}"),
         )
     if completed.returncode != 0 or stderr:
         return _Finding(
             "unsupported-zstd-container",
-            (path.name, f"tar returncode={completed.returncode}"),
+            (label, f"tar returncode={completed.returncode}"),
         )
     try:
         listing = stdout.decode("utf-8", errors="strict")
     except UnicodeError:
         return _Finding(
-            "unsupported-zstd-container", (path.name, "non-UTF-8 tar listing")
+            "unsupported-zstd-container", (label, "non-UTF-8 tar listing")
         )
     if listing and not listing.endswith("\n"):
         return _Finding(
-            "unsupported-zstd-container", (path.name, "truncated tar listing")
+            "unsupported-zstd-container", (label, "truncated tar listing")
         )
     names = listing.splitlines()
     if len(names) > limits.max_archive_entries:
         return _Finding(
             "archive-resource-limit",
-            (path.name, f"entries={len(names)}"),
+            (label, f"entries={len(names)}"),
         )
     for name in names:
         if (
@@ -1367,65 +1401,16 @@ def _inspect_tar_zstd_path(
         ):
             return _Finding(
                 "unsupported-zstd-container",
-                (path.name, "ambiguous tar listing"),
+                (label, "ambiguous tar listing"),
             )
         if _unsafe_archive_member(name):
-            return _Finding("unsafe-archive-member", (f"{path.name}!{name}",))
+            return _Finding("unsafe-archive-member", (f"{label}!{name}",))
         if _field_name(name):
-            return _Finding("archive-contains-field", (f"{path.name}!{name}",))
+            return _Finding("archive-contains-field", (f"{label}!{name}",))
     return _Finding(
         "unsupported-zstd-container",
-        (path.name, "listing cannot verify member content or nesting"),
+        (label, "listing cannot verify member content or nesting"),
     )
-
-
-def _inspect_archive_path(
-    path: Path,
-    *,
-    kind: str,
-    limits: InspectionLimits,
-) -> _Finding | None:
-    if kind == "zstd":
-        return _inspect_tar_zstd_path(path, limits=limits)
-    unsupported = _unsupported_container_finding(kind, path.name)
-    if unsupported:
-        return unsupported
-    budget = _ArchiveBudget()
-    try:
-        if kind == "zip":
-            with zipfile.ZipFile(path) as archive:
-                return _inspect_zip_handle(
-                    archive,
-                    label=path.name,
-                    depth=1,
-                    budget=budget,
-                    limits=limits,
-                )
-        if kind == "tar":
-            with path.open("rb") as handle:
-                if not _tar_has_standard_trailer(handle):
-                    return _Finding("corrupt-archive", (path.name, "missing tar trailer"))
-            with tarfile.open(path, mode="r:", ignore_zeros=True) as archive:
-                return _inspect_tar_handle(
-                    archive,
-                    label=path.name,
-                    depth=1,
-                    budget=budget,
-                    limits=limits,
-                )
-    except _NumpyResourceError as error:
-        return _Finding("numpy-resource-limit", (str(error),))
-    except (
-        OSError,
-        EOFError,
-        tarfile.TarError,
-        zipfile.BadZipFile,
-        lzma.LZMAError,
-        RuntimeError,
-        zlib.error,
-    ):
-        return _Finding("corrupt-archive", (path.name,))
-    return _Finding("unsupported-container", (path.name, kind))
 
 
 def _inspect_archive_fileobj(
@@ -1489,13 +1474,6 @@ def _iter_data_lines_binary(
         stripped = line.strip()
         if stripped and not stripped.startswith("#"):
             yield stripped
-
-
-def _iter_data_lines(path: Path, *, max_line_bytes: int) -> Iterator[str]:
-    with path.open("rb") as handle:
-        yield from _iter_data_lines_binary(
-            handle, max_line_bytes=max_line_bytes
-        )
 
 
 def _iter_data_lines_fileobj(
@@ -1562,7 +1540,7 @@ def _parse_shape(shape: object) -> tuple[int, ...] | None:
 
 
 def _measure_derived_text(
-    path: Path,
+    handle: BinaryIO,
     declared_columns: tuple[str, ...],
     *,
     max_line_bytes: int,
@@ -1571,8 +1549,8 @@ def _measure_derived_text(
     width: int | None = None
     saw_header = False
     try:
-        for stripped in _iter_data_lines(
-            path, max_line_bytes=max_line_bytes
+        for stripped in _iter_data_lines_fileobj(
+            handle, max_line_bytes=max_line_bytes
         ):
             measured_width = _finite_numeric_width(stripped)
             if measured_width is None:
@@ -1606,7 +1584,7 @@ def _text_shape_matches(
 
 
 def _inspect_derived_text(
-    path: Path,
+    handle: BinaryIO,
     *,
     declaration: Mapping[str, object] | None,
     limits: InspectionLimits,
@@ -1631,7 +1609,7 @@ def _inspect_derived_text(
         return _Finding("invalid-derived-declaration")
     try:
         measured = _measure_derived_text(
-            path,
+            handle,
             columns,
             max_line_bytes=limits.max_text_line_bytes,
         )
@@ -1689,7 +1667,11 @@ def _inspect_large_text_rows(
         total = sum(1 for _ in iter_lines())
     except _TextResourceError as error:
         return _Finding("text-resource-limit", (str(error),))
-    except (OSError, UnicodeError):
+    except (OSError, UnicodeError) as error:
+        if size >= limits.min_suspect_text_bytes:
+            return _Finding(
+                "unreadable-suspect-text", (type(error).__name__,)
+            )
         return None
     if size < limits.min_suspect_text_bytes:
         return None
@@ -1703,8 +1685,10 @@ def _inspect_large_text_rows(
                 widths.append(_finite_numeric_width(line))
     except _TextResourceError as error:
         return _Finding("text-resource-limit", (str(error),))
-    except (OSError, UnicodeError):
-        return None
+    except (OSError, UnicodeError) as error:
+        return _Finding(
+            "unreadable-suspect-text", (type(error).__name__,)
+        )
     if not widths:
         return None
     for width in (3, 6):
@@ -1717,23 +1701,6 @@ def _inspect_large_text_rows(
                 (f"width={width}", f"sampled={len(widths)}", f"ratio={ratio:.6f}"),
             )
     return None
-
-
-def _inspect_large_text(
-    path: Path,
-    *,
-    size: int,
-    declaration: Mapping[str, object] | None,
-    limits: InspectionLimits,
-) -> _Finding | None:
-    return _inspect_large_text_rows(
-        lambda: _iter_data_lines(
-            path, max_line_bytes=limits.max_text_line_bytes
-        ),
-        size=size,
-        declaration=declaration,
-        limits=limits,
-    )
 
 
 def _inspect_large_text_fileobj(
@@ -1753,45 +1720,56 @@ def _inspect_large_text_fileobj(
     )
 
 
-def inspect_candidate(
-    path: Path | str,
+def _same_file_identity(left: os.stat_result, right: os.stat_result) -> bool:
+    return (
+        left.st_dev == right.st_dev
+        and left.st_ino == right.st_ino
+        and stat.S_IFMT(left.st_mode) == stat.S_IFMT(right.st_mode)
+    )
+
+
+def _same_file_snapshot(left: os.stat_result, right: os.stat_result) -> bool:
+    return (
+        _same_file_identity(left, right)
+        and left.st_size == right.st_size
+        and left.st_mtime_ns == right.st_mtime_ns
+    )
+
+
+def _unstable_file_result(
+    candidate: Path,
+    metadata: os.stat_result | None,
     *,
-    declaration: Mapping[str, object] | None = None,
-    declared_kind: str | None = None,
-    limits: InspectionLimits | None = None,
+    detail: str,
+    digest: str | None = None,
 ) -> InspectionResult:
-    """Inspect one candidate without following symlinks or parsing OVF payloads."""
-    candidate = Path(path)
-    active_limits = limits or InspectionLimits()
-    if declared_kind is not None:
-        declaration = dict(declaration or {})
-        declaration.setdefault("data_kind", declared_kind)
-
-    metadata = candidate.lstat()
-    if stat.S_ISLNK(metadata.st_mode):
-        link_target = os.readlink(candidate)
-        digest = hashlib.sha256(b"symlink\0" + os.fsencode(link_target)).hexdigest()
-        return _result(
-            decision="exclude",
-            reason="symlink",
-            sha256=digest,
-            size=metadata.st_size,
-            file_type="symlink",
-            link_target=link_target,
-            evidence=(link_target,),
+    if digest is None:
+        identity = (
+            f"{candidate.name}\0"
+            f"{metadata.st_dev if metadata else 'unknown'}\0"
+            f"{metadata.st_ino if metadata else 'unknown'}\0"
+            f"{metadata.st_size if metadata else 0}"
         )
-    if not stat.S_ISREG(metadata.st_mode):
-        digest = hashlib.sha256(f"mode:{metadata.st_mode}".encode()).hexdigest()
-        return _result(
-            decision="exclude",
-            reason="not-regular-file",
-            sha256=digest,
-            size=metadata.st_size,
-            file_type="other",
-        )
+        digest = hashlib.sha256(identity.encode("utf-8", errors="surrogateescape")).hexdigest()
+    return _result(
+        decision="exclude",
+        reason="unstable-file-identity",
+        sha256=digest,
+        size=metadata.st_size if metadata else 0,
+        file_type="file" if metadata and stat.S_ISREG(metadata.st_mode) else "other",
+        evidence=(detail,),
+    )
 
-    digest = stream_sha256(candidate)
-    size = metadata.st_size
+
+def _inspect_open_candidate(
+    candidate: Path,
+    handle: BinaryIO,
+    *,
+    digest: str,
+    size: int,
+    declaration: Mapping[str, object] | None,
+    limits: InspectionLimits,
+) -> InspectionResult:
     if _field_name(candidate.name):
         return _result(
             decision="exclude",
@@ -1801,7 +1779,8 @@ def inspect_candidate(
             evidence=(candidate.name,),
         )
 
-    prefix = _read_prefix(candidate)
+    handle.seek(0)
+    prefix = handle.read(4096)
     if _has_oommf_marker(prefix):
         return _result(
             decision="exclude",
@@ -1816,11 +1795,14 @@ def inspect_candidate(
         or prefix.startswith(b"\x93NUMPY")
     )
     magic_kind = _magic_container_kind(prefix)
-    if magic_kind == "zip" and not numpy_candidate and _zip_looks_like_npz(candidate):
+    if magic_kind == "zip" and not numpy_candidate and _zip_looks_like_npz(handle):
         numpy_candidate = True
     if numpy_candidate:
         finding, shapes, allowed = _inspect_numpy(
-            candidate, declaration=declaration, limits=active_limits
+            handle,
+            declared_size=size,
+            declaration=declaration,
+            limits=limits,
         )
         if finding:
             return _result(
@@ -1832,6 +1814,7 @@ def inspect_candidate(
                 array_shapes=shapes,
             )
         if allowed:
+            assert declaration is not None
             return _result(
                 decision="include",
                 reason="declared-figure-slice",
@@ -1843,9 +1826,21 @@ def inspect_candidate(
 
     container_kind = magic_kind or _suffix_container_kind(candidate.name)
     if container_kind:
-        finding = _inspect_archive_path(
-            candidate, kind=container_kind, limits=active_limits
-        )
+        if container_kind == "zstd":
+            finding = _inspect_tar_zstd_fileobj(
+                handle,
+                label=candidate.name,
+                limits=limits,
+            )
+        else:
+            finding = _inspect_archive_fileobj(
+                handle,
+                kind=container_kind,
+                label=candidate.name,
+                depth=1,
+                budget=_ArchiveBudget(),
+                limits=limits,
+            )
         if finding:
             return _result(
                 decision="exclude",
@@ -1866,9 +1861,9 @@ def inspect_candidate(
 
     if _derived_declaration_attempt(declaration):
         finding = _inspect_derived_text(
-            candidate,
+            handle,
             declaration=declaration,
-            limits=active_limits,
+            limits=limits,
         )
         return _result(
             decision="include" if finding.reason == "declared-derived-text" else "exclude",
@@ -1878,11 +1873,11 @@ def inspect_candidate(
             evidence=finding.evidence,
         )
 
-    text_finding = _inspect_large_text(
-        candidate,
+    text_finding = _inspect_large_text_fileobj(
+        handle,
         size=size,
         declaration=declaration,
-        limits=active_limits,
+        limits=limits,
     )
     if text_finding:
         if text_finding.reason == "declared-tabular-data":
@@ -1907,3 +1902,130 @@ def inspect_candidate(
         sha256=digest,
         size=size,
     )
+
+
+def inspect_candidate(
+    path: Path | str,
+    *,
+    declaration: Mapping[str, object] | None = None,
+    declared_kind: str | None = None,
+    limits: InspectionLimits | None = None,
+) -> InspectionResult:
+    """Inspect one candidate through one stable, no-follow file descriptor."""
+    candidate = Path(path)
+    active_limits = limits or InspectionLimits()
+    if declared_kind is not None:
+        declaration = dict(declaration or {})
+        declaration.setdefault("data_kind", declared_kind)
+
+    try:
+        metadata = candidate.lstat()
+    except OSError as error:
+        return _unstable_file_result(
+            candidate,
+            None,
+            detail=f"initial-lstat:{type(error).__name__}",
+        )
+    if stat.S_ISLNK(metadata.st_mode):
+        try:
+            link_target = os.readlink(candidate)
+        except OSError as error:
+            return _unstable_file_result(
+                candidate,
+                metadata,
+                detail=f"readlink:{type(error).__name__}",
+            )
+        digest = hashlib.sha256(b"symlink\0" + os.fsencode(link_target)).hexdigest()
+        return _result(
+            decision="exclude",
+            reason="symlink",
+            sha256=digest,
+            size=metadata.st_size,
+            file_type="symlink",
+            link_target=link_target,
+            evidence=(link_target,),
+        )
+    if not stat.S_ISREG(metadata.st_mode):
+        digest = hashlib.sha256(f"mode:{metadata.st_mode}".encode()).hexdigest()
+        return _result(
+            decision="exclude",
+            reason="not-regular-file",
+            sha256=digest,
+            size=metadata.st_size,
+            file_type="other",
+        )
+
+    no_follow = getattr(os, "O_NOFOLLOW", 0)
+    if not no_follow:
+        return _unstable_file_result(
+            candidate,
+            metadata,
+            detail="O_NOFOLLOW-unavailable",
+        )
+    flags = os.O_RDONLY | no_follow | getattr(os, "O_CLOEXEC", 0)
+    descriptor = -1
+    try:
+        descriptor = os.open(candidate, flags)
+        opened_metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(opened_metadata.st_mode) or not _same_file_snapshot(
+            metadata, opened_metadata
+        ):
+            raise _UnstableFileError("lstat/open identity or state mismatch")
+        with os.fdopen(descriptor, "rb", closefd=True) as handle:
+            descriptor = -1
+            digest: str | None = None
+            try:
+                digest = _stream_sha256_fileobj(
+                    handle,
+                    expected_size=opened_metadata.st_size,
+                )
+                result = _inspect_open_candidate(
+                    candidate,
+                    handle,
+                    digest=digest,
+                    size=opened_metadata.st_size,
+                    declaration=declaration,
+                    limits=active_limits,
+                )
+            except OSError as error:
+                result = _unstable_file_result(
+                    candidate,
+                    metadata,
+                    detail=f"inspection:{type(error).__name__}",
+                    digest=digest,
+                )
+
+            try:
+                final_descriptor_metadata = os.fstat(handle.fileno())
+                final_path_metadata = candidate.lstat()
+            except OSError as error:
+                return _unstable_file_result(
+                    candidate,
+                    metadata,
+                    detail=f"final-identity:{type(error).__name__}",
+                    digest=digest,
+                )
+            if not (
+                _same_file_snapshot(metadata, opened_metadata)
+                and _same_file_snapshot(opened_metadata, final_descriptor_metadata)
+                and _same_file_snapshot(final_descriptor_metadata, final_path_metadata)
+            ):
+                return _unstable_file_result(
+                    candidate,
+                    metadata,
+                    detail="identity-size-or-mtime-changed",
+                    digest=digest,
+                )
+            return result
+    except OSError as error:
+        return _unstable_file_result(
+            candidate,
+            metadata,
+            detail=f"safe-open:{type(error).__name__}",
+        )
+    finally:
+        if descriptor >= 0:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
