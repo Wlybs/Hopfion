@@ -104,11 +104,12 @@ class _Finding:
 
 
 _FIELD_SUFFIXES = (".ovf", ".omf", ".ovf.gz", ".omf.gz")
-_OOMMF_MARKERS = (
+_OOMMF_HEADER_PREFIXES = (
     b"# oommf:",
-    b"begin: data text",
-    b"begin: data binary",
+    b"# begin: data text",
+    b"# begin: data binary",
 )
+_UTF8_BOM = b"\xef\xbb\xbf"
 _DERIVED_KINDS = frozenset(("figure_slice", "figure_line", "scalar_summary"))
 _MEMBER_SPOOL_MEMORY_BYTES = 1024 * 1024
 _TAR_ZSTD_LIST_TIMEOUT_SECONDS = 30
@@ -221,8 +222,20 @@ def _magic_container_kind(prefix: bytes) -> str | None:
 
 
 def _has_oommf_marker(payload: bytes) -> bool:
-    lowered = payload.lower()
-    return any(marker in lowered for marker in _OOMMF_MARKERS)
+    """Match OOMMF records only when they have comment-header line syntax.
+
+    Byte-line parsing keeps this check deterministic for binary candidates while
+    preventing quoted strings and prose from matching markers in the middle of a
+    line.  Only an optional UTF-8 BOM and horizontal indentation are ignored.
+    """
+    if payload.startswith(_UTF8_BOM):
+        payload = payload[len(_UTF8_BOM) :]
+    for raw_line in payload.splitlines():
+        line = raw_line.lstrip(b" \t").lower()
+        for marker in _OOMMF_HEADER_PREFIXES:
+            if line == marker or line.startswith((marker + b" ", marker + b"\t")):
+                return True
+    return False
 
 
 def _result(

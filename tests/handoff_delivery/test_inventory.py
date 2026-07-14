@@ -160,6 +160,79 @@ def test_oommf_markers_are_rejected_even_with_txt_suffix(tmp_path: Path, header:
     assert result.reason == "oommf-content"
 
 
+def test_real_inventory_source_with_quoted_oommf_markers_is_not_a_field():
+    source = (
+        Path(__file__).resolve().parents[2]
+        / "95_shared_scripts"
+        / "handoff_delivery"
+        / "inventory.py"
+    )
+
+    result = inspect_candidate(source)
+
+    assert result.decision == "include"
+    assert result.reason == "approved"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    (
+        b'marker = b"# OOMMF:"\n',
+        b"print('# OOMMF: rectangular mesh v1.0')\n",
+        b"The format documentation mentions # Begin: Data Text inline.\n",
+        b"Use the quoted marker '# Begin: Data Binary' in this example.\n",
+    ),
+)
+def test_quoted_or_inline_oommf_marker_mentions_are_not_fields(
+    tmp_path: Path, payload: bytes
+):
+    path = tmp_path / "ordinary.txt"
+    path.write_bytes(payload)
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "include"
+    assert result.reason == "approved"
+
+
+@pytest.mark.parametrize(
+    "header",
+    (
+        b"\xef\xbb\xbf# OOMMF: rectangular mesh v1.0\n",
+        b"\xef\xbb\xbf\n\n  # oOmMf: rectangular mesh v1.0\n",
+        b"\n\t# Begin: Data Text\n0 0 1\n",
+        b"  # BEGIN: DATA BINARY 8\n",
+    ),
+)
+def test_actual_oommf_header_lines_allow_bom_blanks_whitespace_and_case(
+    tmp_path: Path, header: bytes
+):
+    path = tmp_path / "renamed.txt"
+    path.write_bytes(header)
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "exclude"
+    assert result.reason == "oommf-content"
+
+
+@pytest.mark.parametrize("container", ("zip", "tar"))
+def test_actual_oommf_header_line_in_archive_member_is_rejected(
+    tmp_path: Path, container: str
+):
+    payload = b"\xef\xbb\xbf\n  # Begin: Data Text\n0 0 1\n"
+    members = {"padding.bin": b"x" * 8_192, "renamed.txt": payload}
+    if container == "zip":
+        path = _write_zip(tmp_path / "notes.zip", members)
+    else:
+        path = _write_tar(tmp_path / "notes.tar", members)
+
+    result = inspect_candidate(path)
+
+    assert result.decision == "exclude"
+    assert result.reason == "archive-contains-field"
+
+
 @pytest.mark.parametrize("name", ("field.ovf", "field.omf", "field.OVF.GZ"))
 def test_literal_field_names_are_rejected_without_opening_payload(tmp_path: Path, name: str):
     path = tmp_path / name
