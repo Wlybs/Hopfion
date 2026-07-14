@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 import zipfile
 
@@ -9,6 +10,7 @@ import handoff_delivery.builder as builder_module
 import handoff_delivery.source_specs as source_specs_module
 from handoff_delivery.builder import (
     BaselineError,
+    BuildPlan,
     BuildRefusedError,
     build_delivery,
     capture_baseline,
@@ -20,6 +22,8 @@ from handoff_delivery.source_specs import (
     EXACT_SOURCE_SPECS,
     TREE_SOURCE_SPECS,
     ExactSourceSpec,
+    RequiredAssetInventory,
+    RequiredAssetRow,
     SourceSpecError,
     TreeSourceSpec,
     enumerate_required_assets,
@@ -52,6 +56,14 @@ def write_file(path: Path, payload: bytes | str = b"fixture\n") -> Path:
     data = payload.encode("utf-8") if isinstance(payload, str) else payload
     path.write_bytes(data)
     return path
+
+
+def regular_tree_bytes(root: Path) -> dict[str, bytes]:
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
 
 
 @pytest.fixture
@@ -545,6 +557,203 @@ def test_tree_source_root_must_be_a_real_directory(tmp_path: Path) -> None:
         )
 
 
+def test_exact_source_rejects_intermediate_symlink_escape(tmp_path: Path) -> None:
+    root = tmp_path / "project"
+    root.mkdir()
+    outside = tmp_path / "outside"
+    write_file(outside / "secret.txt", b"outside")
+    (root / "linked").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(SourceSpecError, match="linked"):
+        enumerate_required_assets(
+            root,
+            tree_specs=(),
+            exact_specs=(
+                ExactSourceSpec("linked/secret.txt", "01_stability/secret.txt"),
+            ),
+            include_thesis_assets=False,
+        )
+
+
+def test_tree_source_rejects_intermediate_symlink_escape(tmp_path: Path) -> None:
+    root = tmp_path / "project"
+    root.mkdir()
+    outside = tmp_path / "outside"
+    write_file(outside / "tree/secret.txt", b"outside")
+    (root / "linked").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(SourceSpecError, match="linked"):
+        enumerate_required_assets(
+            root,
+            tree_specs=(TreeSourceSpec("linked/tree", "01_stability/tree"),),
+            exact_specs=(),
+            include_thesis_assets=False,
+        )
+
+
+def test_source_scandir_permission_error_is_not_silently_ignored(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "project"
+    write_file(root / "tree/asset.txt", b"asset")
+    real_scandir = source_specs_module.os.scandir
+
+    def denied_scandir(path: object):
+        if isinstance(path, int):
+            raise PermissionError("source tree denied")
+        return real_scandir(path)
+
+    monkeypatch.setattr(source_specs_module.os, "scandir", denied_scandir)
+    with pytest.raises(SourceSpecError, match="cannot enumerate anchored directory"):
+        enumerate_required_assets(
+            root,
+            tree_specs=(TreeSourceSpec("tree", "01_stability/tree"),),
+            exact_specs=(),
+            include_thesis_assets=False,
+        )
+
+
+def test_formal_chapter_file_symlink_is_not_followed(
+    fixture_project: Path,
+    tmp_path: Path,
+) -> None:
+    chapter = (
+        fixture_project
+        / "09_paper_thesis_talks/bishe/thesis_v2/chapters/ch01-intro.tex"
+    )
+    outside = write_file(
+        tmp_path / "outside-chapter.tex",
+        "\\includegraphics{figures/formal-a.png}\n",
+    )
+    chapter.unlink()
+    chapter.symlink_to(outside)
+
+    with pytest.raises(SourceSpecError, match="ch01-intro"):
+        enumerate_required_assets(fixture_project)
+
+
+def test_formal_figure_reference_rejects_intermediate_symlink_escape(
+    fixture_project: Path,
+    tmp_path: Path,
+) -> None:
+    thesis = fixture_project / "09_paper_thesis_talks/bishe/thesis_v2"
+    write_file(
+        thesis / "chapters/ch01-intro.tex",
+        "\\includegraphics{figures/linked/secret.png}\n",
+    )
+    outside = tmp_path / "outside-figures"
+    write_file(outside / "secret.png", b"outside")
+    (thesis / "figures/linked").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(SourceSpecError, match="linked"):
+        enumerate_required_assets(fixture_project)
+
+
+def test_thesis_root_rejects_intermediate_symlink_escape(tmp_path: Path) -> None:
+    root = tmp_path / "project"
+    outside_bishe = tmp_path / "outside-bishe"
+    thesis = outside_bishe / "thesis_v2"
+    for chapter in FORMAL_CHAPTERS:
+        write_file(thesis / "chapters" / chapter, "chapter\n")
+    write_file(thesis / "figures/data.csv", "x,y\n1,2\n")
+    link_parent = root / "09_paper_thesis_talks"
+    link_parent.mkdir(parents=True)
+    (link_parent / "bishe").symlink_to(outside_bishe, target_is_directory=True)
+
+    with pytest.raises(SourceSpecError, match="bishe"):
+        enumerate_required_assets(
+            root,
+            tree_specs=(),
+            exact_specs=(),
+            include_thesis_assets=True,
+        )
+
+
+def test_manual_build_plan_cannot_copy_through_intermediate_symlink(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    outside = tmp_path / "outside"
+    payload = b"outside-secret"
+    write_file(outside / "secret.txt", payload)
+    (project / "linked").symlink_to(outside, target_is_directory=True)
+    old = tmp_path / "old"
+    write_file(old / "README.md")
+    destination = tmp_path / "delivery-v2"
+    row = RequiredAssetRow(
+        source_path="linked/secret.txt",
+        target_path="01_stability/secret.txt",
+        disposition="copied_active",
+        expected_target_class="active",
+        reason="test-fixture",
+        sha256=hashlib.sha256(payload).hexdigest(),
+        size=len(payload),
+        file_type="file",
+    )
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=destination,
+        required_assets=RequiredAssetInventory((row,)),
+        old_baseline=capture_baseline(old),
+    )
+
+    result = execute_build(plan)
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert not destination.exists()
+    assert (outside / "secret.txt").read_bytes() == payload
+
+
+def test_old_baseline_walk_error_is_not_silently_ignored(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old = tmp_path / "old"
+    write_file(old / "README.md", b"old")
+    real_walk = builder_module.os.walk
+
+    def denied_walk(top: object, *args: object, **kwargs: object):
+        if Path(top) == old:
+            onerror = kwargs.get("onerror")
+            if onerror is not None:
+                onerror(PermissionError("old baseline denied"))  # type: ignore[operator]
+            return iter(())
+        return real_walk(top, *args, **kwargs)
+
+    monkeypatch.setattr(builder_module.os, "walk", denied_walk)
+    with pytest.raises(BaselineError, match="cannot enumerate old delivery"):
+        capture_baseline(old)
+
+
+def test_resume_walk_error_cannot_hide_unknown_destination_content(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    destination = tmp_path / "delivery-v2"
+    write_file(destination / "unknown/secret.txt", b"unknown")
+    real_walk = builder_module.os.walk
+
+    def denied_walk(top: object, *args: object, **kwargs: object):
+        if Path(top) == destination:
+            onerror = kwargs.get("onerror")
+            if onerror is not None:
+                onerror(PermissionError("resume destination denied"))  # type: ignore[operator]
+            return iter(())
+        return real_walk(top, *args, **kwargs)
+
+    monkeypatch.setattr(builder_module.os, "walk", denied_walk)
+    with pytest.raises(BuildRefusedError, match="cannot enumerate resume destination"):
+        builder_module._validate_destination(
+            destination,
+            resume=True,
+            source_rows=(),
+        )
+    assert (destination / "unknown/secret.txt").read_bytes() == b"unknown"
+
+
 def test_dry_run_writes_nothing_and_returns_complete_rows(
     fixture_project: Path,
     tmp_path: Path,
@@ -899,3 +1108,316 @@ def test_old_package_mutation_after_copy_fails_before_publish_and_cleans_candida
     assert result.baseline_difference.changed == ("README.md",)
     assert not destination.exists()
     assert not any(tmp_path.glob(".delivery-v2.staging-*"))
+
+
+def test_resume_destination_mutation_during_copy_blocks_publication_and_is_preserved(
+    fixture_project: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old = tmp_path / "old"
+    write_file(old / "README.md", "original")
+    destination = tmp_path / "delivery-v2"
+    initial = build_delivery(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    assert initial.publishable
+    original_tree = regular_tree_bytes(destination)
+    original_identity = (destination.stat().st_dev, destination.stat().st_ino)
+    plan = prepare_build(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    original_copy = builder_module._copy_asset
+    mutated = False
+
+    def copy_then_mutate(*args: object, **kwargs: object) -> None:
+        nonlocal mutated
+        original_copy(*args, **kwargs)
+        if not mutated:
+            write_file(destination / "concurrent/keep-me.txt", b"concurrent")
+            mutated = True
+
+    monkeypatch.setattr(builder_module, "_copy_asset", copy_then_mutate)
+    result = execute_build(plan, resume=True)
+
+    assert mutated
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert "destination-changed-before-publish" in result.reason
+    assert (destination.stat().st_dev, destination.stat().st_ino) == original_identity
+    actual_tree = regular_tree_bytes(destination)
+    assert actual_tree.pop("concurrent/keep-me.txt") == b"concurrent"
+    assert actual_tree == original_tree
+    assert not tuple(tmp_path.glob(".delivery-v2.backup-*"))
+    assert not tuple(tmp_path.glob(".delivery-v2.quarantine-*"))
+
+
+def test_destination_mutation_in_publish_window_is_restored_without_publication(
+    fixture_project: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old = tmp_path / "old"
+    write_file(old / "README.md", "original")
+    destination = tmp_path / "delivery-v2"
+    initial = build_delivery(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    assert initial.publishable
+    original_tree = regular_tree_bytes(destination)
+    plan = prepare_build(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    real_publish = builder_module._publish_staging
+
+    def mutate_then_publish(*args: object, **kwargs: object) -> Path | None:
+        write_file(destination / "late.txt", b"late concurrent write")
+        return real_publish(*args, **kwargs)
+
+    monkeypatch.setattr(builder_module, "_publish_staging", mutate_then_publish)
+    result = execute_build(plan, resume=True)
+
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert "destination-changed-during-publish" in result.reason
+    actual_tree = regular_tree_bytes(destination)
+    assert actual_tree.pop("late.txt") == b"late concurrent write"
+    assert actual_tree == original_tree
+    assert not tuple(tmp_path.glob(".delivery-v2.backup-*"))
+
+
+def test_publish_and_backup_restore_failure_reports_retained_old_tree(
+    fixture_project: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old = tmp_path / "old"
+    write_file(old / "README.md", "original")
+    destination = tmp_path / "delivery-v2"
+    initial = build_delivery(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    assert initial.publishable
+    previous_tree = regular_tree_bytes(destination)
+    plan = prepare_build(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    real_replace = builder_module.os.replace
+
+    def fail_publish_and_restore(source: object, target: object) -> None:
+        source_path = Path(source)
+        target_path = Path(target)
+        if target_path == destination and (
+            source_path.name.startswith(".delivery-v2.staging-")
+            or source_path.name.startswith(".delivery-v2.backup-")
+        ):
+            raise OSError("publish/restore unavailable")
+        real_replace(source, target)
+
+    monkeypatch.setattr(builder_module.os, "replace", fail_publish_and_restore)
+    result = execute_build(plan, resume=True)
+
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert result.recovery_status == "manual-recovery-required"
+    assert not destination.exists()
+    backups = tuple(tmp_path.glob(".delivery-v2.backup-*"))
+    assert len(backups) == 1
+    assert regular_tree_bytes(backups[0]) == previous_tree
+    assert str(backups[0]) in result.recovery_paths
+
+
+@pytest.mark.parametrize("rollback_mode", ["once", "persistent"])
+def test_post_publish_gate_failure_recovers_after_rollback_error(
+    fixture_project: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    rollback_mode: str,
+) -> None:
+    old = tmp_path / "old"
+    write_file(old / "README.md", "original")
+    destination = tmp_path / "delivery-v2"
+    initial = build_delivery(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    assert initial.publishable
+    previous_tree = regular_tree_bytes(destination)
+    plan = prepare_build(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    real_publish = builder_module._publish_staging
+    real_rollback = builder_module._rollback_publication
+    rollback_calls = 0
+
+    def publish_then_mutate(*args: object, **kwargs: object) -> Path | None:
+        backup = real_publish(*args, **kwargs)
+        write_file(old / "README.md", "changed after publish")
+        return backup
+
+    def failing_rollback(formal: Path, backup: Path | None) -> None:
+        nonlocal rollback_calls
+        rollback_calls += 1
+        if rollback_mode == "persistent" or rollback_calls == 1:
+            raise OSError(f"rollback {rollback_mode} failure")
+        real_rollback(formal, backup)
+
+    monkeypatch.setattr(builder_module, "_publish_staging", publish_then_mutate)
+    monkeypatch.setattr(builder_module, "_rollback_publication", failing_rollback)
+    result = execute_build(plan, resume=True)
+
+    assert rollback_calls >= 1
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert regular_tree_bytes(destination) == previous_tree
+    quarantines = tuple(tmp_path.glob(".delivery-v2.quarantine-*"))
+    assert len(quarantines) == 1
+    assert regular_tree_bytes(quarantines[0])
+    assert result.recovery_status == "previous-destination-restored-after-rollback-error"
+    assert str(quarantines[0]) in result.recovery_paths
+    assert not tuple(tmp_path.glob(".delivery-v2.backup-*"))
+
+
+def test_failed_backup_restore_preserves_backup_and_quarantines_new_tree(
+    fixture_project: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old = tmp_path / "old"
+    write_file(old / "README.md", "original")
+    destination = tmp_path / "delivery-v2"
+    initial = build_delivery(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    assert initial.publishable
+    previous_tree = regular_tree_bytes(destination)
+    plan = prepare_build(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    real_publish = builder_module._publish_staging
+    real_replace = builder_module.os.replace
+
+    def publish_then_mutate(*args: object, **kwargs: object) -> Path | None:
+        backup = real_publish(*args, **kwargs)
+        write_file(old / "README.md", "changed after publish")
+        return backup
+
+    def always_fail_rollback(formal: Path, backup: Path | None) -> None:
+        raise OSError("primary rollback unavailable")
+
+    def fail_backup_restore(source: object, target: object) -> None:
+        source_path = Path(source)
+        target_path = Path(target)
+        if (
+            source_path.name.startswith(".delivery-v2.backup-")
+            and target_path == destination
+        ):
+            raise OSError("backup restore unavailable")
+        real_replace(source, target)
+
+    monkeypatch.setattr(builder_module, "_publish_staging", publish_then_mutate)
+    monkeypatch.setattr(builder_module, "_rollback_publication", always_fail_rollback)
+    monkeypatch.setattr(builder_module.os, "replace", fail_backup_restore)
+    result = execute_build(plan, resume=True)
+
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert result.recovery_status == "manual-recovery-required"
+    assert not destination.exists()
+    backups = tuple(tmp_path.glob(".delivery-v2.backup-*"))
+    quarantines = tuple(tmp_path.glob(".delivery-v2.quarantine-*"))
+    assert len(backups) == 1
+    assert len(quarantines) == 1
+    assert regular_tree_bytes(backups[0]) == previous_tree
+    assert set(result.recovery_paths) == {str(backups[0]), str(quarantines[0])}
+
+
+def test_post_publish_failure_without_prior_destination_leaves_formal_path_empty(
+    fixture_project: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old = tmp_path / "old"
+    write_file(old / "README.md", "original")
+    destination = tmp_path / "delivery-v2"
+    plan = prepare_build(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    real_publish = builder_module._publish_staging
+
+    def publish_then_mutate(*args: object, **kwargs: object) -> Path | None:
+        backup = real_publish(*args, **kwargs)
+        write_file(old / "README.md", "changed after publish")
+        return backup
+
+    monkeypatch.setattr(builder_module, "_publish_staging", publish_then_mutate)
+    result = execute_build(plan)
+
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert not destination.exists()
+    quarantines = tuple(tmp_path.glob(".delivery-v2.quarantine-*"))
+    assert len(quarantines) == 1
+    assert result.recovery_status == "empty-destination-restored"
+    assert result.recovery_paths == (str(quarantines[0]),)
+
+
+def test_backup_cleanup_failure_keeps_valid_publication_and_retains_backup(
+    fixture_project: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old = tmp_path / "old"
+    write_file(old / "README.md", "original")
+    destination = tmp_path / "delivery-v2"
+    initial = build_delivery(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    assert initial.publishable
+    prior_tree = regular_tree_bytes(destination)
+    plan = prepare_build(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    real_remove_tree = builder_module._remove_tree
+
+    def fail_backup_cleanup(path: Path) -> None:
+        if path.name.startswith(".delivery-v2.backup-"):
+            raise OSError("backup cleanup unavailable")
+        real_remove_tree(path)
+
+    monkeypatch.setattr(builder_module, "_remove_tree", fail_backup_cleanup)
+    result = execute_build(plan, resume=True)
+
+    assert result.exit_code == 0
+    assert result.publishable
+    assert result.recovery_status == "published-backup-retained"
+    assert regular_tree_bytes(destination) == prior_tree
+    backups = tuple(tmp_path.glob(".delivery-v2.backup-*"))
+    assert len(backups) == 1
+    assert result.recovery_paths == (str(backups[0]),)
+    assert not tuple(tmp_path.glob(".delivery-v2.quarantine-*"))

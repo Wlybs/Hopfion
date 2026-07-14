@@ -14,6 +14,7 @@ from typing import Literal
 
 from .models import ManifestError, require_relative_path
 from .source_specs import (
+    AnchoredRoot,
     EXACT_SOURCE_SPECS,
     TREE_SOURCE_SPECS,
     ExactSourceSpec,
@@ -32,6 +33,25 @@ class BuildRefusedError(RuntimeError):
     """Raised before writing when a destination is unsafe or ambiguous."""
 
 
+class _PublicationFailure(BuildRefusedError):
+    """Carries recoverable state when a destination swap cannot complete."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        backup: Path | None,
+        displaced_snapshot: DestinationSnapshot | None,
+        recovery_status: str,
+        recovery_paths: tuple[str, ...],
+    ) -> None:
+        super().__init__(message)
+        self.backup = backup
+        self.displaced_snapshot = displaced_snapshot
+        self.recovery_status = recovery_status
+        self.recovery_paths = recovery_paths
+
+
 @dataclass(frozen=True, slots=True)
 class BaselineEntry:
     relative_path: str
@@ -43,6 +63,13 @@ class BaselineEntry:
 
 @dataclass(frozen=True, slots=True)
 class BaselineSnapshot:
+    entries: tuple[BaselineEntry, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class DestinationSnapshot:
+    existed: bool
+    root_identity: tuple[int, int, int, int, int] | None
     entries: tuple[BaselineEntry, ...]
 
 
@@ -89,6 +116,14 @@ class BuildResult:
     exclusion_rows: tuple[RequiredAssetRow, ...]
     baseline_difference: BaselineDifference
     written_paths: tuple[str, ...] = ()
+    recovery_status: str = "not-needed"
+    recovery_paths: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class _RecoveryOutcome:
+    status: str
+    paths: tuple[str, ...]
 
 
 def _same_snapshot(left: os.stat_result, right: os.stat_result) -> bool:
@@ -170,13 +205,23 @@ def _require_old_delivery_root(root: Path) -> None:
         raise BaselineError(f"old delivery is not a real directory: {root}")
 
 
+def _raise_baseline_walk_error(error: OSError) -> None:
+    location = getattr(error, "filename", None) or "unknown path"
+    raise BaselineError(
+        f"cannot enumerate old delivery at {location}: {error}"
+    ) from error
+
+
 def capture_baseline(old_delivery: Path | str) -> BaselineSnapshot:
     """Capture every old-package path without following symbolic links."""
     root = Path(old_delivery)
     _require_old_delivery_root(root)
     entries: list[BaselineEntry] = []
     for current_raw, directory_names, file_names in os.walk(
-        root, topdown=True, followlinks=False
+        root,
+        topdown=True,
+        followlinks=False,
+        onerror=_raise_baseline_walk_error,
     ):
         current = Path(current_raw)
         directory_names.sort()
@@ -284,6 +329,8 @@ def _build_result(
     reason: str,
     difference: BaselineDifference,
     written_paths: tuple[str, ...] = (),
+    recovery_status: str = "not-needed",
+    recovery_paths: tuple[str, ...] = (),
 ) -> BuildResult:
     sources, exclusions = _row_groups(plan.required_assets)
     return BuildResult(
@@ -296,7 +343,16 @@ def _build_result(
         exclusion_rows=exclusions,
         baseline_difference=difference,
         written_paths=written_paths,
+        recovery_status=recovery_status,
+        recovery_paths=recovery_paths,
     )
+
+
+def _raise_resume_walk_error(error: OSError) -> None:
+    location = getattr(error, "filename", None) or "unknown path"
+    raise BuildRefusedError(
+        f"cannot enumerate resume destination at {location}: {error}"
+    ) from error
 
 
 def _reject_destination_symlinks(destination: Path) -> None:
@@ -310,7 +366,10 @@ def _reject_destination_symlinks(destination: Path) -> None:
         raise BuildRefusedError("destination must be a real directory, not a symlink")
 
     for current_raw, directory_names, file_names in os.walk(
-        destination, topdown=True, followlinks=False
+        destination,
+        topdown=True,
+        followlinks=False,
+        onerror=_raise_resume_walk_error,
     ):
         current = Path(current_raw)
         for name in (*directory_names, *file_names):
@@ -367,7 +426,10 @@ def _validate_resume_contents(
 ) -> None:
     allowed_files, allowed_directories = _resume_allowlist(source_rows)
     for current_raw, directory_names, file_names in os.walk(
-        destination, topdown=True, followlinks=False
+        destination,
+        topdown=True,
+        followlinks=False,
+        onerror=_raise_resume_walk_error,
     ):
         current = Path(current_raw)
         directory_names.sort()
@@ -390,15 +452,69 @@ def _validate_resume_contents(
             _validate_resume_file(path, row)
 
 
+def _destination_root_identity(
+    metadata: os.stat_result,
+) -> tuple[int, int, int, int, int]:
+    return (
+        metadata.st_dev,
+        metadata.st_ino,
+        stat.S_IFMT(metadata.st_mode),
+        metadata.st_size,
+        metadata.st_mtime_ns,
+    )
+
+
+def _capture_destination_snapshot(destination: Path) -> DestinationSnapshot:
+    try:
+        initial = destination.lstat()
+    except FileNotFoundError:
+        return DestinationSnapshot(False, None, ())
+    except OSError as error:
+        raise BuildRefusedError(
+            f"cannot snapshot destination root: {destination}"
+        ) from error
+    if stat.S_ISLNK(initial.st_mode) or not stat.S_ISDIR(initial.st_mode):
+        raise BuildRefusedError(
+            f"destination snapshot root is not a real directory: {destination}"
+        )
+
+    _reject_destination_symlinks(destination)
+    try:
+        baseline = capture_baseline(destination)
+    except BaselineError as error:
+        raise BuildRefusedError(
+            f"cannot snapshot destination contents: {destination}"
+        ) from error
+    if any(entry.path_type == "symlink" for entry in baseline.entries):
+        raise BuildRefusedError(
+            f"destination changed to contain a symlink: {destination}"
+        )
+    try:
+        final = destination.lstat()
+    except OSError as error:
+        raise BuildRefusedError(
+            f"destination changed while snapshotting: {destination}"
+        ) from error
+    if not _same_snapshot(initial, final):
+        raise BuildRefusedError(
+            f"destination root changed while snapshotting: {destination}"
+        )
+    return DestinationSnapshot(
+        True,
+        _destination_root_identity(final),
+        baseline.entries,
+    )
+
+
 def _validate_destination(
     destination: Path,
     *,
     resume: bool,
     source_rows: Sequence[RequiredAssetRow],
-) -> None:
+) -> DestinationSnapshot:
     _reject_destination_symlinks(destination)
     if not destination.exists():
-        return
+        return _capture_destination_snapshot(destination)
     try:
         nonempty = next(destination.iterdir(), None) is not None
     except OSError as error:
@@ -409,6 +525,7 @@ def _validate_destination(
         )
     if resume:
         _validate_resume_contents(destination, source_rows)
+    return _capture_destination_snapshot(destination)
 
 
 def _safe_target(staging: Path, target_path: str) -> Path:
@@ -440,28 +557,24 @@ def _safe_target(staging: Path, target_path: str) -> Path:
     return target
 
 
-def _copy_asset(plan: BuildPlan, row: RequiredAssetRow, staging: Path) -> None:
+def _copy_asset(
+    plan: BuildPlan,
+    row: RequiredAssetRow,
+    staging: Path,
+    source_anchor: AnchoredRoot,
+) -> None:
     """Copy one mapped regular file through a stable, no-follow descriptor."""
     if row.target_path is None:
         raise BuildRefusedError(f"excluded row cannot be copied: {row.source_path}")
     source = plan.project_root / row.source_path
-    try:
-        initial = source.lstat()
-    except OSError as error:
-        raise BuildRefusedError(f"source disappeared before copy: {source}") from error
+    initial = source_anchor.lstat(row.source_path)
     if not stat.S_ISREG(initial.st_mode):
         raise BuildRefusedError(f"mapped source is not a regular file: {source}")
 
-    no_follow = getattr(os, "O_NOFOLLOW", 0)
-    if not no_follow:
-        raise BuildRefusedError("O_NOFOLLOW is required for delivery copying")
     descriptor = -1
     temporary: Path | None = None
     try:
-        descriptor = os.open(
-            source,
-            os.O_RDONLY | no_follow | getattr(os, "O_CLOEXEC", 0),
-        )
+        descriptor = source_anchor.open_regular(row.source_path)
         opened = os.fstat(descriptor)
         if not stat.S_ISREG(opened.st_mode) or not _same_snapshot(initial, opened):
             raise BuildRefusedError(f"source changed while opening: {source}")
@@ -482,7 +595,7 @@ def _copy_asset(plan: BuildPlan, row: RequiredAssetRow, staging: Path) -> None:
                 writer.flush()
                 os.fsync(writer.fileno())
             final_descriptor = os.fstat(reader.fileno())
-        final_path = source.lstat()
+        final_path = source_anchor.lstat(row.source_path)
         if not (
             _same_snapshot(initial, opened)
             and _same_snapshot(opened, final_descriptor)
@@ -516,18 +629,111 @@ def _vacant_sibling(destination: Path, *, label: str) -> Path:
     return created
 
 
-def _publish_staging(staging: Path, destination: Path) -> Path | None:
-    """Atomically publish staging and return the displaced destination, if any."""
+def _path_exists_no_follow(path: Path) -> bool:
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def _raise_publication_failure(
+    message: str,
+    *,
+    destination: Path,
+    backup: Path | None,
+    displaced_snapshot: DestinationSnapshot | None,
+    restored_status: str,
+    cause: Exception | None = None,
+) -> None:
+    recovery_status = restored_status
+    recovery_paths: list[str] = []
+    if backup is not None and _path_exists_no_follow(backup):
+        if _path_exists_no_follow(destination):
+            recovery_status = "manual-recovery-required"
+            recovery_paths.extend((str(destination), str(backup)))
+        else:
+            try:
+                os.replace(backup, destination)
+            except (OSError, shutil.Error):
+                recovery_status = "manual-recovery-required"
+                recovery_paths.append(str(backup))
+    elif restored_status != "empty-destination-restored":
+        recovery_status = "manual-recovery-required"
+        if _path_exists_no_follow(destination):
+            recovery_paths.append(str(destination))
+
+    failure = _PublicationFailure(
+        message,
+        backup=backup,
+        displaced_snapshot=displaced_snapshot,
+        recovery_status=recovery_status,
+        recovery_paths=tuple(dict.fromkeys(recovery_paths)),
+    )
+    if cause is not None:
+        raise failure from cause
+    raise failure
+
+
+def _publish_staging(
+    staging: Path,
+    destination: Path,
+    expected_destination: DestinationSnapshot,
+) -> Path | None:
+    """Publish only if the atomically displaced destination matches validation."""
     backup: Path | None = None
-    if destination.exists():
+    displaced_snapshot: DestinationSnapshot | None = None
+    if _path_exists_no_follow(destination):
         backup = _vacant_sibling(destination, label="backup")
         os.replace(destination, backup)
+        try:
+            displaced_snapshot = _capture_destination_snapshot(backup)
+        except BuildRefusedError as error:
+            _raise_publication_failure(
+                "destination-changed-during-publish:cannot-snapshot-displaced-tree",
+                destination=destination,
+                backup=backup,
+                displaced_snapshot=None,
+                restored_status="concurrent-destination-restored",
+                cause=error,
+            )
+
+    if (
+        backup is None and expected_destination.existed
+    ) or (
+        backup is not None
+        and (
+            not expected_destination.existed
+            or displaced_snapshot != expected_destination
+        )
+    ):
+        _raise_publication_failure(
+            "destination-changed-during-publish",
+            destination=destination,
+            backup=backup,
+            displaced_snapshot=displaced_snapshot,
+            restored_status=(
+                "concurrent-destination-restored"
+                if backup is not None
+                else "manual-recovery-required"
+            ),
+        )
+
     try:
         os.replace(staging, destination)
-    except OSError:
-        if backup is not None and not destination.exists():
-            os.replace(backup, destination)
-        raise
+    except OSError as error:
+        _raise_publication_failure(
+            "publication-swap-failed",
+            destination=destination,
+            backup=backup,
+            displaced_snapshot=displaced_snapshot,
+            restored_status=(
+                "previous-destination-restored"
+                if expected_destination.existed
+                else "empty-destination-restored"
+            ),
+            cause=error,
+        )
     return backup
 
 
@@ -543,9 +749,88 @@ def _remove_tree(path: Path) -> None:
 
 
 def _rollback_publication(destination: Path, backup: Path | None) -> None:
-    _remove_tree(destination)
+    if _path_exists_no_follow(destination):
+        raise OSError(
+            f"formal destination must be vacant before rollback: {destination}"
+        )
     if backup is not None:
         os.replace(backup, destination)
+
+
+def _quarantine_publication(destination: Path) -> Path | None:
+    if not _path_exists_no_follow(destination):
+        return None
+    quarantine = _vacant_sibling(destination, label="quarantine")
+    os.replace(destination, quarantine)
+    return quarantine
+
+
+def _quarantine_unverified_recovery(destination: Path) -> Path | None:
+    if not _path_exists_no_follow(destination):
+        return None
+    recovery = _vacant_sibling(destination, label="recovery")
+    os.replace(destination, recovery)
+    return recovery
+
+
+def _recover_failed_publication(
+    destination: Path,
+    backup: Path | None,
+    expected_destination: DestinationSnapshot,
+) -> _RecoveryOutcome:
+    retained: list[str] = []
+    try:
+        quarantine = _quarantine_publication(destination)
+    except (OSError, shutil.Error):
+        retained.append(str(destination))
+        if backup is not None:
+            retained.append(str(backup))
+        return _RecoveryOutcome(
+            "manual-recovery-required", tuple(dict.fromkeys(retained))
+        )
+    if quarantine is not None:
+        retained.append(str(quarantine))
+
+    rollback_error: Exception | None = None
+    try:
+        _rollback_publication(destination, backup)
+    except Exception as error:  # recovery must survive a broken primary rollback hook
+        rollback_error = error
+        if backup is not None:
+            try:
+                os.replace(backup, destination)
+            except (OSError, shutil.Error):
+                retained.append(str(backup))
+                return _RecoveryOutcome(
+                    "manual-recovery-required", tuple(dict.fromkeys(retained))
+                )
+
+    try:
+        recovered = _capture_destination_snapshot(destination)
+    except BuildRefusedError:
+        recovered = None
+    if recovered != expected_destination:
+        try:
+            unverified = _quarantine_unverified_recovery(destination)
+        except (OSError, shutil.Error):
+            unverified = destination if _path_exists_no_follow(destination) else None
+        if unverified is not None:
+            retained.append(str(unverified))
+        if backup is not None and _path_exists_no_follow(backup):
+            retained.append(str(backup))
+        return _RecoveryOutcome(
+            "manual-recovery-required", tuple(dict.fromkeys(retained))
+        )
+
+    if expected_destination.existed:
+        status = (
+            "previous-destination-restored-after-rollback-error"
+            if rollback_error is not None
+            else "previous-destination-restored"
+        )
+    else:
+        status = "empty-destination-restored"
+    return _RecoveryOutcome(status, tuple(dict.fromkeys(retained)))
 
 
 def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
@@ -562,7 +847,7 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
         )
 
     sources, _ = _row_groups(plan.required_assets)
-    _validate_destination(
+    destination_snapshot = _validate_destination(
         plan.destination,
         resume=resume,
         source_rows=sources,
@@ -578,10 +863,13 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
     written: list[str] = []
     published = False
     try:
-        for row in sources:
-            _copy_asset(plan, row, staging)
-            if row.target_path is not None:
-                written.append(row.target_path)
+        with AnchoredRoot(
+            plan.project_root, error_type=BuildRefusedError
+        ) as source_anchor:
+            for row in sources:
+                _copy_asset(plan, row, staging, source_anchor)
+                if row.target_path is not None:
+                    written.append(row.target_path)
 
         after_copy = _difference_or_error(plan)
         if not after_copy.is_clean:
@@ -595,13 +883,45 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
                 written_paths=tuple(written),
             )
 
-        backup = _publish_staging(staging, plan.destination)
+        current_destination = _capture_destination_snapshot(plan.destination)
+        if current_destination != destination_snapshot:
+            return _build_result(
+                plan,
+                exit_code=1,
+                publishable=False,
+                dry_run=False,
+                reason="destination-changed-before-publish",
+                difference=after_copy,
+                written_paths=tuple(written),
+            )
+
+        try:
+            backup = _publish_staging(
+                staging,
+                plan.destination,
+                destination_snapshot,
+            )
+        except _PublicationFailure as error:
+            return _build_result(
+                plan,
+                exit_code=1,
+                publishable=False,
+                dry_run=False,
+                reason=f"build-failed:{type(error).__name__}:{error}",
+                difference=_difference_or_error(plan),
+                written_paths=tuple(written),
+                recovery_status=error.recovery_status,
+                recovery_paths=error.recovery_paths,
+            )
         published = True
         after_publish = _difference_or_error(plan)
         if not after_publish.is_clean:
-            _rollback_publication(plan.destination, backup)
+            recovery = _recover_failed_publication(
+                plan.destination,
+                backup,
+                destination_snapshot,
+            )
             published = False
-            backup = None
             return _build_result(
                 plan,
                 exit_code=1,
@@ -610,10 +930,28 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
                 reason="old-package-baseline-changed-before-acceptance",
                 difference=after_publish,
                 written_paths=tuple(written),
+                recovery_status=recovery.status,
+                recovery_paths=recovery.paths,
             )
 
         if backup is not None:
-            _remove_tree(backup)
+            try:
+                _remove_tree(backup)
+            except (OSError, shutil.Error) as error:
+                return _build_result(
+                    plan,
+                    exit_code=0,
+                    publishable=True,
+                    dry_run=False,
+                    reason=(
+                        "built-and-old-package-unchanged;"
+                        f"backup-cleanup-failed:{type(error).__name__}:{error}"
+                    ),
+                    difference=after_publish,
+                    written_paths=tuple(written),
+                    recovery_status="published-backup-retained",
+                    recovery_paths=(str(backup),),
+                )
             backup = None
         return _build_result(
             plan,
@@ -625,13 +963,22 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
             written_paths=tuple(written),
         )
     except (BuildRefusedError, OSError, shutil.Error) as error:
+        recovery = _RecoveryOutcome("not-needed", ())
         if published:
             try:
-                _rollback_publication(plan.destination, backup)
-                backup = None
+                recovery = _recover_failed_publication(
+                    plan.destination,
+                    backup,
+                    destination_snapshot,
+                )
                 published = False
-            except OSError:
-                pass
+            except Exception:
+                retained = [str(plan.destination)]
+                if backup is not None:
+                    retained.append(str(backup))
+                recovery = _RecoveryOutcome(
+                    "manual-recovery-required", tuple(retained)
+                )
         return _build_result(
             plan,
             exit_code=1,
@@ -640,12 +987,15 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
             reason=f"build-failed:{type(error).__name__}:{error}",
             difference=_difference_or_error(plan),
             written_paths=tuple(written),
+            recovery_status=recovery.status,
+            recovery_paths=recovery.paths,
         )
     finally:
-        if not published:
-            _remove_tree(staging)
-        if backup is not None:
-            _remove_tree(backup)
+        if _path_exists_no_follow(staging):
+            try:
+                _remove_tree(staging)
+            except (OSError, shutil.Error):
+                pass
 
 
 def build_delivery(
