@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+from dataclasses import replace
+import csv
 import hashlib
+import json
 from pathlib import Path
+import sys
+from types import SimpleNamespace
+from unittest.mock import patch
 import zipfile
 
+import numpy as np
 import pytest
 
 import handoff_delivery.builder as builder_module
@@ -12,12 +19,18 @@ from handoff_delivery.builder import (
     BaselineError,
     BuildPlan,
     BuildRefusedError,
-    build_delivery,
+    build_delivery as _production_build_delivery,
     capture_baseline,
     compare_baseline,
-    execute_build,
-    prepare_build,
+    execute_build as _production_execute_build,
+    prepare_build as _production_prepare_build,
 )
+from handoff_delivery.derived import (
+    HOPFION_ENVIRONMENT_COMMAND,
+    DerivedRecipe,
+)
+from handoff_delivery.lineage import FigureRecipe
+from handoff_delivery.redraw import RedrawRecipe
 from handoff_delivery.source_specs import (
     EXACT_SOURCE_SPECS,
     TREE_SOURCE_SPECS,
@@ -49,6 +62,41 @@ FORMAL_CHAPTERS = (
     "ch06-neuromorphic.tex",
     "ch07-conclusion.tex",
 )
+
+
+def build_delivery(**kwargs: object):
+    """Exercise copy mechanics with lineage patched only inside synthetic tests."""
+    with (
+        patch.object(builder_module, "_load_project_figure_recipes", return_value=()),
+        patch.object(builder_module, "_validate_lineage_preflight", return_value=None),
+    ):
+        return _production_build_delivery(**kwargs)
+
+
+def prepare_build(**kwargs: object):
+    """Exercise source-plan mechanics with a test-local lineage patch."""
+    with (
+        patch.object(builder_module, "_load_project_figure_recipes", return_value=()),
+        patch.object(builder_module, "_validate_lineage_preflight", return_value=None),
+    ):
+        return _production_prepare_build(**kwargs)
+
+
+def execute_build(plan: BuildPlan, *, resume: bool = False):
+    """Exercise publication mechanics with a test-local lineage patch."""
+    with (
+        patch.object(
+            builder_module,
+            "_validate_canonical_figure_plan",
+            return_value=None,
+        ),
+        patch.object(
+            builder_module,
+            "_validate_lineage_preflight",
+            return_value=None,
+        ),
+    ):
+        return _production_execute_build(plan, resume=resume)
 
 
 def write_file(path: Path, payload: bytes | str = b"fixture\n") -> Path:
@@ -1421,3 +1469,513 @@ def test_backup_cleanup_failure_keeps_valid_publication_and_retains_backup(
     assert len(backups) == 1
     assert result.recovery_paths == (str(backups[0]),)
     assert not tuple(tmp_path.glob(".delivery-v2.quarantine-*"))
+
+
+def task4_pipeline_fixture(
+    tmp_path: Path,
+) -> tuple[Path, tuple[ExactSourceSpec, ...], DerivedRecipe, RedrawRecipe]:
+    project = tmp_path / "project"
+    producer_source = (
+        Path(__file__).parents[2]
+        / "95_shared_scripts/handoff_delivery/derived.py"
+    )
+    producer_target = project / "95_shared_scripts/handoff_delivery/derived.py"
+    write_file(producer_target, producer_source.read_bytes())
+
+    source = project / "source/field.npz"
+    source.parent.mkdir(parents=True)
+    np.savez(source, field=np.arange(24, dtype=np.float64).reshape(2, 2, 2, 3))
+    expected = (
+        b"x,y,mx,mz\n"
+        b"11,22,3,5\n"
+        b"11,26,9,11\n"
+        b"13,22,15,17\n"
+        b"13,26,21,23\n"
+    )
+    derived = DerivedRecipe(
+        recipe_id="derive-fig-a-slice",
+        output_data_id="data-fig-a-slice",
+        source_path="source/field.npz",
+        source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
+        producer_script="95_shared_scripts/handoff_delivery/derived.py",
+        producer_sha256=hashlib.sha256(producer_target.read_bytes()).hexdigest(),
+        selector_kind="slice",
+        selector_json=json.dumps(
+            {"array": "field", "axis": 2, "components": [0, 2], "index": 1},
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
+        output_path="02_dynamics/data/fig-a-slice.csv",
+        output_format="csv",
+        output_sha256=hashlib.sha256(expected).hexdigest(),
+        shape="2x2x2",
+        columns="x;y;mx;mz",
+        units="nm;nm;1;1",
+        coordinate_origin="10;20;30",
+        coordinate_spacing="2;4;6",
+        coordinate_units="nm;nm;nm",
+        parent_figure_ids="fig-a",
+        parent_data_ids="source-field-a",
+        environment_command=HOPFION_ENVIRONMENT_COMMAND,
+        is_complete_field="false",
+        notes="bounded slice used only by fig-a",
+    )
+
+    python = str(Path(sys.executable).resolve())
+    write_file(
+        project / "assets/redraw.py",
+        "from pathlib import Path\n"
+        "import numpy as np\n"
+        "import sys\n"
+        "source = np.genfromtxt(sys.argv[1], delimiter=',', names=True)\n"
+        "target = Path(sys.argv[2])\n"
+        "target.parent.mkdir(parents=True, exist_ok=True)\n"
+        "np.savetxt(target, source['value'] * 2.0, delimiter=',', header='value', comments='')\n",
+    )
+    write_file(project / "assets/input.csv", "value\n1\n2\n3\n")
+    write_file(project / "assets/reference.csv", "value\n2\n4\n6\n")
+    exact_specs = (
+        ExactSourceSpec("assets/redraw.py", "scripts/redraw.py"),
+        ExactSourceSpec("assets/input.csv", "data/input.csv"),
+        ExactSourceSpec("assets/reference.csv", "reference/output.csv"),
+    )
+    redraw_recipe = RedrawRecipe(
+        redraw_id="redraw-fig-a",
+        figure_id="fig-a",
+        module="02_spinwave_control",
+        script_path="scripts/redraw.py",
+        command=f"{python} scripts/redraw.py data/input.csv redraw/output.csv",
+        input_data_ids="data-fig-a-slice",
+        input_paths="data/input.csv",
+        output_path="redraw/output.csv",
+        reference_product_path="reference/output.csv",
+        comparison_method="numpy.testing.assert_allclose",
+        tolerance="rtol=1e-12;atol=1e-12",
+        environment_command=python,
+        representative=True,
+        notes="builder integration redraw",
+    )
+    return project, exact_specs, derived, redraw_recipe
+
+
+def task4_figure_recipe(
+    source_path: str,
+    *,
+    figure_id: str = "fig-formal-a",
+    scientific_status: str = "unverified",
+    reproducibility: str = "source_identity_reviewed",
+) -> FigureRecipe:
+    return FigureRecipe(
+        figure_id=figure_id,
+        usage_status="formal",
+        scientific_status=scientific_status,
+        provenance_type="external",
+        story_module="05_papers_and_talks",
+        claim_or_purpose="fixture figure",
+        figure_path=source_path,
+        figure_sha256="a" * 64,
+        plot_script_path="N/A",
+        plot_command="N/A",
+        input_data_ids="N/A",
+        parent_data_ids="N/A",
+        derived_data_ids="N/A",
+        run_ids="N/A",
+        theory_asset_ids="N/A",
+        initial_state_recipe_id="N/A",
+        reproducibility=reproducibility,
+        source_document_ids="doc-a",
+        comparison_reference_data_id="N/A",
+        comparison_method="source_identity_review",
+        tolerance="N/A",
+        notes="source_locator=doi:10.0000/fixture:Fig.1",
+    )
+
+
+def test_prepare_build_loads_real_ledger_hook_and_routes_nonactive_figure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = tmp_path / "project"
+    source_path = "figures/formal.png"
+    write_file(project / source_path, b"figure")
+    unregistered_path = "figures/old-result.png"
+    write_file(project / unregistered_path, b"old figure")
+    write_file(
+        project / "95_shared_scripts/handoff_delivery/figure_recipes.csv",
+        "fixture ledger marker\n",
+    )
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    figure_row = task4_figure_recipe(source_path)
+    monkeypatch.setattr(
+        builder_module,
+        "validate_recipe_ledger",
+        lambda _project: (figure_row,),
+    )
+    monkeypatch.setattr(builder_module, "_validate_lineage_preflight", lambda _plan: None)
+
+    plan = builder_module.prepare_build(
+        project_root=project,
+        old_delivery=old,
+        destination=tmp_path / "delivery-v2",
+        tree_specs=(),
+        exact_specs=(
+            ExactSourceSpec(
+                source_path,
+                "05_papers_and_talks/thesis_final/figures/formal.png",
+            ),
+            ExactSourceSpec(
+                unregistered_path,
+                "05_papers_and_talks/thesis_final/figures/old-result.png",
+            ),
+        ),
+        include_thesis_assets=False,
+    )
+
+    assert plan.figure_recipes == (figure_row,)
+    routed = {row.source_path: row for row in plan.required_assets}[source_path]
+    assert routed.disposition == "copied_archive"
+    assert routed.expected_target_class == "archive"
+    assert routed.target_path == (
+        "90_archive/historical_figures/fig-formal-a/formal.png"
+    )
+    excluded = {row.source_path: row for row in plan.required_assets}[
+        unregistered_path
+    ]
+    assert excluded.disposition == "excluded_with_reason"
+    assert excluded.expected_target_class == "excluded"
+    assert excluded.target_path is None
+    assert excluded.reason == "unregistered-noncanonical-figure"
+
+
+def test_manifest_registered_pdf_outside_figures_directory_is_a_figure() -> None:
+    source_path = "reports/declared-plot.pdf"
+    payload = b"declared figure PDF"
+    asset = RequiredAssetRow(
+        source_path=source_path,
+        target_path="05_papers_and_talks/reports/declared-plot.pdf",
+        disposition="copied_active",
+        expected_target_class="active",
+        reason="fixture",
+        sha256=hashlib.sha256(payload).hexdigest(),
+        size=len(payload),
+        file_type="document",
+    )
+    figure_row = task4_figure_recipe(source_path)
+
+    routed = builder_module._route_figure_assets(
+        RequiredAssetInventory((asset,)),
+        (figure_row,),
+    )
+
+    assert routed.rows[0].disposition == "copied_archive"
+    assert routed.rows[0].target_path == (
+        "90_archive/historical_figures/fig-formal-a/declared-plot.pdf"
+    )
+
+
+def test_prepare_build_requires_the_canonical_figure_ledger_by_default(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    write_file(project / "asset.txt")
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+
+    with pytest.raises(BuildRefusedError, match="figure recipe ledger is missing"):
+        builder_module.prepare_build(
+            project_root=project,
+            old_delivery=old,
+            destination=tmp_path / "delivery-v2",
+            tree_specs=(),
+            exact_specs=(ExactSourceSpec("asset.txt", "shared/asset.txt"),),
+            include_thesis_assets=False,
+        )
+
+    with pytest.raises(TypeError, match="figure_recipes"):
+        builder_module.prepare_build(
+            project_root=project,
+            old_delivery=old,
+            destination=tmp_path / "fixture-delivery",
+            tree_specs=(),
+            exact_specs=(ExactSourceSpec("asset.txt", "shared/asset.txt"),),
+            include_thesis_assets=False,
+            figure_recipes=(),
+        )
+
+
+def test_execute_build_revalidates_and_rejects_an_unregistered_figure_plan(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = tmp_path / "project"
+    payload = b"unregistered figure"
+    write_file(project / "figures/unregistered.png", payload)
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    destination = tmp_path / "delivery-v2"
+    asset = RequiredAssetRow(
+        source_path="figures/unregistered.png",
+        target_path="01_stability/unregistered.png",
+        disposition="copied_active",
+        expected_target_class="active",
+        reason="malformed-manual-plan",
+        sha256=hashlib.sha256(payload).hexdigest(),
+        size=len(payload),
+        file_type="image",
+    )
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=destination,
+        required_assets=RequiredAssetInventory((asset,)),
+        old_baseline=capture_baseline(old),
+        figure_recipes=(),
+    )
+    monkeypatch.setattr(
+        builder_module,
+        "_load_project_figure_recipes",
+        lambda _project_root: (),
+    )
+
+    result = builder_module.execute_build(plan)
+
+    assert not result.publishable
+    assert result.exit_code != 0
+    assert "figure coverage" in result.reason
+    assert not destination.exists()
+
+
+def test_execute_build_reloads_canonical_ledger_for_a_manual_empty_plan(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    destination = tmp_path / "delivery-v2"
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=destination,
+        required_assets=RequiredAssetInventory(()),
+        old_baseline=capture_baseline(old),
+        figure_recipes=(),
+    )
+
+    result = builder_module.execute_build(plan)
+
+    assert not result.publishable
+    assert result.exit_code != 0
+    assert "figure recipe ledger is missing" in result.reason
+    assert not destination.exists()
+
+
+def test_lineage_preflight_rejects_empty_real_redraw_and_derived_coverage(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    asset = RequiredAssetRow(
+        source_path="figures/formal.png",
+        target_path="05_papers_and_talks/formal.png",
+        disposition="copied_active",
+        expected_target_class="active",
+        reason="fixture",
+        sha256="a" * 64,
+        size=1,
+        file_type="image",
+    )
+    ordinary = task4_figure_recipe(
+        "figures/formal.png",
+        scientific_status="not_applicable",
+    )
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=tmp_path / "delivery-v2",
+        required_assets=RequiredAssetInventory((asset,)),
+        old_baseline=capture_baseline(old),
+        figure_recipes=(ordinary,),
+    )
+    with pytest.raises(BuildRefusedError, match="redraw plan"):
+        builder_module._validate_lineage_preflight(plan)
+
+    pending = replace(
+        ordinary,
+        scientific_status="valid",
+        provenance_type="theory",
+        plot_script_path="scripts/plot.py",
+        plot_command="python3 scripts/plot.py data/needed.csv redraw/check.csv",
+        input_data_ids="data-needed",
+        parent_data_ids="data-parent",
+        derived_data_ids="data-needed",
+        theory_asset_ids="asset-theory",
+        reproducibility="minimal_projection_derivation_pending",
+        comparison_method="numpy.testing.assert_allclose",
+        tolerance="rtol=1e-7;atol=1e-10",
+    )
+    pending_plan = replace(plan, figure_recipes=(pending,))
+    with pytest.raises(BuildRefusedError, match="derived recipe coverage"):
+        builder_module._validate_lineage_preflight(pending_plan)
+
+    monkeypatch.setattr(
+        builder_module,
+        "validate_derived_preflight",
+        lambda _recipes, project_root: None,
+    )
+    unrelated = SimpleNamespace(
+        recipe_id="derive-unrelated",
+        source_path="source/field.npy",
+        output_path="data/unrelated.csv",
+        output_data_id="data-unrelated",
+        parent_figure_ids=pending.figure_id,
+        parent_data_ids="data-parent",
+    )
+    with pytest.raises(BuildRefusedError, match="unrelated output_data_id"):
+        builder_module._validate_lineage_preflight(
+            replace(pending_plan, derived_recipes=(unrelated,))
+        )
+
+    matched = SimpleNamespace(
+        recipe_id="derive-needed",
+        source_path="source/field.npy",
+        output_path="data/needed.csv",
+        output_data_id="data-needed",
+        parent_figure_ids=pending.figure_id,
+        parent_data_ids="data-parent",
+    )
+    with pytest.raises(BuildRefusedError, match="redraw plan"):
+        builder_module._validate_lineage_preflight(
+            replace(pending_plan, derived_recipes=(matched,))
+        )
+
+
+def test_lineage_preflight_rejects_a_figure_without_one_packaged_target(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    figure = task4_figure_recipe(
+        "figures/formal.png",
+        scientific_status="not_applicable",
+    )
+    excluded = RequiredAssetRow(
+        source_path=figure.figure_path,
+        target_path=None,
+        disposition="excluded_with_reason",
+        expected_target_class="excluded",
+        reason="fixture",
+        sha256="a" * 64,
+        size=1,
+        file_type="image",
+    )
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=tmp_path / "delivery-v2",
+        required_assets=RequiredAssetInventory((excluded,)),
+        old_baseline=capture_baseline(old),
+        figure_recipes=(figure,),
+    )
+
+    with pytest.raises(BuildRefusedError, match="figure rows without packaged assets"):
+        builder_module._validate_lineage_preflight(plan)
+
+
+def test_builder_materializes_only_fresh_derived_outputs_and_redraw_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project, exact_specs, derived, redraw_recipe = task4_pipeline_fixture(tmp_path)
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old package\n")
+    destination = tmp_path / "delivery-v2"
+
+    def reject_in_process_production(*_args: object, **_kwargs: object):
+        raise AssertionError("builder must execute the pinned producer environment")
+
+    monkeypatch.setattr(
+        builder_module,
+        "produce_derived",
+        reject_in_process_production,
+    )
+
+    result = build_delivery(
+        project_root=project,
+        old_delivery=old,
+        destination=destination,
+        tree_specs=(),
+        exact_specs=exact_specs,
+        include_thesis_assets=False,
+        derived_recipes=(derived,),
+        redraw_recipes=(redraw_recipe,),
+    )
+
+    assert result.exit_code == 0
+    assert result.publishable
+    assert (destination / derived.output_path).is_file()
+    assert hashlib.sha256(
+        (destination / derived.output_path).read_bytes()
+    ).hexdigest() == derived.output_sha256
+    assert not (destination / ".handoff-staging").exists()
+    derived_evidence = destination / "00_handoff/DERIVED_DATA_EVIDENCE.csv"
+    redraw_evidence = destination / "00_handoff/FIGURE_REDRAW_EVIDENCE.csv"
+    assert derived_evidence.is_file()
+    assert redraw_evidence.is_file()
+    with derived_evidence.open("r", encoding="utf-8", newline="") as handle:
+        row = next(csv.DictReader(handle))
+    assert row["source_sha256"] == derived.source_sha256
+    assert row["producer_sha256"] == derived.producer_sha256
+    assert row["output_sha256"] == derived.output_sha256
+    assert row["selector_json"] == derived.selector_json
+    assert row["coordinate_origin"] == derived.coordinate_origin
+    assert row["coordinate_spacing"] == derived.coordinate_spacing
+    assert row["coordinate_units"] == derived.coordinate_units
+    assert old.joinpath("README.md").read_text(encoding="utf-8") == "old package\n"
+    assert not tuple(tmp_path.glob(".delivery-v2.staging-*"))
+    assert not tuple(tmp_path.glob(".delivery-v2.derived-*"))
+
+
+def test_builder_rejects_untracked_file_created_by_derived_producer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project, exact_specs, derived, _ = task4_pipeline_fixture(tmp_path)
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old package\n")
+    destination = tmp_path / "delivery-v2"
+    real_produce = builder_module.produce_derived_in_environment
+
+    def produce_with_untracked(*args: object, **kwargs: object):
+        evidence = real_produce(*args, **kwargs)
+        output_root = Path(kwargs["output_root"])
+        write_file(output_root / "untracked/hand-authored.csv", "bad\n")
+        return evidence
+
+    monkeypatch.setattr(
+        builder_module,
+        "produce_derived_in_environment",
+        produce_with_untracked,
+    )
+    result = build_delivery(
+        project_root=project,
+        old_delivery=old,
+        destination=destination,
+        tree_specs=(),
+        exact_specs=exact_specs,
+        include_thesis_assets=False,
+        derived_recipes=(derived,),
+    )
+
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert "untracked derived outputs" in result.reason
+    assert not destination.exists()
+    assert not tuple(tmp_path.glob(".delivery-v2.staging-*"))
+    assert not tuple(tmp_path.glob(".delivery-v2.derived-*"))

@@ -3,16 +3,40 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 import os
 from pathlib import Path, PurePosixPath
+import secrets
 import shutil
 import stat
 import tempfile
 from typing import Literal
 
-from .models import ManifestError, require_relative_path
+from .derived import (
+    DerivedDataError,
+    DerivedRecipe,
+    produce_derived,
+    produce_derived_in_environment,
+    validate_derived_outputs,
+    validate_derived_preflight,
+    write_derived_evidence,
+)
+from .lineage import (
+    FigureRecipe,
+    ManifestKeys,
+    route_figure,
+    validate_figure_closure,
+    validate_figure_coverage,
+    validate_recipe_ledger,
+)
+from .models import IdList, ManifestError, require_relative_path
+from .redraw import (
+    RedrawError,
+    RedrawRecipe,
+    execute_redraws,
+    validate_redraw_plan,
+)
 from .source_specs import (
     AnchoredRoot,
     EXACT_SOURCE_SPECS,
@@ -103,6 +127,10 @@ class BuildPlan:
     destination: Path
     required_assets: RequiredAssetInventory
     old_baseline: BaselineSnapshot
+    figure_recipes: tuple[FigureRecipe, ...] = ()
+    manifest_keys: ManifestKeys | None = None
+    derived_recipes: tuple[DerivedRecipe, ...] = ()
+    redraw_recipes: tuple[RedrawRecipe, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -285,6 +313,280 @@ def _row_groups(
     return sources, exclusions
 
 
+def _load_project_figure_recipes(project_root: Path) -> tuple[FigureRecipe, ...]:
+    """Load the canonical ledger when present; never infer a substitute ledger."""
+    ledger = project_root / "95_shared_scripts/handoff_delivery/figure_recipes.csv"
+    try:
+        metadata = ledger.lstat()
+    except FileNotFoundError:
+        raise BuildRefusedError(
+            f"required figure recipe ledger is missing: {ledger}"
+        )
+    except OSError as error:
+        raise BuildRefusedError(f"cannot inspect figure recipe ledger: {ledger}") from error
+    if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
+        raise BuildRefusedError(
+            f"figure recipe ledger must be one real regular file: {ledger}"
+        )
+    try:
+        return validate_recipe_ledger(project_root)
+    except (ManifestError, OSError) as error:
+        raise BuildRefusedError(f"figure recipe ledger failed: {error}") from error
+
+
+def _is_independent_figure_path(
+    raw: str,
+    *,
+    registered_paths: set[str] | frozenset[str],
+) -> bool:
+    path = PurePosixPath(raw)
+    suffix = path.suffix.casefold()
+    if suffix in {".png", ".svg"}:
+        return True
+    return suffix == ".pdf" and (
+        "figures" in path.parts or raw in registered_paths
+    )
+
+
+def _route_figure_assets(
+    inventory: RequiredAssetInventory,
+    figure_rows: Sequence[FigureRecipe],
+) -> RequiredAssetInventory:
+    """Apply scientific-status routing to the already enumerated source assets."""
+    if not figure_rows:
+        return inventory
+    if not inventory.source_paths_are_unique():
+        raise BuildRefusedError("required-asset source paths must be unique")
+
+    row_index = {row.source_path: index for index, row in enumerate(inventory.rows)}
+    routed = list(inventory.rows)
+    registered_paths = {figure.figure_path for figure in figure_rows}
+    for index, asset in enumerate(routed):
+        is_independent_figure = _is_independent_figure_path(
+            asset.source_path,
+            registered_paths=registered_paths,
+        )
+        if is_independent_figure and asset.source_path not in registered_paths:
+            routed[index] = replace(
+                asset,
+                target_path=None,
+                disposition="excluded_with_reason",
+                expected_target_class="excluded",
+                reason="unregistered-noncanonical-figure",
+            )
+    for figure in figure_rows:
+        index = row_index.get(figure.figure_path)
+        if index is None:
+            raise BuildRefusedError(
+                f"figure ledger asset is absent from required inventory: {figure.figure_path}"
+            )
+        asset = routed[index]
+        destination_class = route_figure(figure)
+        if destination_class == "active":
+            if (
+                asset.disposition != "copied_active"
+                or asset.expected_target_class != "active"
+                or asset.target_path is None
+            ):
+                raise BuildRefusedError(
+                    f"active figure is not routed to an active target: {figure.figure_id}"
+                )
+            continue
+        if asset.disposition == "excluded_with_reason":
+            raise BuildRefusedError(
+                f"non-active figure cannot be excluded from the handoff: {figure.figure_id}"
+            )
+        routed[index] = replace(
+            asset,
+            target_path=(
+                f"{destination_class}/{figure.figure_id}/"
+                f"{Path(figure.figure_path).name}"
+            ),
+            disposition="copied_archive",
+            expected_target_class="archive",
+            reason=f"figure-{figure.scientific_status}-archive",
+        )
+
+    result = RequiredAssetInventory(tuple(routed))
+    if not result.source_paths_are_unique():
+        raise BuildRefusedError("routed required-asset source paths must be unique")
+    if not result.target_paths_are_unique():
+        raise BuildRefusedError("figure routing creates duplicate package targets")
+    packaged_figure_sources = {
+        row.source_path
+        for row in result
+        if row.target_path is not None
+        and _is_independent_figure_path(
+            row.source_path,
+            registered_paths=registered_paths,
+        )
+    }
+    try:
+        validate_figure_coverage(packaged_figure_sources, figure_rows)
+    except ManifestError as error:
+        raise BuildRefusedError(f"packaged figure coverage failed: {error}") from error
+    return result
+
+
+def _validate_canonical_figure_plan(plan: BuildPlan) -> None:
+    """Bind every executable plan to the current canonical source ledger."""
+    canonical = _load_project_figure_recipes(plan.project_root)
+    if plan.figure_recipes != canonical:
+        raise BuildRefusedError(
+            "build plan figure recipes do not match the canonical source ledger"
+        )
+
+
+def _validate_lineage_preflight(plan: BuildPlan) -> None:
+    """Resolve one immutable producer/redraw set before any destination write."""
+    registered_paths = {figure.figure_path for figure in plan.figure_recipes}
+    packaged_figure_sources = {
+        row.source_path
+        for row in plan.required_assets
+        if row.target_path is not None
+        and _is_independent_figure_path(
+            row.source_path,
+            registered_paths=registered_paths,
+        )
+    }
+    try:
+        validate_figure_coverage(packaged_figure_sources, plan.figure_recipes)
+    except ManifestError as error:
+        raise BuildRefusedError(f"packaged figure coverage failed: {error}") from error
+
+    try:
+        validate_derived_preflight(
+            list(plan.derived_recipes), project_root=plan.project_root
+        )
+    except DerivedDataError as error:
+        raise BuildRefusedError(f"derived preflight failed: {error}") from error
+
+    if plan.figure_recipes:
+        figures_by_id = {row.figure_id: row for row in plan.figure_recipes}
+        expected_derived = {
+            row.figure_id: (
+                set()
+                if row.derived_data_ids == "N/A"
+                else set(IdList.parse(row.derived_data_ids).items)
+            )
+            for row in plan.figure_recipes
+        }
+        actual_derived = {figure_id: set() for figure_id in figures_by_id}
+        try:
+            for recipe in plan.derived_recipes:
+                parent_figures = IdList.parse(recipe.parent_figure_ids).items
+                parent_data = set(IdList.parse(recipe.parent_data_ids).items)
+                for figure_id in parent_figures:
+                    figure = figures_by_id.get(figure_id)
+                    if figure is None:
+                        raise BuildRefusedError(
+                            "derived recipe coverage references an unknown figure: "
+                            f"{figure_id}"
+                        )
+                    if recipe.output_data_id not in expected_derived[figure_id]:
+                        raise BuildRefusedError(
+                            f"derived recipe coverage has unrelated output_data_id "
+                            f"{recipe.output_data_id!r} for {figure_id}"
+                        )
+                    figure_parent_data = (
+                        set()
+                        if figure.parent_data_ids == "N/A"
+                        else set(IdList.parse(figure.parent_data_ids).items)
+                    )
+                    if not parent_data <= figure_parent_data:
+                        raise BuildRefusedError(
+                            f"derived recipe parent data do not match {figure_id}"
+                        )
+                    actual_derived[figure_id].add(recipe.output_data_id)
+        except ManifestError as error:
+            raise BuildRefusedError(
+                f"derived recipe coverage failed: {error}"
+            ) from error
+        mismatches = {
+            figure_id: {
+                "missing": sorted(expected_derived[figure_id] - actual_derived[figure_id]),
+                "extra": sorted(actual_derived[figure_id] - expected_derived[figure_id]),
+            }
+            for figure_id in figures_by_id
+            if actual_derived[figure_id] != expected_derived[figure_id]
+        }
+        if mismatches:
+            raise BuildRefusedError(
+                f"derived recipe coverage is incomplete: {mismatches!r}"
+            )
+        targets_by_figure: dict[str, str] = {}
+        for figure in plan.figure_recipes:
+            targets = [
+                row.target_path
+                for row in plan.required_assets
+                if row.source_path == figure.figure_path and row.target_path is not None
+            ]
+            if len(targets) != 1:
+                raise BuildRefusedError(
+                    f"figure has no unique packaged target: {figure.figure_id}"
+                )
+            targets_by_figure[figure.figure_id] = targets[0]
+        data_paths = (
+            None if plan.manifest_keys is None else dict(plan.manifest_keys.data_paths)
+        )
+        if data_paths is not None:
+            for recipe in plan.derived_recipes:
+                if data_paths.get(recipe.output_data_id) != recipe.output_path:
+                    raise BuildRefusedError(
+                        f"derived output path is not bound in data manifest: "
+                        f"{recipe.output_data_id}"
+                    )
+        try:
+            validate_redraw_plan(
+                plan.figure_recipes,
+                plan.redraw_recipes,
+                figure_targets=targets_by_figure,
+                data_paths=data_paths,
+            )
+        except RedrawError as error:
+            raise BuildRefusedError(f"redraw plan failed: {error}") from error
+        if plan.manifest_keys is None:
+            raise BuildRefusedError(
+                "figure closure manifest keys are required before publication"
+            )
+        try:
+            for figure in plan.figure_recipes:
+                validate_figure_closure(figure, plan.manifest_keys)
+        except ManifestError as error:
+            raise BuildRefusedError(f"figure closure failed: {error}") from error
+
+    sources, _ = _row_groups(plan.required_assets)
+    staged_paths = {
+        row.target_path for row in sources if row.target_path is not None
+    }
+    reserved = {
+        "00_handoff/DERIVED_DATA_EVIDENCE.csv",
+        "00_handoff/FIGURE_REDRAW_EVIDENCE.csv",
+        ".handoff-staging",
+    }
+    derived_paths = {recipe.output_path for recipe in plan.derived_recipes}
+    collisions = (derived_paths | reserved) & staged_paths
+    if collisions:
+        raise BuildRefusedError(
+            f"lineage output collides with copied target: {sorted(collisions)!r}"
+        )
+    if derived_paths & reserved:
+        raise BuildRefusedError("derived output collides with reserved build evidence")
+    available = staged_paths | derived_paths
+    for recipe in plan.redraw_recipes:
+        required = {recipe.script_path, *recipe.inputs}
+        if not recipe.validation_only:
+            required.add(recipe.reference_product_path)
+        missing = sorted(required - available)
+        if missing:
+            raise BuildRefusedError(
+                f"{recipe.redraw_id}: redraw inputs are not staged: {missing!r}"
+            )
+    redraw_ids = [recipe.redraw_id for recipe in plan.redraw_recipes]
+    if len(redraw_ids) != len(set(redraw_ids)):
+        raise BuildRefusedError("redraw IDs must be unique")
+
+
 def prepare_build(
     *,
     project_root: Path | str,
@@ -293,6 +595,9 @@ def prepare_build(
     tree_specs: Sequence[TreeSourceSpec] = TREE_SOURCE_SPECS,
     exact_specs: Sequence[ExactSourceSpec] = EXACT_SOURCE_SPECS,
     include_thesis_assets: bool = True,
+    manifest_keys: ManifestKeys | None = None,
+    derived_recipes: Sequence[DerivedRecipe] = (),
+    redraw_recipes: Sequence[RedrawRecipe] = (),
 ) -> BuildPlan:
     """Prepare an immutable build plan without writing the v2 destination."""
     project = Path(project_root).absolute()
@@ -305,12 +610,26 @@ def prepare_build(
         exact_specs=exact_specs,
         include_thesis_assets=include_thesis_assets,
     )
+    resolved_figure_recipes = _load_project_figure_recipes(project)
+    inventory = _route_figure_assets(inventory, resolved_figure_recipes)
 
     resolved_old = old.resolve()
     resolved_target = target.resolve(strict=False)
     if resolved_target == resolved_old or resolved_old in resolved_target.parents:
         raise BuildRefusedError("v2 destination must not be inside the old delivery")
-    return BuildPlan(project, old, target, inventory, baseline)
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=target,
+        required_assets=inventory,
+        old_baseline=baseline,
+        figure_recipes=resolved_figure_recipes,
+        manifest_keys=manifest_keys,
+        derived_recipes=tuple(derived_recipes),
+        redraw_recipes=tuple(redraw_recipes),
+    )
+    _validate_lineage_preflight(plan)
+    return plan
 
 
 def _difference_or_error(plan: BuildPlan) -> BaselineDifference:
@@ -618,6 +937,170 @@ def _copy_asset(
                 pass
 
 
+def _copy_generated_file(
+    source: Path,
+    staging: Path,
+    target_path: str,
+    expected_sha256: str,
+) -> None:
+    """Copy a just-produced regular file without permitting target replacement."""
+    try:
+        initial = source.lstat()
+    except OSError as error:
+        raise BuildRefusedError(f"cannot inspect generated file: {source}") from error
+    if stat.S_ISLNK(initial.st_mode) or not stat.S_ISREG(initial.st_mode):
+        raise BuildRefusedError(f"generated output is not a regular file: {source}")
+    target = _safe_target(staging, target_path)
+    try:
+        target.lstat()
+    except FileNotFoundError:
+        pass
+    except OSError as error:
+        raise BuildRefusedError(f"cannot inspect generated target: {target}") from error
+    else:
+        raise BuildRefusedError(f"generated target already exists: {target_path}")
+
+    source_descriptor = -1
+    target_descriptor = -1
+    try:
+        source_descriptor = os.open(
+            source,
+            os.O_RDONLY
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0),
+        )
+        opened = os.fstat(source_descriptor)
+        if not stat.S_ISREG(opened.st_mode) or not _same_snapshot(initial, opened):
+            raise BuildRefusedError(f"generated output changed while opening: {source}")
+        target_descriptor = os.open(
+            target,
+            os.O_WRONLY
+            | os.O_CREAT
+            | os.O_EXCL
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0),
+            0o644,
+        )
+        digest = hashlib.sha256()
+        with os.fdopen(source_descriptor, "rb", closefd=True) as reader:
+            source_descriptor = -1
+            with os.fdopen(target_descriptor, "wb", closefd=True) as writer:
+                target_descriptor = -1
+                while chunk := reader.read(1024 * 1024):
+                    digest.update(chunk)
+                    writer.write(chunk)
+                writer.flush()
+                os.fsync(writer.fileno())
+            final_descriptor = os.fstat(reader.fileno())
+        final_source = source.lstat()
+        if not (
+            _same_snapshot(initial, opened)
+            and _same_snapshot(opened, final_descriptor)
+            and _same_snapshot(final_descriptor, final_source)
+        ):
+            raise BuildRefusedError(f"generated output changed during copy: {source}")
+        if digest.hexdigest() != expected_sha256:
+            raise BuildRefusedError(
+                f"generated output SHA256 changed during copy: {target_path}"
+            )
+    except OSError as error:
+        try:
+            target.unlink()
+        except FileNotFoundError:
+            pass
+        raise BuildRefusedError(f"cannot copy generated output: {target_path}") from error
+    finally:
+        if source_descriptor >= 0:
+            os.close(source_descriptor)
+        if target_descriptor >= 0:
+            os.close(target_descriptor)
+
+
+def _materialize_lineage_pipeline(
+    plan: BuildPlan,
+    staging: Path,
+) -> tuple[str, ...]:
+    """Generate derived data and redraw evidence before publication."""
+    written: list[str] = []
+    derived_root: Path | None = None
+    try:
+        if plan.derived_recipes:
+            derived_root = Path(
+                tempfile.mkdtemp(
+                    prefix=f".{plan.destination.name}.derived-",
+                    dir=plan.destination.parent,
+                )
+            )
+            evidence = tuple(
+                produce_derived_in_environment(
+                    recipe,
+                    project_root=plan.project_root,
+                    output_root=derived_root,
+                )
+                for recipe in plan.derived_recipes
+            )
+            validate_derived_outputs(
+                list(plan.derived_recipes),
+                list(evidence),
+                output_root=derived_root,
+            )
+            evidence_by_id = {row.recipe_id: row for row in evidence}
+            for recipe in plan.derived_recipes:
+                row = evidence_by_id[recipe.recipe_id]
+                _copy_generated_file(
+                    derived_root / recipe.output_path,
+                    staging,
+                    recipe.output_path,
+                    row.output_sha256,
+                )
+                written.append(recipe.output_path)
+            derived_evidence_path = "00_handoff/DERIVED_DATA_EVIDENCE.csv"
+            target = _safe_target(staging, derived_evidence_path)
+            write_derived_evidence(target, list(evidence))
+            written.append(derived_evidence_path)
+
+        if plan.redraw_recipes:
+            build_token = secrets.token_hex(32)
+            marker = staging / ".handoff-staging"
+            marker_created = False
+            try:
+                try:
+                    with marker.open("x", encoding="utf-8", errors="strict") as handle:
+                        handle.write(build_token + "\n")
+                        handle.flush()
+                        os.fsync(handle.fileno())
+                    marker_created = True
+                except OSError as error:
+                    raise BuildRefusedError(
+                        f"cannot create exclusive staging marker: {marker}"
+                    ) from error
+                redraw_evidence_path = "00_handoff/FIGURE_REDRAW_EVIDENCE.csv"
+                execute_redraws(
+                    plan.redraw_recipes,
+                    staging_root=staging,
+                    build_token=build_token,
+                    evidence_path=staging / redraw_evidence_path,
+                )
+                written.append(redraw_evidence_path)
+            finally:
+                if marker_created:
+                    try:
+                        marker.unlink()
+                    except FileNotFoundError:
+                        pass
+        return tuple(written)
+    except (DerivedDataError, RedrawError) as error:
+        raise BuildRefusedError(f"lineage pipeline failed: {error}") from error
+    finally:
+        if derived_root is not None and _path_exists_no_follow(derived_root):
+            try:
+                _remove_tree(derived_root)
+            except (OSError, shutil.Error) as error:
+                raise BuildRefusedError(
+                    f"cannot clean isolated derived workspace: {derived_root}"
+                ) from error
+
+
 def _vacant_sibling(destination: Path, *, label: str) -> Path:
     created = Path(
         tempfile.mkdtemp(
@@ -835,6 +1318,19 @@ def _recover_failed_publication(
 
 def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
     """Copy through an isolated staging tree and publish only after baseline checks."""
+    try:
+        _validate_canonical_figure_plan(plan)
+        _validate_lineage_preflight(plan)
+    except BuildRefusedError as error:
+        return _build_result(
+            plan,
+            exit_code=1,
+            publishable=False,
+            dry_run=False,
+            reason=f"build-failed:{type(error).__name__}:{error}",
+            difference=_difference_or_error(plan),
+        )
+
     before_write = _difference_or_error(plan)
     if not before_write.is_clean:
         return _build_result(
@@ -870,6 +1366,8 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
                 _copy_asset(plan, row, staging, source_anchor)
                 if row.target_path is not None:
                     written.append(row.target_path)
+
+        written.extend(_materialize_lineage_pipeline(plan, staging))
 
         after_copy = _difference_or_error(plan)
         if not after_copy.is_clean:
@@ -1008,6 +1506,9 @@ def build_delivery(
     tree_specs: Sequence[TreeSourceSpec] = TREE_SOURCE_SPECS,
     exact_specs: Sequence[ExactSourceSpec] = EXACT_SOURCE_SPECS,
     include_thesis_assets: bool = True,
+    manifest_keys: ManifestKeys | None = None,
+    derived_recipes: Sequence[DerivedRecipe] = (),
+    redraw_recipes: Sequence[RedrawRecipe] = (),
 ) -> BuildResult:
     """Prepare and either dry-run or execute one deterministic delivery build."""
     plan = prepare_build(
@@ -1017,6 +1518,9 @@ def build_delivery(
         tree_specs=tree_specs,
         exact_specs=exact_specs,
         include_thesis_assets=include_thesis_assets,
+        manifest_keys=manifest_keys,
+        derived_recipes=derived_recipes,
+        redraw_recipes=redraw_recipes,
     )
     if dry_run:
         difference = _difference_or_error(plan)
