@@ -279,7 +279,22 @@ def _iter_tree_candidates(root: Path) -> Iterator[Path]:
                 yield candidate
 
 
+_SPINWAVE_FIRST_DIRECTORY_ROUTES = {
+    "drive_selection": "drive_selection",
+    "freq_sweep": "frequency_sweeps",
+    "amplitude_sweep": "amplitude_sweeps",
+    "multisource_control": "multisource",
+    "reverse_propagation_controls": "reverse_propagation",
+    "viby_plane_wave": "point_vs_plane",
+    "viby_point_source": "point_vs_plane",
+}
+
+
 def _spinwave_category(relative: PurePosixPath) -> str:
+    if relative.parts:
+        first_directory = relative.parts[0].casefold()
+        if category := _SPINWAVE_FIRST_DIRECTORY_ROUTES.get(first_directory):
+            return category
     label = "/".join(relative.parts).casefold()
     if "freq" in label:
         return "frequency_sweeps"
@@ -496,6 +511,7 @@ _CACHE_DIRECTORY_NAMES = frozenset(
     }
 )
 _TEMPORARY_SUFFIXES = (".pyc", ".pyo", ".tmp", ".lock", ".pid", ".swp")
+_BACKUP_SUFFIXES = (".bak", ".backup", ".orig")
 _LITERAL_FIELD_SUFFIXES = (".ovf", ".omf", ".ovf.gz", ".omf.gz")
 _ARCHIVE_SUFFIXES = (".zip", ".tar", ".tar.gz", ".tar.zst", ".tgz", ".tzst", ".7z", ".rar")
 _CANONICAL_FAILED_LIF_PREFIX = (
@@ -530,6 +546,8 @@ def _preclassification_exclusion(source: str) -> str | None:
         return "generated-v1-readme"
     if any(part in _CACHE_DIRECTORY_NAMES for part in parts[:-1]):
         return "cache-directory"
+    if name.endswith(_BACKUP_SUFFIXES):
+        return "backup-file"
     if name.endswith(_TEMPORARY_SUFFIXES) or name.endswith("~"):
         return "cache-or-temporary-file"
     if "templates" in parts or name.endswith((".template", ".tmpl")):

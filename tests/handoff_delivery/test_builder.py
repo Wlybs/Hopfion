@@ -133,6 +133,7 @@ def fixture_project(tmp_path: Path) -> Path:
     write_file(lif / "lif_cycle_demo/run.py", "print('first cycle')\n")
     write_file(lif / "lif.py")
     write_file(root / "95_shared_scripts/analysis_tool.py")
+    write_file(root / "95_shared_scripts/draw_afm_new.py.bak", b"backup")
     write_file(root / "95_shared_scripts/_test_plot.png", b"test output")
     return root
 
@@ -234,6 +235,49 @@ def test_failed_interrupted_incomplete_and_superseded_route_only_to_archive(
             assert row.target_path.startswith("90_archive/")
 
 
+@pytest.mark.parametrize(
+    ("relative", "category"),
+    [
+        ("drive_selection/freq_probe.txt", "drive_selection"),
+        ("freq_sweep/multisource_probe.txt", "frequency_sweeps"),
+        ("amplitude_sweep/freq_probe.txt", "amplitude_sweeps"),
+        (
+            "multisource_control/bidirectional_z/freq_switch_v3.txt",
+            "multisource",
+        ),
+        (
+            "reverse_propagation_controls/freq_reverse_probe.txt",
+            "reverse_propagation",
+        ),
+        ("vibY_plane_wave/freq_probe.txt", "point_vs_plane"),
+        ("vibY_point_source/freq_probe.txt", "point_vs_plane"),
+    ],
+)
+def test_spinwave_first_directory_has_routing_precedence(
+    tmp_path: Path,
+    relative: str,
+    category: str,
+) -> None:
+    root = tmp_path / "project"
+    source_root = root / "spin_wave_dynamics"
+    write_file(source_root / relative)
+    rows = enumerate_required_assets(
+        root,
+        tree_specs=(
+            TreeSourceSpec(
+                "spin_wave_dynamics",
+                "02_spinwave_control",
+                route="spinwave",
+            ),
+        ),
+        exact_specs=(),
+        include_thesis_assets=False,
+    )
+    assert len(rows) == 1
+    assert rows[0].target_path is not None
+    assert rows[0].target_path.startswith(f"02_spinwave_control/{category}/")
+
+
 def test_canonical_failed_lif_cycle_routes_to_archive_but_gradient_stays_active(
     fixture_project: Path,
 ) -> None:
@@ -312,6 +356,27 @@ def test_fields_cache_templates_and_shared_test_outputs_are_explicitly_excluded(
         assert row.disposition == "excluded_with_reason"
         assert row.target_path is None
         assert row.reason
+
+
+@pytest.mark.parametrize("suffix", [".bak", ".backup", ".orig"])
+def test_standard_backup_files_are_explicitly_excluded(
+    tmp_path: Path,
+    suffix: str,
+) -> None:
+    root = tmp_path / "project"
+    source = f"95_shared_scripts/draw_afm_new.py{suffix}"
+    write_file(root / source, b"backup")
+    rows = enumerate_required_assets(
+        root,
+        tree_specs=(TreeSourceSpec("95_shared_scripts", "shared", route="shared"),),
+        exact_specs=(),
+        include_thesis_assets=False,
+    )
+    assert len(rows) == 1
+    assert rows[0].source_path == source
+    assert rows[0].disposition == "excluded_with_reason"
+    assert rows[0].target_path is None
+    assert rows[0].reason == "backup-file"
 
 
 def test_content_inspector_handles_disguised_and_generic_archived_fields(
@@ -534,7 +599,7 @@ def test_build_copies_only_mapped_assets_with_byte_identity(
         assert target.read_bytes() == source.read_bytes()
 
 
-def test_nonempty_destination_requires_explicit_resume(
+def test_nonempty_destination_rejects_unknown_file_even_with_resume(
     fixture_project: Path,
     tmp_path: Path,
 ) -> None:
@@ -549,17 +614,44 @@ def test_nonempty_destination_requires_explicit_resume(
             old_delivery=old,
             destination=destination,
         )
+    with pytest.raises(BuildRefusedError, match="unknown"):
+        build_delivery(
+            project_root=fixture_project,
+            old_delivery=old,
+            destination=destination,
+            resume=True,
+        )
+
+
+def test_resume_accepts_only_matching_mapped_files_and_rebuilds_fresh(
+    fixture_project: Path,
+    tmp_path: Path,
+) -> None:
+    old = tmp_path / "old"
+    write_file(old / "README.md")
+    destination = tmp_path / "delivery-v2"
+    initial = build_delivery(
+        project_root=fixture_project,
+        old_delivery=old,
+        destination=destination,
+    )
+    assert initial.publishable
+
     resumed = build_delivery(
         project_root=fixture_project,
         old_delivery=old,
         destination=destination,
         resume=True,
     )
-    assert resumed.exit_code == 0
-    assert (destination / "unrelated.txt").read_text(encoding="utf-8") == "keep\n"
+    assert resumed.publishable
+    assert {
+        path.relative_to(destination).as_posix()
+        for path in destination.rglob("*")
+        if path.is_file()
+    } == {row.target_path for row in resumed.source_rows}
 
 
-def test_resume_replaces_corrupt_target_with_exact_source_bytes(
+def test_resume_rejects_mismatched_mapped_file(
     fixture_project: Path,
     tmp_path: Path,
 ) -> None:
@@ -574,16 +666,32 @@ def test_resume_replaces_corrupt_target_with_exact_source_bytes(
     row = next(row for row in initial.source_rows if row.target_path is not None)
     write_file(destination / row.target_path, b"corrupt")
 
-    resumed = build_delivery(
-        project_root=fixture_project,
-        old_delivery=old,
-        destination=destination,
-        resume=True,
-    )
-    assert resumed.exit_code == 0
-    assert (destination / row.target_path).read_bytes() == (
-        fixture_project / row.source_path
-    ).read_bytes()
+    with pytest.raises(BuildRefusedError, match="size or SHA256"):
+        build_delivery(
+            project_root=fixture_project,
+            old_delivery=old,
+            destination=destination,
+            resume=True,
+        )
+    assert (destination / row.target_path).read_bytes() == b"corrupt"
+
+
+def test_resume_rejects_unknown_directory(
+    fixture_project: Path,
+    tmp_path: Path,
+) -> None:
+    old = tmp_path / "old"
+    write_file(old / "README.md")
+    destination = tmp_path / "delivery-v2"
+    (destination / "unknown-empty-directory").mkdir(parents=True)
+
+    with pytest.raises(BuildRefusedError, match="unknown"):
+        build_delivery(
+            project_root=fixture_project,
+            old_delivery=old,
+            destination=destination,
+            resume=True,
+        )
 
 
 def test_resume_rejects_symlinked_destination_ancestor(

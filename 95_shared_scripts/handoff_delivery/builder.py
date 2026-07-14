@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 import hashlib
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import stat
 import tempfile
@@ -326,10 +326,79 @@ def _reject_destination_symlinks(destination: Path) -> None:
                 ) from error
 
 
-def _validate_destination(destination: Path, *, resume: bool) -> bool:
+def _resume_allowlist(
+    source_rows: Sequence[RequiredAssetRow],
+) -> tuple[dict[str, RequiredAssetRow], frozenset[str]]:
+    allowed_files: dict[str, RequiredAssetRow] = {}
+    allowed_directories: set[str] = set()
+    for row in source_rows:
+        if row.target_path is None:
+            raise BuildRefusedError(
+                f"copied row has no mapped target: {row.source_path}"
+            )
+        relative = PurePosixPath(row.target_path)
+        allowed_files[row.target_path] = row
+        for parent in relative.parents:
+            if parent != PurePosixPath("."):
+                allowed_directories.add(parent.as_posix())
+    return allowed_files, frozenset(allowed_directories)
+
+
+def _validate_resume_file(path: Path, row: RequiredAssetRow) -> None:
+    try:
+        metadata = path.lstat()
+    except OSError as error:
+        raise BuildRefusedError(f"cannot inspect resume file: {path}") from error
+    if not stat.S_ISREG(metadata.st_mode):
+        raise BuildRefusedError(f"resume mapped target is not a regular file: {path}")
+    try:
+        digest = _hash_regular_no_follow(path, metadata)
+    except BaselineError as error:
+        raise BuildRefusedError(f"resume mapped target is unstable: {path}") from error
+    if metadata.st_size != row.size or digest != row.sha256:
+        raise BuildRefusedError(
+            f"resume mapped target has wrong size or SHA256: {path}"
+        )
+
+
+def _validate_resume_contents(
+    destination: Path,
+    source_rows: Sequence[RequiredAssetRow],
+) -> None:
+    allowed_files, allowed_directories = _resume_allowlist(source_rows)
+    for current_raw, directory_names, file_names in os.walk(
+        destination, topdown=True, followlinks=False
+    ):
+        current = Path(current_raw)
+        directory_names.sort()
+        file_names.sort()
+        for name in directory_names:
+            path = current / name
+            relative = path.relative_to(destination).as_posix()
+            if relative not in allowed_directories or relative in allowed_files:
+                raise BuildRefusedError(
+                    f"resume destination contains unknown directory: {relative}"
+                )
+        for name in file_names:
+            path = current / name
+            relative = path.relative_to(destination).as_posix()
+            row = allowed_files.get(relative)
+            if row is None:
+                raise BuildRefusedError(
+                    f"resume destination contains unknown file: {relative}"
+                )
+            _validate_resume_file(path, row)
+
+
+def _validate_destination(
+    destination: Path,
+    *,
+    resume: bool,
+    source_rows: Sequence[RequiredAssetRow],
+) -> None:
     _reject_destination_symlinks(destination)
     if not destination.exists():
-        return False
+        return
     try:
         nonempty = next(destination.iterdir(), None) is not None
     except OSError as error:
@@ -338,7 +407,8 @@ def _validate_destination(destination: Path, *, resume: bool) -> bool:
         raise BuildRefusedError(
             "destination is non-empty; explicit resume=True is required"
         )
-    return True
+    if resume:
+        _validate_resume_contents(destination, source_rows)
 
 
 def _safe_target(staging: Path, target_path: str) -> Path:
@@ -491,7 +561,12 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
             difference=before_write,
         )
 
-    destination_exists = _validate_destination(plan.destination, resume=resume)
+    sources, _ = _row_groups(plan.required_assets)
+    _validate_destination(
+        plan.destination,
+        resume=resume,
+        source_rows=sources,
+    )
     plan.destination.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(
         tempfile.mkdtemp(
@@ -503,10 +578,6 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
     written: list[str] = []
     published = False
     try:
-        if destination_exists:
-            shutil.copytree(plan.destination, staging, dirs_exist_ok=True, symlinks=False)
-
-        sources, _ = _row_groups(plan.required_assets)
         for row in sources:
             _copy_asset(plan, row, staging)
             if row.target_path is not None:
