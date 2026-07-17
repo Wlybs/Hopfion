@@ -14,6 +14,7 @@ import numpy as np
 import pytest
 
 import handoff_delivery.builder as builder_module
+import handoff_delivery.portable as portable_module
 import handoff_delivery.source_specs as source_specs_module
 from handoff_delivery.builder import (
     BaselineError,
@@ -30,6 +31,17 @@ from handoff_delivery.derived import (
     DerivedRecipe,
 )
 from handoff_delivery.lineage import FigureRecipe
+from handoff_delivery.portable import (
+    FieldConsumer,
+    InitialStateRecipe,
+    LiteralReplacement,
+    PortableContract,
+    PortableRuntimeEntry,
+    PortableTransform,
+    RunEntry,
+    field_consumers_csv,
+    initial_state_recipes_csv,
+)
 from handoff_delivery.redraw import RedrawRecipe
 from handoff_delivery.source_specs import (
     EXACT_SOURCE_SPECS,
@@ -66,24 +78,85 @@ FORMAL_CHAPTERS = (
 
 def build_delivery(**kwargs: object):
     """Exercise copy mechanics with lineage patched only inside synthetic tests."""
+    kwargs.setdefault(
+        "portable_contract", SimpleNamespace(transforms=(), runtime_entries=())
+    )
     with (
         patch.object(builder_module, "_load_project_figure_recipes", return_value=()),
         patch.object(builder_module, "_validate_lineage_preflight", return_value=None),
+        patch.object(builder_module, "_validate_portable_preflight", return_value=None),
+        patch.object(builder_module, "_require_portable_contract", return_value=None),
+        patch.object(
+            builder_module,
+            "_validate_canonical_portable_ledgers_at_root",
+            return_value=None,
+        ),
+        patch.object(
+            builder_module,
+            "_materialize_portable_pipeline",
+            side_effect=lambda _plan, staging: (
+                builder_module._pin_staging_pipeline_result(staging, ())
+            ),
+        ),
     ):
         return _production_build_delivery(**kwargs)
 
 
 def prepare_build(**kwargs: object):
     """Exercise source-plan mechanics with a test-local lineage patch."""
+    kwargs.setdefault(
+        "portable_contract", SimpleNamespace(transforms=(), runtime_entries=())
+    )
     with (
         patch.object(builder_module, "_load_project_figure_recipes", return_value=()),
         patch.object(builder_module, "_validate_lineage_preflight", return_value=None),
+        patch.object(builder_module, "_validate_portable_preflight", return_value=None),
+        patch.object(builder_module, "_require_portable_contract", return_value=None),
+        patch.object(
+            builder_module,
+            "_validate_canonical_portable_ledgers_at_root",
+            return_value=None,
+        ),
     ):
         return _production_prepare_build(**kwargs)
 
 
 def execute_build(plan: BuildPlan, *, resume: bool = False):
     """Exercise publication mechanics with a test-local lineage patch."""
+    with (
+        patch.object(
+            builder_module,
+            "_validate_canonical_figure_plan",
+            return_value=None,
+        ),
+        patch.object(
+            builder_module,
+            "_validate_lineage_preflight",
+            return_value=None,
+        ),
+        patch.object(
+            builder_module,
+            "_validate_portable_preflight",
+            return_value=None,
+        ),
+        patch.object(
+            builder_module,
+            "_require_portable_contract",
+            return_value=None,
+        ),
+        patch.object(
+            builder_module,
+            "_materialize_portable_pipeline",
+            side_effect=lambda _plan, staging: (
+                builder_module._pin_staging_pipeline_result(staging, ())
+            ),
+        ),
+    ):
+        return _production_execute_build(plan, resume=resume)
+
+
+def execute_portable_build(plan: BuildPlan, *, resume: bool = False):
+    """Patch unrelated lineage only; exercise the production portable gates."""
     with (
         patch.object(
             builder_module,
@@ -753,6 +826,765 @@ def test_manual_build_plan_cannot_copy_through_intermediate_symlink(
     assert not result.publishable
     assert not destination.exists()
     assert (outside / "secret.txt").read_bytes() == payload
+
+
+def test_production_execute_refuses_missing_portable_contract_before_destination(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=tmp_path / "delivery",
+        required_assets=RequiredAssetInventory(()),
+        old_baseline=capture_baseline(old),
+    )
+
+    result = _production_execute_build(plan)
+
+    assert result.exit_code != 0
+    assert "portable contract is required" in result.reason
+    assert not plan.destination.exists()
+
+
+def test_production_prepare_and_dry_run_cannot_bypass_missing_portable_contract(
+    fixture_project: Path,
+    tmp_path: Path,
+) -> None:
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    destination = tmp_path / "delivery"
+
+    with pytest.raises(BuildRefusedError, match="portable contract is required"):
+        _production_prepare_build(
+            project_root=fixture_project,
+            old_delivery=old,
+            destination=destination,
+            tree_specs=(),
+            exact_specs=(),
+            include_thesis_assets=False,
+        )
+    with pytest.raises(BuildRefusedError, match="portable contract is required"):
+        _production_build_delivery(
+            project_root=fixture_project,
+            old_delivery=old,
+            destination=destination,
+            dry_run=True,
+            tree_specs=(),
+            exact_specs=(),
+            include_thesis_assets=False,
+        )
+    assert not destination.exists()
+
+
+def _portable_fixture_plan(tmp_path: Path) -> tuple[BuildPlan, bytes]:
+    project = tmp_path / "portable-project"
+    original = (
+        b'// archival bytes remain unchanged\r\n'
+        b'm.LoadFile("/mnt/d/Research/Hopfion/m000020.ovf")\r\n'
+    )
+    write_file(project / "src/run.mx3", original)
+    write_file(project / "src/generate.py", "print('seed')\n")
+    write_file(project / "src/relax.mx3", "relax()\n")
+    write_file(project / "evidence/notes.txt", "Historical path notes only.\n")
+    old = tmp_path / "portable-old"
+    write_file(old / "README.md", "old package\n")
+    original_target = "01_stability/topic/simulation/original/run.mx3"
+    portable_target = "01_stability/topic/simulation/portable/run.mx3"
+    launcher_target = "01_stability/topic/simulation/portable/launch_run.py"
+    row = RequiredAssetRow(
+        source_path="src/run.mx3",
+        target_path=original_target,
+        disposition="copied_active",
+        expected_target_class="active",
+        reason="portable integration fixture",
+        sha256=hashlib.sha256(original).hexdigest(),
+        size=len(original),
+        file_type="file",
+    )
+    run = RunEntry("run-portable", "active", original_target, launcher_target)
+    transform = PortableTransform(
+        transform_id="transform-portable",
+        run_id=run.run_id,
+        source_path="src/run.mx3",
+        original_path=original_target,
+        original_sha256=row.sha256,
+        portable_path=portable_target,
+        replacements=(
+            LiteralReplacement(
+                old=b"/mnt/d/Research/Hopfion/m000020.ovf",
+                new=b"${INIT_OVF}",
+                expected_count=1,
+            ),
+        ),
+    )
+    consumer = FieldConsumer(
+        source_path="src/run.mx3",
+        roles=("direct_loader",),
+        status="active",
+        run_id=run.run_id,
+        initial_state_recipe_id="recipe-portable",
+        non_full_field_data_id="N/A",
+        notes="content-discovered direct loader",
+        portable_handling="literal_transform",
+        detection_evidence=("mx3.m_loadfile@L2",),
+        status_evidence="evidence/notes.txt:L1",
+    )
+    recipe = InitialStateRecipe(
+        recipe_id="recipe-portable",
+        logical_name="Documented fixture initial state",
+        original_ovf_reference="/mnt/d/Research/Hopfion/m000020.ovf",
+        generator_script="src/generate.py",
+        generator_parameters='{"QH": 1}',
+        relaxation_mx3="src/relax.mx3",
+        expected_output="temporary/m000020.ovf",
+        consumers=("src/run.mx3",),
+        verification_status="documented_only",
+        verification_evidence="evidence/notes.txt",
+        notes="Documented only; no simulation was run for this delivery.",
+        steps_json='["generate", "relax", "consume"]',
+    )
+    runtime = PortableRuntimeEntry(
+        runtime_id="runtime-portable",
+        source_path=transform.source_path,
+        run_id=transform.run_id,
+        transform_id=transform.transform_id,
+        initial_state_recipe_id=recipe.recipe_id,
+        runner_path="shared/runtime/portable_runner.py",
+        launcher_path=launcher_target,
+        mode="direct_loader",
+        template_path=transform.portable_path,
+        command_json='["mumax3","{runtime_entry}"]',
+        runtime_tokens=("INIT_OVF",),
+    )
+    contract = PortableContract(
+        runs=(run,),
+        transforms=(transform,),
+        consumers=(consumer,),
+        recipes=(recipe,),
+        wrapper_contracts=(),
+        config_toml=(
+            b'[paths]\ninitial_state = "shared/initial_state/m000020.ovf"\n'
+        ),
+        runtime_entries=(runtime,),
+    )
+    write_file(
+        project / "95_shared_scripts/handoff_delivery/initial_state_recipes.csv",
+        initial_state_recipes_csv(contract),
+    )
+    write_file(
+        project / "95_shared_scripts/handoff_delivery/full_field_consumers.csv",
+        field_consumers_csv(contract),
+    )
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=tmp_path / "portable-delivery",
+        required_assets=RequiredAssetInventory((row,)),
+        old_baseline=capture_baseline(old),
+        portable_contract=contract,
+    )
+    return plan, original
+
+
+def test_builder_materializes_portable_contract_in_staging_without_mutating_source(
+    tmp_path: Path,
+) -> None:
+    plan, original = _portable_fixture_plan(tmp_path)
+    source = plan.project_root / "src/run.mx3"
+
+    result = execute_portable_build(plan)
+
+    assert result.exit_code == 0, result.reason
+    assert result.publishable
+    destination = plan.destination
+    original_target = destination / plan.portable_contract.runs[0].original_path  # type: ignore[union-attr]
+    launcher_target = destination / plan.portable_contract.runs[0].portable_entry  # type: ignore[union-attr]
+    portable_target = destination / plan.portable_contract.transforms[0].portable_path  # type: ignore[union-attr]
+    assert source.read_bytes() == original
+    assert original_target.read_bytes() == original
+    assert b"${INIT_OVF}" in portable_target.read_bytes()
+    assert b"/mnt/d/Research/Hopfion" not in portable_target.read_bytes()
+    assert launcher_target.is_file()
+    assert b"${INIT_OVF}" not in launcher_target.read_bytes()
+    assert {
+        "00_handoff/PORTABLE_TRANSFORMS.csv",
+        "00_handoff/PORTABLE_WRAPPERS.csv",
+        "00_handoff/INITIAL_STATE_RECIPES.csv",
+        "00_handoff/FULL_FIELD_CONSUMERS.csv",
+        "00_handoff/PORTABLE_CONFIG.toml",
+        "01_stability/topic/simulation/portable/run.mx3",
+        "01_stability/topic/simulation/portable/launch_run.py",
+    } <= set(result.written_paths)
+
+
+def test_builder_never_publishes_staging_replaced_at_portable_g4_scan(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    plan, _original = _portable_fixture_plan(tmp_path)
+    original_scan = portable_module.scan_delivery_absolute_paths
+    replaced = False
+
+    def replace_at_scan(root: Path, **kwargs):
+        nonlocal replaced
+        if not replaced:
+            replaced = True
+            root.rename(root.with_name(root.name + ".verified"))
+            root.mkdir()
+            (root / "attacker.txt").write_text("attacker", encoding="utf-8")
+        return original_scan(root, **kwargs)
+
+    monkeypatch.setattr(
+        portable_module,
+        "scan_delivery_absolute_paths",
+        replace_at_scan,
+    )
+
+    result = execute_portable_build(plan)
+
+    assert result.exit_code == 1
+    assert not result.publishable
+    assert not plan.destination.exists()
+
+
+def test_builder_never_publishes_staging_replaced_after_portable_materialization_returns(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    plan, _original = _portable_fixture_plan(tmp_path)
+    original_materialize = builder_module._materialize_portable_pipeline
+    replaced = False
+
+    def materialize_then_replace(build_plan: BuildPlan, staging: Path):
+        nonlocal replaced
+        written = original_materialize(build_plan, staging)
+        if not replaced:
+            replaced = True
+            staging.rename(staging.with_name(staging.name + ".verified"))
+            staging.mkdir()
+            (staging / "attacker.txt").write_text("attacker", encoding="utf-8")
+        return written
+
+    monkeypatch.setattr(
+        builder_module,
+        "_materialize_portable_pipeline",
+        materialize_then_replace,
+    )
+
+    result = execute_portable_build(plan)
+
+    assert result.exit_code == 1
+    assert not result.publishable
+    assert not plan.destination.exists()
+
+
+def test_builder_never_publishes_portable_child_mutated_after_g4_scan(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    plan, _original = _portable_fixture_plan(tmp_path)
+    assert plan.portable_contract is not None
+    portable_path = plan.portable_contract.transforms[0].portable_path
+    original_materialize = builder_module._materialize_portable_pipeline
+    mutated = False
+
+    def materialize_then_mutate(build_plan: BuildPlan, staging: Path):
+        nonlocal mutated
+        materialized = original_materialize(build_plan, staging)
+        target = staging / portable_path
+        payload = target.read_bytes()
+        changed = payload.replace(b"${INIT_OVF}", b"/tmp/evilxx")
+        assert len(changed) == len(payload)
+        assert changed != payload
+        target.write_bytes(changed)
+        mutated = True
+        return materialized
+
+    monkeypatch.setattr(
+        builder_module,
+        "_materialize_portable_pipeline",
+        materialize_then_mutate,
+    )
+
+    result = execute_portable_build(plan)
+
+    assert mutated
+    assert result.exit_code == 1
+    assert not result.publishable
+    assert not plan.destination.exists()
+
+
+def test_builder_never_publishes_staging_replaced_after_portable_scan(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    plan, _original = _portable_fixture_plan(tmp_path)
+    original_capture = builder_module._capture_destination_snapshot
+    replaced = False
+
+    def replace_before_publish(path: Path):
+        nonlocal replaced
+        if path == plan.destination and not replaced:
+            candidates = tuple(
+                plan.destination.parent.glob(
+                    f".{plan.destination.name}.staging-*"
+                )
+            )
+            if candidates:
+                replaced = True
+                staging = candidates[0]
+                staging.rename(staging.with_name(staging.name + ".verified"))
+                staging.mkdir()
+                (staging / "attacker.txt").write_text(
+                    "attacker", encoding="utf-8"
+                )
+        return original_capture(path)
+
+    monkeypatch.setattr(
+        builder_module,
+        "_capture_destination_snapshot",
+        replace_before_publish,
+    )
+
+    result = execute_portable_build(plan)
+
+    assert result.exit_code == 1
+    assert not result.publishable
+    assert not plan.destination.exists()
+
+
+def test_verified_staging_handle_is_closed_after_successful_publication(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    plan, _original = _portable_fixture_plan(tmp_path)
+    original_publish = builder_module._publish_staging
+    captured: list[builder_module._VerifiedStagingHandle] = []
+
+    def capture_handle(*args, verified_staging, **kwargs):
+        captured.append(verified_staging)
+        return original_publish(
+            *args,
+            verified_staging=verified_staging,
+            **kwargs,
+        )
+
+    monkeypatch.setattr(builder_module, "_publish_staging", capture_handle)
+
+    result = execute_portable_build(plan)
+
+    assert result.exit_code == 0, result.reason
+    assert result.publishable
+    assert len(captured) == 1
+    assert captured[0].descriptor == -1
+
+
+def test_verified_staging_handle_is_closed_after_publication_failure(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    plan, _original = _portable_fixture_plan(tmp_path)
+    captured: list[builder_module._VerifiedStagingHandle] = []
+
+    def fail_publication(*_args, verified_staging, **_kwargs):
+        captured.append(verified_staging)
+        raise builder_module._PublicationFailure(
+            "synthetic publication refusal",
+            backup=None,
+            displaced_snapshot=None,
+            recovery_status="not-needed",
+            recovery_paths=(),
+        )
+
+    monkeypatch.setattr(builder_module, "_publish_staging", fail_publication)
+
+    result = execute_portable_build(plan)
+
+    assert result.exit_code == 1
+    assert not result.publishable
+    assert len(captured) == 1
+    assert captured[0].descriptor == -1
+
+
+def test_production_portable_and_lineage_build_resumes_byte_identically(
+    tmp_path: Path,
+) -> None:
+    plan, _ = _portable_fixture_plan(tmp_path)
+    lineage_project, exact_specs, derived, redraw = task4_pipeline_fixture(
+        tmp_path / "lineage"
+    )
+    lineage_inventory = enumerate_required_assets(
+        lineage_project,
+        tree_specs=(),
+        exact_specs=exact_specs,
+        include_thesis_assets=False,
+    )
+    for relative in (
+        derived.source_path,
+        derived.producer_script,
+        *(row.source_path for row in lineage_inventory),
+    ):
+        write_file(
+            plan.project_root / relative,
+            (lineage_project / relative).read_bytes(),
+        )
+    plan = replace(
+        plan,
+        required_assets=RequiredAssetInventory(
+            (*plan.required_assets.rows, *lineage_inventory.rows)
+        ),
+        derived_recipes=(derived,),
+        redraw_recipes=(redraw,),
+    )
+    assert redraw.output_path in builder_module._declared_generated_paths(plan)
+
+    first = execute_portable_build(plan)
+
+    assert first.exit_code == 0, first.reason
+    assert first.publishable
+    before = regular_tree_bytes(plan.destination)
+    assert {
+        derived.output_path,
+        "00_handoff/DERIVED_DATA_EVIDENCE.csv",
+        "00_handoff/FIGURE_REDRAW_EVIDENCE.csv",
+        "00_handoff/PORTABLE_TRANSFORMS.csv",
+        plan.portable_contract.transforms[0].portable_path,  # type: ignore[union-attr]
+        plan.portable_contract.runtime_entries[0].launcher_path,  # type: ignore[union-attr]
+    } <= set(before)
+
+    resumed = execute_portable_build(plan, resume=True)
+
+    assert resumed.exit_code == 0, resumed.reason
+    assert resumed.publishable
+    after = regular_tree_bytes(plan.destination)
+    execution_evidence = {
+        "00_handoff/DERIVED_DATA_EVIDENCE.csv",
+        "00_handoff/FIGURE_REDRAW_EVIDENCE.csv",
+    }
+    assert {
+        path: payload
+        for path, payload in after.items()
+        if path not in execution_evidence
+    } == {
+        path: payload
+        for path, payload in before.items()
+        if path not in execution_evidence
+    }
+    assert execution_evidence <= set(after)
+
+
+def test_builder_refuses_missing_recipe_before_publishing(tmp_path: Path) -> None:
+    plan, _ = _portable_fixture_plan(tmp_path)
+    assert plan.portable_contract is not None
+    broken = replace(
+        plan,
+        portable_contract=replace(plan.portable_contract, recipes=()),
+    )
+
+    result = execute_portable_build(broken)
+
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert "canonical initial-state recipe ledger" in result.reason
+    assert not plan.destination.exists()
+
+
+def test_builder_revalidates_manual_transform_sha_and_never_publishes(
+    tmp_path: Path,
+) -> None:
+    plan, _ = _portable_fixture_plan(tmp_path)
+    assert plan.portable_contract is not None
+    transform = plan.portable_contract.transforms[0]
+    broken_transform = replace(transform, original_sha256="0" * 64)
+    broken = replace(
+        plan,
+        portable_contract=replace(
+            plan.portable_contract,
+            transforms=(broken_transform,),
+        ),
+    )
+
+    result = execute_portable_build(broken)
+
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert "SHA256" in result.reason
+    assert not plan.destination.exists()
+
+
+def test_builder_refuses_portable_output_collision_with_copied_target(
+    tmp_path: Path,
+) -> None:
+    plan, _ = _portable_fixture_plan(tmp_path)
+    assert plan.portable_contract is not None
+    portable = plan.portable_contract.transforms[0].portable_path
+    payload = b"must not be overwritten\n"
+    write_file(plan.project_root / "src/collision.txt", payload)
+    collision = RequiredAssetRow(
+        source_path="src/collision.txt",
+        target_path=portable,
+        disposition="copied_active",
+        expected_target_class="active",
+        reason="collision fixture",
+        sha256=hashlib.sha256(payload).hexdigest(),
+        size=len(payload),
+        file_type="file",
+    )
+    broken = replace(
+        plan,
+        required_assets=RequiredAssetInventory(
+            (*plan.required_assets.rows, collision)
+        ),
+    )
+
+    result = execute_portable_build(broken)
+
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert "collid" in result.reason.casefold()
+    assert not plan.destination.exists()
+
+
+def test_builder_refuses_literal_count_mismatch_after_copy_without_publishing(
+    tmp_path: Path,
+) -> None:
+    plan, _ = _portable_fixture_plan(tmp_path)
+    assert plan.portable_contract is not None
+    transform = plan.portable_contract.transforms[0]
+    broken_replacement = replace(
+        transform.replacements[0],
+        expected_count=2,
+    )
+    broken = replace(
+        plan,
+        portable_contract=replace(
+            plan.portable_contract,
+            transforms=(replace(transform, replacements=(broken_replacement,)),),
+        ),
+    )
+
+    result = execute_portable_build(broken)
+
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert "occurrence" in result.reason
+    assert not plan.destination.exists()
+
+
+def test_builder_runs_g4_on_materialized_portable_before_publish(
+    tmp_path: Path,
+) -> None:
+    plan, _ = _portable_fixture_plan(tmp_path)
+    assert plan.portable_contract is not None
+    transform = plan.portable_contract.transforms[0]
+    machine_specific = replace(
+        transform.replacements[0],
+        new=b"/home/another-user/generated-state.ovf",
+    )
+    broken = replace(
+        plan,
+        portable_contract=replace(
+            plan.portable_contract,
+            transforms=(replace(transform, replacements=(machine_specific,)),),
+        ),
+    )
+
+    result = execute_portable_build(broken)
+
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert "G4 executable scan" in result.reason
+    assert not plan.destination.exists()
+
+
+def test_execute_reloads_canonical_portable_ledgers_and_rejects_forged_contract(
+    tmp_path: Path,
+) -> None:
+    plan, _ = _portable_fixture_plan(tmp_path)
+    assert plan.portable_contract is not None
+    forged_consumer = replace(
+        plan.portable_contract.consumers[0],
+        notes="caller-forged classification",
+    )
+    forged = replace(
+        plan,
+        portable_contract=replace(
+            plan.portable_contract,
+            consumers=(forged_consumer,),
+        ),
+    )
+
+    result = execute_portable_build(forged)
+
+    assert result.exit_code != 0
+    assert "canonical full-field consumer ledger" in result.reason
+    assert not plan.destination.exists()
+
+
+def test_execute_refuses_canonical_ledger_changed_to_header_only_after_plan(
+    tmp_path: Path,
+) -> None:
+    plan, _ = _portable_fixture_plan(tmp_path)
+    ledger = (
+        plan.project_root
+        / "95_shared_scripts/handoff_delivery/initial_state_recipes.csv"
+    )
+    ledger.write_text(
+        "recipe_id,logical_name,original_ovf_reference,generator_script,"
+        "generator_parameters,relaxation_mx3,expected_output,consumers,"
+        "verification_status,verification_evidence,notes,steps_json\n",
+        encoding="utf-8",
+    )
+
+    result = execute_portable_build(plan)
+
+    assert result.exit_code != 0
+    assert "canonical initial-state recipe ledger" in result.reason
+    assert not plan.destination.exists()
+
+
+def test_execute_refuses_missing_canonical_consumer_ledger(tmp_path: Path) -> None:
+    plan, _ = _portable_fixture_plan(tmp_path)
+    ledger = (
+        plan.project_root
+        / "95_shared_scripts/handoff_delivery/full_field_consumers.csv"
+    )
+    ledger.unlink()
+
+    result = execute_portable_build(plan)
+
+    assert result.exit_code != 0
+    assert "canonical portable ledger failed" in result.reason
+    assert not plan.destination.exists()
+
+
+def test_prepare_reloads_canonical_portable_ledgers_instead_of_trusting_argument(
+    tmp_path: Path,
+) -> None:
+    plan, _ = _portable_fixture_plan(tmp_path)
+    assert plan.portable_contract is not None
+    forged = replace(
+        plan.portable_contract,
+        recipes=(replace(plan.portable_contract.recipes[0], notes="forged"),),
+    )
+
+    with (
+        patch.object(builder_module, "_load_project_figure_recipes", return_value=()),
+        patch.object(builder_module, "_validate_lineage_preflight", return_value=None),
+        pytest.raises(
+            BuildRefusedError,
+            match="canonical initial-state recipe ledger",
+        ),
+    ):
+        _production_prepare_build(
+            project_root=plan.project_root,
+            old_delivery=plan.old_delivery,
+            destination=plan.destination,
+            tree_specs=(),
+            exact_specs=(),
+            include_thesis_assets=False,
+            portable_contract=forged,
+        )
+
+
+def test_prepare_reroutes_enumerated_transform_source_to_original_tree(
+    tmp_path: Path,
+) -> None:
+    fixture_plan, _ = _portable_fixture_plan(tmp_path)
+    assert fixture_plan.portable_contract is not None
+
+    with (
+        patch.object(builder_module, "_load_project_figure_recipes", return_value=()),
+        patch.object(builder_module, "_validate_lineage_preflight", return_value=None),
+    ):
+        prepared = _production_prepare_build(
+            project_root=fixture_plan.project_root,
+            old_delivery=fixture_plan.old_delivery,
+            destination=fixture_plan.destination,
+            tree_specs=(TreeSourceSpec("src", "01_stability/topic"),),
+            exact_specs=(),
+            include_thesis_assets=False,
+            portable_contract=fixture_plan.portable_contract,
+        )
+
+    source_row = next(
+        row for row in prepared.required_assets if row.source_path == "src/run.mx3"
+    )
+    assert source_row.target_path == (
+        "01_stability/topic/simulation/original/run.mx3"
+    )
+    assert source_row.sha256 == hashlib.sha256(
+        (fixture_plan.project_root / "src/run.mx3").read_bytes()
+    ).hexdigest()
+
+
+def test_execute_revalidates_source_to_original_target_binding(
+    tmp_path: Path,
+) -> None:
+    plan, _ = _portable_fixture_plan(tmp_path)
+    row = plan.required_assets.rows[0]
+    broken = replace(
+        plan,
+        required_assets=RequiredAssetInventory(
+            (replace(row, target_path="01_stability/topic/run.mx3"),)
+        ),
+    )
+
+    result = execute_portable_build(broken)
+
+    assert result.exit_code != 0
+    assert "source-to-original binding" in result.reason
+    assert not plan.destination.exists()
+
+
+def test_builder_discovery_candidates_include_structured_and_extensionless_shebang(
+    tmp_path: Path,
+) -> None:
+    plan, _ = _portable_fixture_plan(tmp_path)
+    additions: list[RequiredAssetRow] = []
+    for source_path, target_path, payload in (
+        (
+            "configs/run.toml",
+            "01_stability/topic/analysis/run.toml",
+            b'initial_state = "temporary/state.ovf"\n',
+        ),
+        (
+            "jobs/launch",
+            "01_stability/topic/analysis/launch",
+            b"#!/bin/sh\nmumax3 run.mx3\n",
+        ),
+    ):
+        write_file(plan.project_root / source_path, payload)
+        additions.append(
+            RequiredAssetRow(
+                source_path=source_path,
+                target_path=target_path,
+                disposition="copied_active",
+                expected_target_class="active",
+                reason="consumer discovery boundary fixture",
+                sha256=hashlib.sha256(payload).hexdigest(),
+                size=len(payload),
+                file_type="file",
+            )
+        )
+    broken = replace(
+        plan,
+        required_assets=RequiredAssetInventory(
+            (*plan.required_assets.rows, *additions)
+        ),
+    )
+
+    result = execute_portable_build(broken)
+
+    assert result.exit_code != 0
+    assert "discovery set" in result.reason
+    assert "configs/run.toml" in result.reason
+    assert "jobs/launch" in result.reason
+    assert not plan.destination.exists()
 
 
 def test_old_baseline_walk_error_is_not_silently_ignored(
@@ -1614,23 +2446,32 @@ def test_prepare_build_loads_real_ledger_hook_and_routes_nonactive_figure(
     )
     monkeypatch.setattr(builder_module, "_validate_lineage_preflight", lambda _plan: None)
 
-    plan = builder_module.prepare_build(
-        project_root=project,
-        old_delivery=old,
-        destination=tmp_path / "delivery-v2",
-        tree_specs=(),
-        exact_specs=(
-            ExactSourceSpec(
-                source_path,
-                "05_papers_and_talks/thesis_final/figures/formal.png",
-            ),
-            ExactSourceSpec(
-                unregistered_path,
-                "05_papers_and_talks/thesis_final/figures/old-result.png",
-            ),
+    with (
+        patch.object(
+            builder_module,
+            "_validate_canonical_portable_ledgers_at_root",
+            return_value=None,
         ),
-        include_thesis_assets=False,
-    )
+        patch.object(builder_module, "_validate_portable_preflight", return_value=None),
+    ):
+        plan = builder_module.prepare_build(
+            project_root=project,
+            old_delivery=old,
+            destination=tmp_path / "delivery-v2",
+            tree_specs=(),
+            exact_specs=(
+                ExactSourceSpec(
+                    source_path,
+                    "05_papers_and_talks/thesis_final/figures/formal.png",
+                ),
+                ExactSourceSpec(
+                    unregistered_path,
+                    "05_papers_and_talks/thesis_final/figures/old-result.png",
+                ),
+            ),
+            include_thesis_assets=False,
+            portable_contract=SimpleNamespace(transforms=(), runtime_entries=()),
+        )
 
     assert plan.figure_recipes == (figure_row,)
     routed = {row.source_path: row for row in plan.required_assets}[source_path]
@@ -1682,7 +2523,14 @@ def test_prepare_build_requires_the_canonical_figure_ledger_by_default(
     old = tmp_path / "old"
     write_file(old / "README.md", "old\n")
 
-    with pytest.raises(BuildRefusedError, match="figure recipe ledger is missing"):
+    with (
+        patch.object(
+            builder_module,
+            "_validate_canonical_portable_ledgers_at_root",
+            return_value=None,
+        ),
+        pytest.raises(BuildRefusedError, match="figure recipe ledger is missing"),
+    ):
         builder_module.prepare_build(
             project_root=project,
             old_delivery=old,
@@ -1690,6 +2538,7 @@ def test_prepare_build_requires_the_canonical_figure_ledger_by_default(
             tree_specs=(),
             exact_specs=(ExactSourceSpec("asset.txt", "shared/asset.txt"),),
             include_thesis_assets=False,
+            portable_contract=SimpleNamespace(transforms=(), runtime_entries=()),
         )
 
     with pytest.raises(TypeError, match="figure_recipes"):
@@ -1737,8 +2586,16 @@ def test_execute_build_revalidates_and_rejects_an_unregistered_figure_plan(
         "_load_project_figure_recipes",
         lambda _project_root: (),
     )
+    monkeypatch.setattr(
+        builder_module,
+        "_validate_portable_preflight",
+        lambda _plan: None,
+    )
 
-    result = builder_module.execute_build(plan)
+    with patch.object(
+        builder_module, "_validate_portable_preflight", return_value=None
+    ):
+        result = builder_module.execute_build(plan)
 
     assert not result.publishable
     assert result.exit_code != 0
@@ -1763,7 +2620,10 @@ def test_execute_build_reloads_canonical_ledger_for_a_manual_empty_plan(
         figure_recipes=(),
     )
 
-    result = builder_module.execute_build(plan)
+    with patch.object(
+        builder_module, "_validate_portable_preflight", return_value=None
+    ):
+        result = builder_module.execute_build(plan)
 
     assert not result.publishable
     assert result.exit_code != 0

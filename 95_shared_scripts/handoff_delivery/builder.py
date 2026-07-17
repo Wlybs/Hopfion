@@ -31,6 +31,22 @@ from .lineage import (
     validate_recipe_ledger,
 )
 from .models import IdList, ManifestError, require_relative_path
+from .portable import (
+    PORTABLE_OUTPUT_PATHS,
+    _PinnedDeliveryScan,
+    _PinnedPortableMaterialization,
+    _PinnedTreeEntry,
+    _snapshot_delivery_descriptor,
+    PortableContract,
+    PortableError,
+    discover_full_field_consumers,
+    load_field_consumer_registry,
+    load_initial_state_recipes,
+    materialize_portable_contract,
+    scan_delivery_absolute_paths,
+    validate_field_consumer_registry,
+    validate_portable_contract,
+)
 from .redraw import (
     RedrawError,
     RedrawRecipe,
@@ -131,6 +147,7 @@ class BuildPlan:
     manifest_keys: ManifestKeys | None = None
     derived_recipes: tuple[DerivedRecipe, ...] = ()
     redraw_recipes: tuple[RedrawRecipe, ...] = ()
+    portable_contract: PortableContract | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,6 +169,19 @@ class BuildResult:
 class _RecoveryOutcome:
     status: str
     paths: tuple[str, ...]
+
+
+@dataclass(slots=True)
+class _VerifiedStagingHandle:
+    descriptor: int
+    identity: tuple[int, int, int, int, int]
+    snapshot: tuple[_PinnedTreeEntry, ...]
+
+    def close(self) -> None:
+        if self.descriptor >= 0:
+            descriptor = self.descriptor
+            self.descriptor = -1
+            os.close(descriptor)
 
 
 def _same_snapshot(left: os.stat_result, right: os.stat_result) -> bool:
@@ -587,6 +617,193 @@ def _validate_lineage_preflight(plan: BuildPlan) -> None:
         raise BuildRefusedError("redraw IDs must be unique")
 
 
+def _validate_portable_preflight(plan: BuildPlan) -> None:
+    """Recompute every optional portable obligation before destination writes."""
+    contract = plan.portable_contract
+    _require_portable_contract(contract)
+    assert contract is not None
+    _validate_canonical_portable_ledgers(plan, contract)
+    try:
+        validate_portable_contract(contract, project_root=plan.project_root)
+    except PortableError as error:
+        raise BuildRefusedError(f"portable contract failed: {error}") from error
+
+    if not plan.required_assets.source_paths_are_unique():
+        raise BuildRefusedError(
+            "portable preflight requires unique required-asset source paths"
+        )
+    if not plan.required_assets.target_paths_are_unique():
+        raise BuildRefusedError(
+            "portable preflight requires unique required-asset target paths"
+        )
+    copied = tuple(
+        row
+        for row in plan.required_assets
+        if row.target_path is not None
+        and row.disposition in {"copied_active", "copied_archive"}
+    )
+    disposition_by_source = {row.source_path: row.disposition for row in copied}
+    discoverable_suffixes = {
+        ".mx3",
+        ".py",
+        ".sh",
+        ".ps1",
+        ".m",
+        ".json",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".template",
+    }
+    discovery_paths = tuple(
+        row.source_path
+        for row in copied
+        if (
+            PurePosixPath(row.source_path).suffix.casefold() in discoverable_suffixes
+            or not PurePosixPath(row.source_path).suffix
+        )
+    )
+    try:
+        discoveries = discover_full_field_consumers(
+            plan.project_root, discovery_paths
+        )
+        validate_field_consumer_registry(
+            discoveries,
+            contract.consumers,
+            disposition_by_source,
+            publish=True,
+            project_root=plan.project_root,
+        )
+    except PortableError as error:
+        raise BuildRefusedError(
+            f"full-field consumer registry failed: {error}"
+        ) from error
+
+    rows_by_target = {
+        row.target_path: row for row in copied if row.target_path is not None
+    }
+    rows_by_source = {row.source_path: row for row in copied}
+    staged_targets = set(rows_by_target)
+    generated_targets = {
+        transform.portable_path for transform in contract.transforms
+    } | {
+        runtime.launcher_path for runtime in contract.runtime_entries
+    } | set(PORTABLE_OUTPUT_PATHS)
+    collisions = staged_targets & generated_targets
+    if collisions:
+        raise BuildRefusedError(
+            f"portable output collides with copied target: {sorted(collisions)!r}"
+        )
+    derived_collisions = {
+        recipe.output_path for recipe in plan.derived_recipes
+    } & generated_targets
+    if derived_collisions:
+        raise BuildRefusedError(
+            "portable output collides with derived output: "
+            f"{sorted(derived_collisions)!r}"
+        )
+    for transform in contract.transforms:
+        source_row = rows_by_source.get(transform.source_path)
+        if (
+            source_row is None
+            or source_row.disposition != "copied_active"
+            or source_row.target_path != transform.original_path
+        ):
+            raise BuildRefusedError(
+                "portable source-to-original binding mismatch: "
+                f"{transform.source_path} -> {transform.original_path}"
+            )
+        if source_row.sha256 != transform.original_sha256:
+            raise BuildRefusedError(
+                "portable transform SHA256 differs from required inventory: "
+                f"{transform.original_path}"
+            )
+
+
+def _validate_canonical_portable_ledgers(
+    plan: BuildPlan,
+    contract: PortableContract,
+) -> None:
+    """Bind caller objects to the current versioned scientific ledgers."""
+    _validate_canonical_portable_ledgers_at_root(plan.project_root, contract)
+
+
+def _validate_canonical_portable_ledgers_at_root(
+    project_root: Path,
+    contract: PortableContract,
+) -> None:
+    """Load canonical portable ledgers without trusting an in-memory plan."""
+    ledger_root = project_root / "95_shared_scripts/handoff_delivery"
+    try:
+        recipes = load_initial_state_recipes(
+            ledger_root / "initial_state_recipes.csv",
+            project_root=project_root,
+        )
+        consumers = load_field_consumer_registry(
+            ledger_root / "full_field_consumers.csv",
+            project_root=project_root,
+        )
+    except PortableError as error:
+        raise BuildRefusedError(
+            f"canonical portable ledger failed: {error}"
+        ) from error
+    if recipes != contract.recipes:
+        raise BuildRefusedError(
+            "build contract does not match canonical initial-state recipe ledger"
+        )
+    if consumers != contract.consumers:
+        raise BuildRefusedError(
+            "build contract does not match canonical full-field consumer ledger"
+        )
+
+
+def _route_portable_original_assets(
+    inventory: RequiredAssetInventory,
+    contract: PortableContract,
+) -> RequiredAssetInventory:
+    """Deterministically route each transform source to its archival original."""
+    if not inventory.source_paths_are_unique():
+        raise BuildRefusedError(
+            "portable original routing requires unique source paths"
+        )
+    routed = list(inventory.rows)
+    index_by_source = {row.source_path: index for index, row in enumerate(routed)}
+    for transform in contract.transforms:
+        index = index_by_source.get(transform.source_path)
+        if index is None:
+            raise BuildRefusedError(
+                f"portable transform source is absent from required assets: {transform.source_path}"
+            )
+        row = routed[index]
+        if row.disposition != "copied_active":
+            raise BuildRefusedError(
+                f"portable transform source is not copied_active: {transform.source_path}"
+            )
+        if row.sha256 != transform.original_sha256:
+            raise BuildRefusedError(
+                f"portable transform source SHA256 mismatch: {transform.source_path}"
+            )
+        routed[index] = replace(
+            row,
+            target_path=transform.original_path,
+            disposition="copied_active",
+            expected_target_class="active",
+            reason=f"portable-original:{transform.transform_id}",
+        )
+    result = RequiredAssetInventory(tuple(routed))
+    if not result.target_paths_are_unique():
+        raise BuildRefusedError(
+            "portable original routing creates duplicate delivery targets"
+        )
+    return result
+
+
+def _require_portable_contract(contract: PortableContract | None) -> None:
+    """Make portability a mandatory production gate, including dry-runs."""
+    if contract is None:
+        raise BuildRefusedError("portable contract is required for every build")
+
+
 def prepare_build(
     *,
     project_root: Path | str,
@@ -598,9 +815,13 @@ def prepare_build(
     manifest_keys: ManifestKeys | None = None,
     derived_recipes: Sequence[DerivedRecipe] = (),
     redraw_recipes: Sequence[RedrawRecipe] = (),
+    portable_contract: PortableContract | None = None,
 ) -> BuildPlan:
     """Prepare an immutable build plan without writing the v2 destination."""
+    _require_portable_contract(portable_contract)
     project = Path(project_root).absolute()
+    assert portable_contract is not None
+    _validate_canonical_portable_ledgers_at_root(project, portable_contract)
     old = Path(old_delivery).absolute()
     target = Path(destination).absolute()
     baseline = capture_baseline(old)
@@ -612,6 +833,7 @@ def prepare_build(
     )
     resolved_figure_recipes = _load_project_figure_recipes(project)
     inventory = _route_figure_assets(inventory, resolved_figure_recipes)
+    inventory = _route_portable_original_assets(inventory, portable_contract)
 
     resolved_old = old.resolve()
     resolved_target = target.resolve(strict=False)
@@ -627,8 +849,10 @@ def prepare_build(
         manifest_keys=manifest_keys,
         derived_recipes=tuple(derived_recipes),
         redraw_recipes=tuple(redraw_recipes),
+        portable_contract=portable_contract,
     )
     _validate_lineage_preflight(plan)
+    _validate_portable_preflight(plan)
     return plan
 
 
@@ -706,8 +930,9 @@ def _reject_destination_symlinks(destination: Path) -> None:
 
 def _resume_allowlist(
     source_rows: Sequence[RequiredAssetRow],
-) -> tuple[dict[str, RequiredAssetRow], frozenset[str]]:
-    allowed_files: dict[str, RequiredAssetRow] = {}
+    generated_paths: Sequence[str] = (),
+) -> tuple[dict[str, RequiredAssetRow | None], frozenset[str]]:
+    allowed_files: dict[str, RequiredAssetRow | None] = {}
     allowed_directories: set[str] = set()
     for row in source_rows:
         if row.target_path is None:
@@ -716,8 +941,27 @@ def _resume_allowlist(
             )
         relative = PurePosixPath(row.target_path)
         allowed_files[row.target_path] = row
+    for raw in generated_paths:
+        try:
+            relative = require_relative_path(raw).as_posix()
+        except ManifestError as error:
+            raise BuildRefusedError(
+                f"invalid declared generated resume path: {raw!r}"
+            ) from error
+        if relative in allowed_files:
+            raise BuildRefusedError(
+                f"generated resume path collides with a copied target: {relative}"
+            )
+        allowed_files[relative] = None
+    for raw in allowed_files:
+        relative = PurePosixPath(raw)
         for parent in relative.parents:
             if parent != PurePosixPath("."):
+                if parent.as_posix() in allowed_files:
+                    raise BuildRefusedError(
+                        "resume allowlist has a file/directory collision: "
+                        f"{parent.as_posix()}"
+                    )
                 allowed_directories.add(parent.as_posix())
     return allowed_files, frozenset(allowed_directories)
 
@@ -739,11 +983,31 @@ def _validate_resume_file(path: Path, row: RequiredAssetRow) -> None:
         )
 
 
+def _validate_resume_generated_file(path: Path) -> None:
+    try:
+        metadata = path.lstat()
+    except OSError as error:
+        raise BuildRefusedError(f"cannot inspect resume generated file: {path}") from error
+    if not stat.S_ISREG(metadata.st_mode):
+        raise BuildRefusedError(
+            f"resume generated target is not a regular file: {path}"
+        )
+    try:
+        _hash_regular_no_follow(path, metadata)
+    except BaselineError as error:
+        raise BuildRefusedError(
+            f"resume generated target is unstable: {path}"
+        ) from error
+
+
 def _validate_resume_contents(
     destination: Path,
     source_rows: Sequence[RequiredAssetRow],
+    generated_paths: Sequence[str] = (),
 ) -> None:
-    allowed_files, allowed_directories = _resume_allowlist(source_rows)
+    allowed_files, allowed_directories = _resume_allowlist(
+        source_rows, generated_paths
+    )
     for current_raw, directory_names, file_names in os.walk(
         destination,
         topdown=True,
@@ -763,12 +1027,39 @@ def _validate_resume_contents(
         for name in file_names:
             path = current / name
             relative = path.relative_to(destination).as_posix()
-            row = allowed_files.get(relative)
-            if row is None:
+            if relative not in allowed_files:
                 raise BuildRefusedError(
                     f"resume destination contains unknown file: {relative}"
                 )
-            _validate_resume_file(path, row)
+            row = allowed_files[relative]
+            if row is None:
+                _validate_resume_generated_file(path)
+            else:
+                _validate_resume_file(path, row)
+
+
+def _declared_generated_paths(plan: BuildPlan) -> tuple[str, ...]:
+    paths = {recipe.output_path for recipe in plan.derived_recipes}
+    if plan.derived_recipes:
+        paths.add("00_handoff/DERIVED_DATA_EVIDENCE.csv")
+    if plan.redraw_recipes:
+        paths.add("00_handoff/FIGURE_REDRAW_EVIDENCE.csv")
+        paths.update(
+            recipe.output_path
+            for recipe in plan.redraw_recipes
+            if not recipe.validation_only
+        )
+    if plan.portable_contract is not None:
+        paths.update(PORTABLE_OUTPUT_PATHS)
+        paths.update(
+            transform.portable_path
+            for transform in plan.portable_contract.transforms
+        )
+        paths.update(
+            runtime.launcher_path
+            for runtime in plan.portable_contract.runtime_entries
+        )
+    return tuple(sorted(paths))
 
 
 def _destination_root_identity(
@@ -830,6 +1121,7 @@ def _validate_destination(
     *,
     resume: bool,
     source_rows: Sequence[RequiredAssetRow],
+    generated_paths: Sequence[str] = (),
 ) -> DestinationSnapshot:
     _reject_destination_symlinks(destination)
     if not destination.exists():
@@ -843,7 +1135,7 @@ def _validate_destination(
             "destination is non-empty; explicit resume=True is required"
         )
     if resume:
-        _validate_resume_contents(destination, source_rows)
+        _validate_resume_contents(destination, source_rows, generated_paths)
     return _capture_destination_snapshot(destination)
 
 
@@ -1101,6 +1393,70 @@ def _materialize_lineage_pipeline(
                 ) from error
 
 
+def _materialize_portable_pipeline(
+    plan: BuildPlan,
+    staging: Path,
+) -> _PinnedPortableMaterialization:
+    """Create explicit portable outputs, if supplied, only inside staging."""
+    if plan.portable_contract is None:
+        return _pin_staging_pipeline_result(staging, ())
+    try:
+        materialized = materialize_portable_contract(
+            plan.portable_contract,
+            staging_root=staging,
+            _retain_staging_descriptor=True,
+        )
+        if not isinstance(materialized, _PinnedPortableMaterialization):
+            raise BuildRefusedError(
+                "portable materialization did not retain its verified staging root"
+            )
+        return materialized
+    except PortableError as error:
+        raise BuildRefusedError(f"portable materialization failed: {error}") from error
+
+
+def _pin_staging_pipeline_result(
+    staging: Path,
+    written_paths: tuple[str, ...],
+) -> _PinnedPortableMaterialization:
+    """Return a descriptor-owned pipeline result for a tree with no portable scan."""
+    no_follow = getattr(os, "O_NOFOLLOW", 0)
+    directory_flag = getattr(os, "O_DIRECTORY", 0)
+    if not no_follow or not directory_flag:
+        raise BuildRefusedError(
+            "verified staging requires O_NOFOLLOW and O_DIRECTORY"
+        )
+    descriptor = -1
+    try:
+        descriptor = os.open(
+            staging,
+            os.O_RDONLY
+            | no_follow
+            | directory_flag
+            | getattr(os, "O_CLOEXEC", 0),
+        )
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISDIR(metadata.st_mode):
+            raise BuildRefusedError(
+                "verified staging tree is not one real directory"
+            )
+        identity = _destination_root_identity(metadata)
+        snapshot = _snapshot_delivery_descriptor(descriptor)
+        retained = descriptor
+        descriptor = -1
+        return _PinnedPortableMaterialization(
+            written_paths,
+            retained,
+            identity,
+            snapshot,
+        )
+    except (OSError, PortableError) as error:
+        raise BuildRefusedError("cannot pin verified staging tree") from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
 def _vacant_sibling(destination: Path, *, label: str) -> Path:
     created = Path(
         tempfile.mkdtemp(
@@ -1162,8 +1518,62 @@ def _publish_staging(
     staging: Path,
     destination: Path,
     expected_destination: DestinationSnapshot,
+    *,
+    verified_staging: _VerifiedStagingHandle,
 ) -> Path | None:
     """Publish only if the atomically displaced destination matches validation."""
+    expected_staging_identity = verified_staging.identity
+    try:
+        verified_metadata = os.fstat(verified_staging.descriptor)
+        staging_metadata = staging.lstat()
+    except OSError as error:
+        raise _PublicationFailure(
+            "staging-changed-before-publish",
+            backup=None,
+            displaced_snapshot=None,
+            recovery_status="not-needed",
+            recovery_paths=(),
+        ) from error
+    if (
+        not stat.S_ISDIR(verified_metadata.st_mode)
+        or _destination_root_identity(verified_metadata) != expected_staging_identity
+        or stat.S_ISLNK(staging_metadata.st_mode)
+        or not stat.S_ISDIR(staging_metadata.st_mode)
+        or _destination_root_identity(staging_metadata) != expected_staging_identity
+    ):
+        raise _PublicationFailure(
+            "staging-changed-before-publish",
+            backup=None,
+            displaced_snapshot=None,
+            recovery_status="not-needed",
+            recovery_paths=(),
+        )
+    try:
+        pre_publish_scan = scan_delivery_absolute_paths(
+            staging,
+            root_descriptor=verified_staging.descriptor,
+            _include_snapshot=True,
+        )
+    except PortableError as error:
+        raise _PublicationFailure(
+            "staging-content-changed-before-publish",
+            backup=None,
+            displaced_snapshot=None,
+            recovery_status="not-needed",
+            recovery_paths=(),
+        ) from error
+    if (
+        not isinstance(pre_publish_scan, _PinnedDeliveryScan)
+        or pre_publish_scan.findings
+        or pre_publish_scan.snapshot != verified_staging.snapshot
+    ):
+        raise _PublicationFailure(
+            "staging-content-changed-before-publish",
+            backup=None,
+            displaced_snapshot=None,
+            recovery_status="not-needed",
+            recovery_paths=(),
+        )
     backup: Path | None = None
     displaced_snapshot: DestinationSnapshot | None = None
     if _path_exists_no_follow(destination):
@@ -1216,6 +1626,48 @@ def _publish_staging(
                 else "empty-destination-restored"
             ),
             cause=error,
+        )
+    # DrvFS invalidates an open directory descriptor after its path is renamed.
+    # The descriptor identity was checked immediately before the atomic rename;
+    # release it so the destination becomes visible, then bind that path back to
+    # the identity returned by the G4 materializer.
+    verified_staging.close()
+    try:
+        published_metadata = destination.lstat()
+    except OSError:
+        published_metadata = None
+    published_content_matches = False
+    if (
+        published_metadata is not None
+        and not stat.S_ISLNK(published_metadata.st_mode)
+        and stat.S_ISDIR(published_metadata.st_mode)
+        and _destination_root_identity(published_metadata)
+        == expected_staging_identity
+    ):
+        try:
+            post_publish_scan = scan_delivery_absolute_paths(
+                destination,
+                _include_snapshot=True,
+            )
+        except PortableError:
+            post_publish_scan = None
+        published_content_matches = (
+            isinstance(post_publish_scan, _PinnedDeliveryScan)
+            and not post_publish_scan.findings
+            and post_publish_scan.snapshot == verified_staging.snapshot
+        )
+    if not published_content_matches:
+        recovery = _recover_failed_publication(
+            destination,
+            backup,
+            expected_destination,
+        )
+        raise _PublicationFailure(
+            "staging-changed-during-publish",
+            backup=backup,
+            displaced_snapshot=displaced_snapshot,
+            recovery_status=recovery.status,
+            recovery_paths=recovery.paths,
         )
     return backup
 
@@ -1319,6 +1771,7 @@ def _recover_failed_publication(
 def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
     """Copy through an isolated staging tree and publish only after baseline checks."""
     try:
+        _validate_portable_preflight(plan)
         _validate_canonical_figure_plan(plan)
         _validate_lineage_preflight(plan)
     except BuildRefusedError as error:
@@ -1347,6 +1800,7 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
         plan.destination,
         resume=resume,
         source_rows=sources,
+        generated_paths=_declared_generated_paths(plan),
     )
     plan.destination.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(
@@ -1358,6 +1812,7 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
     backup: Path | None = None
     written: list[str] = []
     published = False
+    verified_staging: _VerifiedStagingHandle | None = None
     try:
         with AnchoredRoot(
             plan.project_root, error_type=BuildRefusedError
@@ -1368,6 +1823,20 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
                     written.append(row.target_path)
 
         written.extend(_materialize_lineage_pipeline(plan, staging))
+        portable_materialization = _materialize_portable_pipeline(plan, staging)
+        if not isinstance(
+            portable_materialization,
+            _PinnedPortableMaterialization,
+        ):
+            raise BuildRefusedError(
+                "portable pipeline did not return its verified staging identity"
+            )
+        written.extend(portable_materialization.written_paths)
+        verified_staging = _VerifiedStagingHandle(
+            portable_materialization.staging_descriptor,
+            portable_materialization.staging_identity,
+            portable_materialization.staging_snapshot,
+        )
 
         after_copy = _difference_or_error(plan)
         if not after_copy.is_clean:
@@ -1394,10 +1863,13 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
             )
 
         try:
+            if verified_staging is None:
+                raise BuildRefusedError("verified staging identity is unavailable")
             backup = _publish_staging(
                 staging,
                 plan.destination,
                 destination_snapshot,
+                verified_staging=verified_staging,
             )
         except _PublicationFailure as error:
             return _build_result(
@@ -1489,6 +1961,8 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
             recovery_paths=recovery.paths,
         )
     finally:
+        if verified_staging is not None:
+            verified_staging.close()
         if _path_exists_no_follow(staging):
             try:
                 _remove_tree(staging)
@@ -1509,6 +1983,7 @@ def build_delivery(
     manifest_keys: ManifestKeys | None = None,
     derived_recipes: Sequence[DerivedRecipe] = (),
     redraw_recipes: Sequence[RedrawRecipe] = (),
+    portable_contract: PortableContract | None = None,
 ) -> BuildResult:
     """Prepare and either dry-run or execute one deterministic delivery build."""
     plan = prepare_build(
@@ -1521,6 +1996,7 @@ def build_delivery(
         manifest_keys=manifest_keys,
         derived_recipes=derived_recipes,
         redraw_recipes=redraw_recipes,
+        portable_contract=portable_contract,
     )
     if dry_run:
         difference = _difference_or_error(plan)
