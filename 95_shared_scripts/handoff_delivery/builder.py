@@ -13,6 +13,7 @@ import stat
 import tempfile
 from typing import Literal
 
+from .docs import DocsConfig, package_verifier_assets, render_documents
 from .derived import (
     DerivedDataError,
     DerivedRecipe,
@@ -159,6 +160,7 @@ class BuildPlan:
     derived_recipes: tuple[DerivedRecipe, ...] = ()
     redraw_recipes: tuple[RedrawRecipe, ...] = ()
     portable_contract: PortableContract | None = None
+    docs_config: DocsConfig | None = None
     tree_specs: tuple[TreeSourceSpec, ...] = TREE_SOURCE_SPECS
     exact_specs: tuple[ExactSourceSpec, ...] = EXACT_SOURCE_SPECS
     include_thesis_assets: bool = True
@@ -847,6 +849,7 @@ def prepare_build(
     derived_recipes: Sequence[DerivedRecipe] = (),
     redraw_recipes: Sequence[RedrawRecipe] = (),
     portable_contract: PortableContract | None = None,
+    docs_config: DocsConfig | None = None,
 ) -> BuildPlan:
     """Prepare an immutable build plan without writing the v2 destination."""
     _require_portable_contract(portable_contract)
@@ -881,6 +884,7 @@ def prepare_build(
         derived_recipes=tuple(derived_recipes),
         redraw_recipes=tuple(redraw_recipes),
         portable_contract=portable_contract,
+        docs_config=docs_config,
         tree_specs=tuple(tree_specs),
         exact_specs=tuple(exact_specs),
         include_thesis_assets=include_thesis_assets,
@@ -1097,6 +1101,17 @@ def _declared_generated_paths(plan: BuildPlan) -> tuple[str, ...]:
             runtime.launcher_path
             for runtime in plan.portable_contract.runtime_entries
         )
+    if plan.docs_config is not None:
+        paths.update(row.target_path for row in plan.docs_config.documents)
+        if plan.portable_contract is not None:
+            paths.update(
+                package_verifier_assets(
+                    plan.portable_contract,
+                    tree_specs=plan.tree_specs,
+                    exact_specs=plan.exact_specs,
+                    include_thesis_assets=plan.include_thesis_assets,
+                )
+            )
     return tuple(sorted(paths))
 
 
@@ -1429,6 +1444,64 @@ def _materialize_lineage_pipeline(
                 raise BuildRefusedError(
                     f"cannot clean isolated derived workspace: {derived_root}"
                 ) from error
+
+
+def _materialize_docs_pipeline(
+    plan: BuildPlan,
+    staging: Path,
+) -> tuple[str, ...]:
+    """Render configured docs and the package-local read-only verifier."""
+    if plan.docs_config is None:
+        return ()
+    if plan.portable_contract is None:
+        verifier_assets = {"00_handoff/verify_delivery.py": b""}
+    else:
+        verifier_assets = package_verifier_assets(
+            plan.portable_contract,
+            tree_specs=plan.tree_specs,
+            exact_specs=plan.exact_specs,
+            include_thesis_assets=plan.include_thesis_assets,
+        )
+    package_paths = frozenset(
+        path.relative_to(staging).as_posix()
+        for path in staging.rglob("*")
+        if path.is_file()
+    ) | frozenset(verifier_assets)
+    try:
+        rendered = render_documents(
+            plan.docs_config,
+            package_paths=package_paths,
+        )
+    except RuntimeError as error:
+        raise BuildRefusedError(f"documentation rendering failed: {error}") from error
+    written: list[str] = []
+    for relative, payload in rendered.items():
+        target = _safe_target(staging, relative)
+        try:
+            with target.open("xb") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+        except OSError as error:
+            raise BuildRefusedError(
+                f"cannot exclusively materialize documentation: {relative}"
+            ) from error
+        written.append(relative)
+    for relative, payload in verifier_assets.items():
+        target = _safe_target(staging, relative)
+        try:
+            with target.open("xb") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            if relative == "00_handoff/verify_delivery.py":
+                target.chmod(0o755)
+        except OSError as error:
+            raise BuildRefusedError(
+                f"cannot exclusively materialize package verifier asset: {relative}"
+            ) from error
+        written.append(relative)
+    return tuple(written)
 
 
 def _materialize_portable_pipeline(
@@ -2002,6 +2075,7 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
                     written.append(row.target_path)
 
         written.extend(_materialize_lineage_pipeline(plan, staging))
+        written.extend(_materialize_docs_pipeline(plan, staging))
         portable_materialization = _materialize_portable_pipeline(plan, staging)
         if not isinstance(
             portable_materialization,
@@ -2173,6 +2247,7 @@ def build_delivery(
     derived_recipes: Sequence[DerivedRecipe] = (),
     redraw_recipes: Sequence[RedrawRecipe] = (),
     portable_contract: PortableContract | None = None,
+    docs_config: DocsConfig | None = None,
 ) -> BuildResult:
     """Prepare and either dry-run or execute one deterministic delivery build."""
     plan = prepare_build(
@@ -2186,6 +2261,7 @@ def build_delivery(
         derived_recipes=derived_recipes,
         redraw_recipes=redraw_recipes,
         portable_contract=portable_contract,
+        docs_config=docs_config,
     )
     if dry_run:
         difference = _difference_or_error(plan)
