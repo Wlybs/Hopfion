@@ -39,6 +39,7 @@ from .portable import (
     _snapshot_delivery_descriptor,
     PortableContract,
     PortableError,
+    bind_initial_state_recipes_to_package,
     discover_full_field_consumers,
     load_field_consumer_registry,
     load_initial_state_recipes,
@@ -62,6 +63,16 @@ from .source_specs import (
     RequiredAssetRow,
     TreeSourceSpec,
     enumerate_required_assets,
+)
+from .verifier import (
+    _checksum_payload,
+    _report_payload,
+    VerificationError,
+    exit_code as verification_exit_code,
+    package_figure_recipes,
+    verify,
+    write_checksums,
+    write_report,
 )
 
 
@@ -148,6 +159,9 @@ class BuildPlan:
     derived_recipes: tuple[DerivedRecipe, ...] = ()
     redraw_recipes: tuple[RedrawRecipe, ...] = ()
     portable_contract: PortableContract | None = None
+    tree_specs: tuple[TreeSourceSpec, ...] = TREE_SOURCE_SPECS
+    exact_specs: tuple[ExactSourceSpec, ...] = EXACT_SOURCE_SPECS
+    include_thesis_assets: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -567,13 +581,20 @@ def _validate_lineage_preflight(plan: BuildPlan) -> None:
                         f"{recipe.output_data_id}"
                     )
         try:
-            validate_redraw_plan(
+            packaged_figures = package_figure_recipes(
                 plan.figure_recipes,
+                plan.required_assets,
+                plan.redraw_recipes,
+                {} if data_paths is None else data_paths,
+            )
+            validate_redraw_plan(
+                packaged_figures,
                 plan.redraw_recipes,
                 figure_targets=targets_by_figure,
                 data_paths=data_paths,
+                executable_fields_prevalidated=True,
             )
-        except RedrawError as error:
+        except (RedrawError, VerificationError) as error:
             raise BuildRefusedError(f"redraw plan failed: {error}") from error
         if plan.manifest_keys is None:
             raise BuildRefusedError(
@@ -718,6 +739,16 @@ def _validate_portable_preflight(plan: BuildPlan) -> None:
                 "portable transform SHA256 differs from required inventory: "
                 f"{transform.original_path}"
             )
+    try:
+        bind_initial_state_recipes_to_package(
+            contract.recipes,
+            required_assets=plan.required_assets,
+            transforms=contract.transforms,
+        )
+    except PortableError as error:
+        raise BuildRefusedError(
+            f"initial-state package projection failed: {error}"
+        ) from error
 
 
 def _validate_canonical_portable_ledgers(
@@ -850,6 +881,9 @@ def prepare_build(
         derived_recipes=tuple(derived_recipes),
         redraw_recipes=tuple(redraw_recipes),
         portable_contract=portable_contract,
+        tree_specs=tuple(tree_specs),
+        exact_specs=tuple(exact_specs),
+        include_thesis_assets=include_thesis_assets,
     )
     _validate_lineage_preflight(plan)
     _validate_portable_preflight(plan)
@@ -1039,7 +1073,11 @@ def _validate_resume_contents(
 
 
 def _declared_generated_paths(plan: BuildPlan) -> tuple[str, ...]:
-    paths = {recipe.output_path for recipe in plan.derived_recipes}
+    paths = {
+        "00_handoff/verification_report.json",
+        "00_handoff/SHA256SUMS.txt",
+        *(recipe.output_path for recipe in plan.derived_recipes),
+    }
     if plan.derived_recipes:
         paths.add("00_handoff/DERIVED_DATA_EVIDENCE.csv")
     if plan.redraw_recipes:
@@ -1401,9 +1439,15 @@ def _materialize_portable_pipeline(
     if plan.portable_contract is None:
         return _pin_staging_pipeline_result(staging, ())
     try:
+        package_initial_state_contract = bind_initial_state_recipes_to_package(
+            plan.portable_contract.recipes,
+            required_assets=plan.required_assets,
+            transforms=plan.portable_contract.transforms,
+        )
         materialized = materialize_portable_contract(
             plan.portable_contract,
             staging_root=staging,
+            package_initial_state_contract=package_initial_state_contract,
             _retain_staging_descriptor=True,
         )
         if not isinstance(materialized, _PinnedPortableMaterialization):
@@ -1413,6 +1457,140 @@ def _materialize_portable_pipeline(
         return materialized
     except PortableError as error:
         raise BuildRefusedError(f"portable materialization failed: {error}") from error
+
+
+def _finalize_verified_staging(
+    plan: BuildPlan,
+    staging: Path,
+    materialized: _PinnedPortableMaterialization,
+) -> _VerifiedStagingHandle:
+    """Run mandatory gates, then append report/checksum through the same pinned fd."""
+    contract = plan.portable_contract
+    _require_portable_contract(contract)
+    assert contract is not None
+    descriptor = materialized.staging_descriptor
+    try:
+        metadata = os.fstat(descriptor)
+    except OSError as error:
+        raise BuildRefusedError("cannot inspect pinned staging before verification") from error
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or _destination_root_identity(metadata) != materialized.staging_identity
+    ):
+        raise BuildRefusedError("pinned staging identity changed before verification")
+
+    try:
+        results = verify(
+            staging,
+            project_root=plan.project_root,
+            portable_contract=contract,
+            tree_specs=plan.tree_specs,
+            exact_specs=plan.exact_specs,
+            include_thesis_assets=plan.include_thesis_assets,
+            root_descriptor=descriptor,
+            expected_snapshot=materialized.staging_snapshot,
+            expected_figure_recipes=plan.figure_recipes,
+            expected_redraw_recipes=plan.redraw_recipes,
+            expected_derived_recipes=plan.derived_recipes,
+            expected_required_assets=plan.required_assets,
+            require_final_evidence=False,
+        )
+    except Exception as error:
+        raise BuildRefusedError(
+            f"delivery verification could not complete: {type(error).__name__}:{error}"
+        ) from error
+    if verification_exit_code(results) != 0:
+        failed = tuple(row.gate for row in results if not row.passed)
+        details = tuple(
+            finding for row in results if not row.passed for finding in row.findings
+        )
+        raise BuildRefusedError(
+            f"delivery verification failed gates {failed!r}: {details!r}"
+        )
+
+    try:
+        write_report(staging, results, root_descriptor=descriptor)
+        write_checksums(staging, root_descriptor=descriptor)
+        final_scan = scan_delivery_absolute_paths(
+            staging,
+            root_descriptor=descriptor,
+            _include_snapshot=True,
+        )
+        final_metadata = os.fstat(descriptor)
+    except (OSError, PortableError, RuntimeError) as error:
+        raise BuildRefusedError(
+            f"cannot finalize verified staging: {type(error).__name__}:{error}"
+        ) from error
+    if (
+        not isinstance(final_scan, _PinnedDeliveryScan)
+        or final_scan.findings
+        or _destination_root_identity(final_metadata) != materialized.staging_identity
+    ):
+        raise BuildRefusedError(
+            "final report/checksum tree failed pinned G4 or root identity verification"
+        )
+    final_paths = {row.relative_path for row in final_scan.snapshot}
+    required_final = {
+        "00_handoff/verification_report.json",
+        "00_handoff/SHA256SUMS.txt",
+    }
+    initial_by_path = {
+        row.relative_path: row for row in materialized.staging_snapshot
+    }
+    final_by_path = {row.relative_path: row for row in final_scan.snapshot}
+    expected_final_paths = set(initial_by_path) | required_final
+    if final_paths != expected_final_paths:
+        raise BuildRefusedError(
+            "final pinned snapshot delta is not exactly report plus checksum"
+        )
+    changed_paths = sorted(
+        relative
+        for relative, initial in initial_by_path.items()
+        if final_by_path.get(relative) != initial
+    )
+    if changed_paths:
+        raise BuildRefusedError(
+            f"final pinned snapshot changed verified paths: {changed_paths!r}"
+        )
+    report_relative = "00_handoff/verification_report.json"
+    checksum_relative = "00_handoff/SHA256SUMS.txt"
+    report_payload = _report_payload(results)
+    report_row = final_by_path[report_relative]
+    if (
+        report_row.path_type != "file"
+        or report_row.size != len(report_payload)
+        or report_row.sha256 != hashlib.sha256(report_payload).hexdigest()
+    ):
+        raise BuildRefusedError(
+            "final verification report bytes differ from deterministic payload"
+        )
+    expected_report_row = _PinnedTreeEntry(
+        report_relative,
+        "file",
+        report_row.mode,
+        len(report_payload),
+        hashlib.sha256(report_payload).hexdigest(),
+    )
+    checksum_basis = tuple(
+        expected_report_row if row.relative_path == report_relative else row
+        for row in final_scan.snapshot
+        if row.relative_path != checksum_relative
+    )
+    checksum_payload = _checksum_payload(checksum_basis)
+    checksum_row = final_by_path[checksum_relative]
+    if (
+        checksum_row.path_type != "file"
+        or checksum_row.size != len(checksum_payload)
+        or checksum_row.sha256 != hashlib.sha256(checksum_payload).hexdigest()
+    ):
+        raise BuildRefusedError(
+            "final checksum bytes differ from deterministic payload"
+        )
+    return _VerifiedStagingHandle(
+        descriptor,
+        materialized.staging_identity,
+        final_scan.snapshot,
+    )
 
 
 def _pin_staging_pipeline_result(
@@ -1813,6 +1991,7 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
     written: list[str] = []
     published = False
     verified_staging: _VerifiedStagingHandle | None = None
+    unfinalized_staging_descriptor = -1
     try:
         with AnchoredRoot(
             plan.project_root, error_type=BuildRefusedError
@@ -1832,10 +2011,18 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
                 "portable pipeline did not return its verified staging identity"
             )
         written.extend(portable_materialization.written_paths)
-        verified_staging = _VerifiedStagingHandle(
-            portable_materialization.staging_descriptor,
-            portable_materialization.staging_identity,
-            portable_materialization.staging_snapshot,
+        unfinalized_staging_descriptor = portable_materialization.staging_descriptor
+        verified_staging = _finalize_verified_staging(
+            plan,
+            staging,
+            portable_materialization,
+        )
+        unfinalized_staging_descriptor = -1
+        written.extend(
+            (
+                "00_handoff/verification_report.json",
+                "00_handoff/SHA256SUMS.txt",
+            )
         )
 
         after_copy = _difference_or_error(plan)
@@ -1963,6 +2150,8 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
     finally:
         if verified_staging is not None:
             verified_staging.close()
+        elif unfinalized_staging_descriptor >= 0:
+            os.close(unfinalized_staging_descriptor)
         if _path_exists_no_follow(staging):
             try:
                 _remove_tree(staging)

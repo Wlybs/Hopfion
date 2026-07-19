@@ -18,6 +18,7 @@ import handoff_delivery.portable as portable_module
 
 from handoff_delivery.portable import (
     FieldConsumer,
+    InitialStatePackageContract,
     InitialStateRecipe,
     LiteralReplacement,
     PortableContract,
@@ -27,11 +28,13 @@ from handoff_delivery.portable import (
     RunEntry,
     TemporaryDependencyContract,
     apply_portable_transform,
+    bind_initial_state_recipes_to_package,
     detect_field_consumer,
     discover_full_field_consumers,
     load_initial_state_recipes,
     load_field_consumer_registry,
     materialize_portable_contract,
+    packaged_initial_state_recipes_csv,
     portable_launcher_script,
     portable_runner_script,
     reverse_portable_transform,
@@ -41,10 +44,12 @@ from handoff_delivery.portable import (
     temporary_dependency_workspace,
     validate_field_consumer_registry,
     validate_initial_state_coverage,
+    validate_packaged_initial_state_files,
     validate_initial_state_recipes,
     validate_portable_coverage,
     validate_portable_contract,
 )
+from handoff_delivery.source_specs import RequiredAssetInventory, RequiredAssetRow
 
 
 ORIGINAL_PATH = (
@@ -982,6 +987,265 @@ def make_recipe_source_tree(tmp_path):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(payload, encoding="utf-8")
     return project
+
+
+def make_required_asset(
+    source_path: str,
+    target_path: str | None,
+    *,
+    disposition: str = "copied_active",
+    sha256: str | None = None,
+) -> RequiredAssetRow:
+    return RequiredAssetRow(
+        source_path=source_path,
+        target_path=target_path,
+        disposition=disposition,
+        expected_target_class=(
+            "excluded"
+            if disposition == "excluded_with_reason"
+            else "archive"
+            if disposition == "copied_archive"
+            else "active"
+        ),
+        reason="test fixture",
+        sha256=sha256 or hashlib.sha256(source_path.encode()).hexdigest(),
+        size=1,
+        file_type="file",
+    )
+
+
+def make_package_projection(
+    recipe: InitialStateRecipe | None = None,
+) -> InitialStatePackageContract:
+    consumer_sha = hashlib.sha256(b"consumer source").hexdigest()
+    if recipe is None:
+        recipe = replace(
+            make_recipe(),
+            verification_evidence=(
+                "evidence/generation_notes.txt;evidence/historical_run.txt"
+            ),
+        )
+    inventory = RequiredAssetInventory(
+        (
+            make_required_asset(
+                "src/generate.py", "shared/initial_state/generate.py"
+            ),
+            make_required_asset(
+                "src/relax.mx3", "01_stability/initial_state/relax.mx3"
+            ),
+            make_required_asset(
+                "src/run.mx3",
+                ORIGINAL_PATH,
+                sha256=consumer_sha,
+            ),
+            make_required_asset(
+                "evidence/generation_notes.txt",
+                "provenance/generation_notes.txt",
+            ),
+            make_required_asset(
+                "evidence/historical_run.txt",
+                "archive/evidence/historical_run.txt",
+                disposition="copied_archive",
+            ),
+        )
+    )
+    transform = PortableTransform(
+        transform_id="transform-package-projection",
+        run_id="run-package-projection",
+        source_path="src/run.mx3",
+        original_path=ORIGINAL_PATH,
+        original_sha256=consumer_sha,
+        portable_path=PORTABLE_PATH,
+        replacements=(
+            LiteralReplacement(old=b"source", new=b"portable", expected_count=1),
+        ),
+    )
+    return bind_initial_state_recipes_to_package(
+        (recipe,), required_assets=inventory, transforms=(transform,)
+    )
+
+
+def test_initial_state_package_projection_maps_roles_without_mutating_source_recipe() -> None:
+    source_recipe = replace(
+        make_recipe(),
+        verification_evidence=(
+            "evidence/generation_notes.txt;evidence/historical_run.txt"
+        ),
+    )
+
+    package = make_package_projection(source_recipe)
+    projected = package.recipes[0]
+
+    assert source_recipe.generator_script == "src/generate.py"
+    assert projected.generator_script == "shared/initial_state/generate.py"
+    assert projected.relaxation_mx3 == "01_stability/initial_state/relax.mx3"
+    assert projected.consumers == (ORIGINAL_PATH,)
+    assert projected.verification_evidence == (
+        "provenance/generation_notes.txt;archive/evidence/historical_run.txt"
+    )
+    assert projected.original_ovf_reference == source_recipe.original_ovf_reference
+    assert projected.expected_output == source_recipe.expected_output
+    assert [
+        (row.field_name, row.ordinal, row.source_path, row.package_path)
+        for row in package.bindings
+    ] == [
+        (
+            "generator_script",
+            0,
+            "src/generate.py",
+            "shared/initial_state/generate.py",
+        ),
+        (
+            "relaxation_mx3",
+            0,
+            "src/relax.mx3",
+            "01_stability/initial_state/relax.mx3",
+        ),
+        ("consumers", 0, "src/run.mx3", ORIGINAL_PATH),
+        (
+            "verification_evidence",
+            0,
+            "evidence/generation_notes.txt",
+            "provenance/generation_notes.txt",
+        ),
+        (
+            "verification_evidence",
+            1,
+            "evidence/historical_run.txt",
+            "archive/evidence/historical_run.txt",
+        ),
+    ]
+
+
+def test_packaged_initial_state_recipe_csv_contains_only_projected_paths() -> None:
+    package = make_package_projection()
+
+    rows = tuple(
+        csv.DictReader(packaged_initial_state_recipes_csv(package).decode().splitlines())
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["generator_script"] == "shared/initial_state/generate.py"
+    assert rows[0]["consumers"] == ORIGINAL_PATH
+    assert rows[0]["verification_evidence"] == (
+        "provenance/generation_notes.txt;archive/evidence/historical_run.txt"
+    )
+    assert rows[0]["original_ovf_reference"].startswith("/mnt/d/")
+    assert rows[0]["expected_output"] == "temporary/m000020.ovf"
+
+
+@pytest.mark.parametrize(
+    ("source_path", "disposition", "target_path"),
+    [
+        ("src/generate.py", "excluded_with_reason", None),
+        ("src/relax.mx3", "copied_archive", "archive/relax.mx3"),
+        ("src/run.mx3", "excluded_with_reason", None),
+        ("evidence/generation_notes.txt", "excluded_with_reason", None),
+    ],
+)
+def test_initial_state_package_projection_rejects_unavailable_role_assets(
+    source_path: str,
+    disposition: str,
+    target_path: str | None,
+) -> None:
+    consumer_sha = hashlib.sha256(b"consumer source").hexdigest()
+    rows = [
+        make_required_asset("src/generate.py", "shared/generate.py"),
+        make_required_asset("src/relax.mx3", "shared/relax.mx3"),
+        make_required_asset(
+            "src/run.mx3", ORIGINAL_PATH, sha256=consumer_sha
+        ),
+        make_required_asset(
+            "evidence/generation_notes.txt", "provenance/evidence.txt"
+        ),
+    ]
+    index = next(i for i, row in enumerate(rows) if row.source_path == source_path)
+    rows[index] = make_required_asset(
+        source_path,
+        target_path,
+        disposition=disposition,
+        sha256=consumer_sha if source_path == "src/run.mx3" else None,
+    )
+    transform = PortableTransform(
+        transform_id="transform-package-projection",
+        run_id="run-package-projection",
+        source_path="src/run.mx3",
+        original_path=ORIGINAL_PATH,
+        original_sha256=consumer_sha,
+        portable_path=PORTABLE_PATH,
+        replacements=(
+            LiteralReplacement(old=b"source", new=b"portable", expected_count=1),
+        ),
+    )
+
+    with pytest.raises(PortableError, match=source_path):
+        bind_initial_state_recipes_to_package(
+            (make_recipe(),),
+            required_assets=RequiredAssetInventory(tuple(rows)),
+            transforms=(transform,),
+        )
+
+
+def test_initial_state_package_projection_rejects_missing_asset() -> None:
+    recipe = replace(make_recipe(), generator_script="src/missing.py")
+
+    with pytest.raises(PortableError, match="src/missing.py"):
+        bind_initial_state_recipes_to_package(
+            (recipe,), required_assets=RequiredAssetInventory(()), transforms=()
+        )
+
+
+def test_initial_state_package_projection_rejects_transform_routing_bypass() -> None:
+    consumer_sha = hashlib.sha256(b"consumer source").hexdigest()
+    inventory = RequiredAssetInventory(
+        (
+            make_required_asset("src/generate.py", "shared/generate.py"),
+            make_required_asset("src/relax.mx3", "shared/relax.mx3"),
+            make_required_asset(
+                "src/run.mx3", "01_stability/audited/run.mx3", sha256=consumer_sha
+            ),
+            make_required_asset(
+                "evidence/generation_notes.txt", "provenance/evidence.txt"
+            ),
+        )
+    )
+    forged_transform = PortableTransform(
+        transform_id="transform-forged-route",
+        run_id="run-forged-route",
+        source_path="src/run.mx3",
+        original_path=ORIGINAL_PATH,
+        original_sha256=consumer_sha,
+        portable_path=PORTABLE_PATH,
+        replacements=(
+            LiteralReplacement(old=b"source", new=b"portable", expected_count=1),
+        ),
+    )
+
+    with pytest.raises(PortableError, match="routing disagrees"):
+        bind_initial_state_recipes_to_package(
+            (make_recipe(),),
+            required_assets=inventory,
+            transforms=(forged_transform,),
+        )
+
+
+def test_validate_packaged_initial_state_files_is_fail_closed() -> None:
+    package = make_package_projection()
+    exact_sha_map = {
+        row.package_path: row.source_sha256 for row in package.bindings
+    }
+
+    validate_packaged_initial_state_files(package, package_sha256=exact_sha_map)
+
+    missing = dict(exact_sha_map)
+    missing.pop("shared/initial_state/generate.py")
+    with pytest.raises(PortableError, match="missing packaged initial-state file"):
+        validate_packaged_initial_state_files(package, package_sha256=missing)
+
+    mismatched = dict(exact_sha_map)
+    mismatched[ORIGINAL_PATH] = hashlib.sha256(b"changed").hexdigest()
+    with pytest.raises(PortableError, match="SHA256 mismatch"):
+        validate_packaged_initial_state_files(package, package_sha256=mismatched)
 
 
 def test_initial_state_recipe_status_and_source_evidence_are_fail_closed(

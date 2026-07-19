@@ -215,6 +215,7 @@ def validate_redraw_plan(
     required_modules: Iterable[str] = ACTIVE_MODULES,
     figure_targets: dict[str, str] | None = None,
     data_paths: dict[str, str] | None = None,
+    executable_fields_prevalidated: bool = False,
 ) -> None:
     """Require one validation command per canonical figure and module redraw coverage."""
     figures = tuple(figure_rows)
@@ -306,14 +307,13 @@ def validate_redraw_plan(
                     f"{recipe.redraw_id}: reference product does not match its data manifest path"
                 )
             expected_fields = {
-                "script_path": figure.plot_script_path,
-                "command": figure.plot_command,
                 "comparison_method": figure.comparison_method,
                 "tolerance": figure.tolerance,
             }
+            if not executable_fields_prevalidated:
+                expected_fields["script_path"] = figure.plot_script_path
             labels = {
                 "script_path": "plot script",
-                "command": "plot command",
                 "comparison_method": "comparison method",
                 "tolerance": "tolerance",
             }
@@ -322,6 +322,13 @@ def validate_redraw_plan(
                     raise RedrawError(
                         f"{recipe.redraw_id}: {labels[field_name]} does not match figure ledger"
                     )
+            if (
+                not executable_fields_prevalidated
+                and recipe.command != figure.plot_command
+            ):
+                raise RedrawError(
+                    f"{recipe.redraw_id}: plot command does not match figure ledger"
+                )
         if not recipe.representative:
             continue
         if figure.scientific_status != "valid" or route_figure(figure) != "active":

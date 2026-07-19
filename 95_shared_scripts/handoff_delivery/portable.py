@@ -10,7 +10,7 @@ from __future__ import annotations
 import ast
 from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import base64
 import csv
 import hashlib
@@ -3147,6 +3147,7 @@ def materialize_portable_contract(
     contract: PortableContract,
     *,
     staging_root: Path,
+    package_initial_state_contract: InitialStatePackageContract | None = None,
     _retain_staging_descriptor: bool = False,
 ) -> tuple[str, ...] | _PinnedPortableMaterialization:
     """Create portable entries and ledgers exclusively inside isolated staging."""
@@ -3155,6 +3156,25 @@ def materialize_portable_contract(
         staging_root, label="staging root"
     )
     try:
+        if package_initial_state_contract is not None:
+            if {
+                row.recipe_id for row in package_initial_state_contract.recipes
+            } != {row.recipe_id for row in contract.recipes}:
+                raise PortableError(
+                    "package initial-state projection differs from source contract"
+                )
+            packaged_sha256 = {
+                binding.package_path: hashlib.sha256(
+                    _stable_staging_bytes(
+                        staging_descriptor, relative=binding.package_path
+                    )
+                ).hexdigest()
+                for binding in package_initial_state_contract.bindings
+            }
+            validate_packaged_initial_state_files(
+                package_initial_state_contract,
+                package_sha256=packaged_sha256,
+            )
         for transform in sorted(contract.transforms, key=lambda row: row.transform_id):
             original = _stable_staging_bytes(
                 staging_descriptor, relative=transform.original_path
@@ -3195,7 +3215,13 @@ def materialize_portable_contract(
         evidence_payloads = {
             "00_handoff/PORTABLE_TRANSFORMS.csv": portable_transforms_csv(contract),
             "00_handoff/PORTABLE_WRAPPERS.csv": portable_wrappers_csv(contract),
-            "00_handoff/INITIAL_STATE_RECIPES.csv": initial_state_recipes_csv(contract),
+            "00_handoff/INITIAL_STATE_RECIPES.csv": (
+                initial_state_recipes_csv(contract)
+                if package_initial_state_contract is None
+                else packaged_initial_state_recipes_csv(
+                    package_initial_state_contract
+                )
+            ),
             "00_handoff/FULL_FIELD_CONSUMERS.csv": field_consumers_csv(contract),
             "00_handoff/PORTABLE_CONFIG.toml": contract.config_toml,
             PORTABLE_RUNNER_PATH: portable_runner_script(),
@@ -3963,3 +3989,268 @@ def validate_portable_coverage(
             "active run/transform coverage mismatch: "
             f"missing={sorted(expected - actual)!r}, extra={sorted(actual - expected)!r}"
         )
+
+
+# Kept after consumer discovery so evidence locators remain stable.
+from .source_specs import RequiredAssetInventory
+
+
+RecipePathField = Literal[
+    "generator_script",
+    "relaxation_mx3",
+    "consumers",
+    "verification_evidence",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class RecipePathBinding:
+    """One source-to-package path and digest used by a projected recipe field."""
+
+    recipe_id: str
+    field_name: RecipePathField
+    ordinal: int
+    source_path: str
+    package_path: str
+    source_sha256: str
+
+    def __post_init__(self) -> None:
+        _require_id(self.recipe_id, label="recipe_id")
+        if self.field_name not in {
+            "generator_script",
+            "relaxation_mx3",
+            "consumers",
+            "verification_evidence",
+        }:
+            raise PortableError(f"invalid recipe path field: {self.field_name!r}")
+        if (
+            not isinstance(self.ordinal, int)
+            or isinstance(self.ordinal, bool)
+            or self.ordinal < 0
+        ):
+            raise PortableError("recipe path binding ordinal must be non-negative")
+        for label in ("source_path", "package_path"):
+            raw = getattr(self, label)
+            try:
+                normalized = require_relative_path(raw).as_posix()
+            except ManifestError as error:
+                raise PortableError(f"invalid recipe binding {label}: {raw!r}") from error
+            object.__setattr__(self, label, normalized)
+        if not re.fullmatch(r"[0-9a-f]{64}", self.source_sha256):
+            raise PortableError("recipe binding source_sha256 must be lowercase SHA256 hex")
+
+
+@dataclass(frozen=True, slots=True)
+class InitialStatePackageContract:
+    """Package-path projection of source recipes plus their byte identities."""
+
+    recipes: tuple[InitialStateRecipe, ...]
+    bindings: tuple[RecipePathBinding, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.recipes, tuple) or not all(
+            isinstance(recipe, InitialStateRecipe) for recipe in self.recipes
+        ):
+            raise PortableError("projected initial-state recipes must be a tuple")
+        if not isinstance(self.bindings, tuple) or not all(
+            isinstance(binding, RecipePathBinding) for binding in self.bindings
+        ):
+            raise PortableError("initial-state package bindings must be a tuple")
+        recipe_ids = tuple(recipe.recipe_id for recipe in self.recipes)
+        if len(recipe_ids) != len(set(recipe_ids)):
+            raise PortableError("projected initial-state recipe IDs must be unique")
+        if any(binding.recipe_id not in set(recipe_ids) for binding in self.bindings):
+            raise PortableError("initial-state package binding references unknown recipe")
+        binding_keys = tuple(
+            (binding.recipe_id, binding.field_name, binding.ordinal)
+            for binding in self.bindings
+        )
+        if len(binding_keys) != len(set(binding_keys)):
+            raise PortableError("initial-state package bindings must be unique by field")
+        package_digests: dict[str, str] = {}
+        for binding in self.bindings:
+            previous = package_digests.setdefault(
+                binding.package_path, binding.source_sha256
+            )
+            if previous != binding.source_sha256:
+                raise PortableError(
+                    "initial-state package path has conflicting source SHA256: "
+                    f"{binding.package_path}"
+                )
+
+
+def bind_initial_state_recipes_to_package(
+    recipes: Sequence[InitialStateRecipe],
+    *,
+    required_assets: RequiredAssetInventory,
+    transforms: Sequence[PortableTransform],
+) -> InitialStatePackageContract:
+    """Project source recipe paths onto copied package paths without changing semantics."""
+    if not required_assets.source_paths_are_unique():
+        raise PortableError("required-assets source paths must be unique")
+    if not required_assets.target_paths_are_unique():
+        raise PortableError("required-assets target paths must be unique")
+    assets_by_source = {row.source_path: row for row in required_assets}
+    transforms_by_source: dict[str, PortableTransform] = {}
+    for transform in transforms:
+        if transform.source_path in transforms_by_source:
+            raise PortableError(
+                f"duplicate portable transform source path: {transform.source_path}"
+            )
+        transforms_by_source[transform.source_path] = transform
+
+    bindings: list[RecipePathBinding] = []
+
+    def bind_path(
+        recipe_id: str,
+        field_name: RecipePathField,
+        ordinal: int,
+        source_path: str,
+        *,
+        allowed_dispositions: frozenset[str],
+        prefer_transform_original: bool = False,
+    ) -> str:
+        asset = assets_by_source.get(source_path)
+        if asset is None:
+            raise PortableError(
+                f"initial-state {field_name} is missing from required assets: "
+                f"{source_path}"
+            )
+        if (
+            asset.disposition not in allowed_dispositions
+            or asset.target_path is None
+        ):
+            raise PortableError(
+                f"initial-state {field_name} is unavailable in package: "
+                f"{source_path} ({asset.disposition})"
+            )
+        package_path = asset.target_path
+        if prefer_transform_original:
+            transform = transforms_by_source.get(source_path)
+            if transform is not None:
+                if transform.original_path != asset.target_path:
+                    raise PortableError(
+                        "initial-state consumer transform routing disagrees with "
+                        f"required assets: {source_path}"
+                    )
+                if transform.original_sha256 != asset.sha256:
+                    raise PortableError(
+                        "initial-state consumer transform SHA256 disagrees with "
+                        f"required assets: {source_path}"
+                    )
+                package_path = transform.original_path
+        binding = RecipePathBinding(
+            recipe_id=recipe_id,
+            field_name=field_name,
+            ordinal=ordinal,
+            source_path=source_path,
+            package_path=package_path,
+            source_sha256=asset.sha256,
+        )
+        bindings.append(binding)
+        return binding.package_path
+
+    projected_recipes: list[InitialStateRecipe] = []
+    for recipe in recipes:
+        generator_script = recipe.generator_script
+        if generator_script != "N/A":
+            generator_script = bind_path(
+                recipe.recipe_id,
+                "generator_script",
+                0,
+                generator_script,
+                allowed_dispositions=frozenset({"copied_active"}),
+            )
+        relaxation_mx3 = recipe.relaxation_mx3
+        if relaxation_mx3 != "N/A":
+            relaxation_mx3 = bind_path(
+                recipe.recipe_id,
+                "relaxation_mx3",
+                0,
+                relaxation_mx3,
+                allowed_dispositions=frozenset({"copied_active"}),
+            )
+        consumers = tuple(
+            bind_path(
+                recipe.recipe_id,
+                "consumers",
+                ordinal,
+                source_path,
+                allowed_dispositions=frozenset({"copied_active"}),
+                prefer_transform_original=True,
+            )
+            for ordinal, source_path in enumerate(recipe.consumers)
+        )
+        evidence_paths = tuple(recipe.verification_evidence.split(";"))
+        verification_evidence = ";".join(
+            bind_path(
+                recipe.recipe_id,
+                "verification_evidence",
+                ordinal,
+                source_path,
+                allowed_dispositions=frozenset(
+                    {"copied_active", "copied_archive"}
+                ),
+            )
+            for ordinal, source_path in enumerate(evidence_paths)
+        )
+        projected_recipes.append(
+            replace(
+                recipe,
+                generator_script=generator_script,
+                relaxation_mx3=relaxation_mx3,
+                consumers=consumers,
+                verification_evidence=verification_evidence,
+            )
+        )
+    return InitialStatePackageContract(tuple(projected_recipes), tuple(bindings))
+
+
+def validate_packaged_initial_state_files(
+    contract: InitialStatePackageContract,
+    *,
+    package_sha256: Mapping[str, str],
+) -> None:
+    """Require every projected recipe input/evidence file at its source digest."""
+    expected: dict[str, str] = {}
+    for binding in contract.bindings:
+        previous = expected.setdefault(binding.package_path, binding.source_sha256)
+        if previous != binding.source_sha256:
+            raise PortableError(
+                "initial-state package path has conflicting source SHA256: "
+                f"{binding.package_path}"
+            )
+    for package_path, expected_sha256 in sorted(expected.items()):
+        actual_sha256 = package_sha256.get(package_path)
+        if actual_sha256 is None:
+            raise PortableError(
+                f"missing packaged initial-state file: {package_path}"
+            )
+        if actual_sha256 != expected_sha256:
+            raise PortableError(
+                f"packaged initial-state SHA256 mismatch: {package_path}"
+            )
+
+
+def packaged_initial_state_recipes_csv(
+    contract: InitialStatePackageContract,
+) -> bytes:
+    """Serialize projected package paths while retaining non-path recipe claims."""
+    rows = [
+        {
+            "recipe_id": row.recipe_id,
+            "logical_name": row.logical_name,
+            "original_ovf_reference": row.original_ovf_reference,
+            "generator_script": row.generator_script,
+            "generator_parameters": row.generator_parameters,
+            "relaxation_mx3": row.relaxation_mx3,
+            "expected_output": row.expected_output,
+            "consumers": ";".join(row.consumers),
+            "verification_status": row.verification_status,
+            "verification_evidence": row.verification_evidence,
+            "notes": row.notes,
+            "steps_json": row.steps_json,
+        }
+        for row in sorted(contract.recipes, key=lambda item: item.recipe_id)
+    ]
+    return _csv_payload(INITIAL_STATE_RECIPE_COLUMNS, rows)

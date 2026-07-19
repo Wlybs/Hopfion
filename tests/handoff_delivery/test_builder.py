@@ -4,6 +4,7 @@ from dataclasses import replace
 import csv
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -30,7 +31,7 @@ from handoff_delivery.derived import (
     HOPFION_ENVIRONMENT_COMMAND,
     DerivedRecipe,
 )
-from handoff_delivery.lineage import FigureRecipe
+from handoff_delivery.lineage import FigureRecipe, ManifestKeys
 from handoff_delivery.portable import (
     FieldConsumer,
     InitialStateRecipe,
@@ -53,6 +54,7 @@ from handoff_delivery.source_specs import (
     TreeSourceSpec,
     enumerate_required_assets,
 )
+from handoff_delivery.verifier import VerificationResult
 
 
 THIELE_FILES = {
@@ -76,6 +78,19 @@ FORMAL_CHAPTERS = (
 )
 
 
+def _test_only_finalize_without_task6_gates(
+    _plan: BuildPlan,
+    _staging: Path,
+    materialized,
+):
+    """Keep pre-Task6 synthetic mechanics tests scoped to their original subject."""
+    return builder_module._VerifiedStagingHandle(
+        materialized.staging_descriptor,
+        materialized.staging_identity,
+        materialized.staging_snapshot,
+    )
+
+
 def build_delivery(**kwargs: object):
     """Exercise copy mechanics with lineage patched only inside synthetic tests."""
     kwargs.setdefault(
@@ -97,6 +112,11 @@ def build_delivery(**kwargs: object):
             side_effect=lambda _plan, staging: (
                 builder_module._pin_staging_pipeline_result(staging, ())
             ),
+        ),
+        patch.object(
+            builder_module,
+            "_finalize_verified_staging",
+            side_effect=_test_only_finalize_without_task6_gates,
         ),
     ):
         return _production_build_delivery(**kwargs)
@@ -151,6 +171,11 @@ def execute_build(plan: BuildPlan, *, resume: bool = False):
                 builder_module._pin_staging_pipeline_result(staging, ())
             ),
         ),
+        patch.object(
+            builder_module,
+            "_finalize_verified_staging",
+            side_effect=_test_only_finalize_without_task6_gates,
+        ),
     ):
         return _production_execute_build(plan, resume=resume)
 
@@ -167,6 +192,11 @@ def execute_portable_build(plan: BuildPlan, *, resume: bool = False):
             builder_module,
             "_validate_lineage_preflight",
             return_value=None,
+        ),
+        patch.object(
+            builder_module,
+            "_finalize_verified_staging",
+            side_effect=_test_only_finalize_without_task6_gates,
         ),
     ):
         return _production_execute_build(plan, resume=resume)
@@ -905,6 +935,35 @@ def _portable_fixture_plan(tmp_path: Path) -> tuple[BuildPlan, bytes]:
         size=len(original),
         file_type="file",
     )
+    dependency_rows = tuple(
+        RequiredAssetRow(
+            source_path=source_path,
+            target_path=target_path,
+            disposition="copied_active",
+            expected_target_class="active",
+            reason="initial-state recipe fixture",
+            sha256=hashlib.sha256(payload).hexdigest(),
+            size=len(payload),
+            file_type="file",
+        )
+        for source_path, target_path, payload in (
+            (
+                "src/generate.py",
+                "shared/initial_state/generate.py",
+                (project / "src/generate.py").read_bytes(),
+            ),
+            (
+                "src/relax.mx3",
+                "shared/initial_state/relax.mx3",
+                (project / "src/relax.mx3").read_bytes(),
+            ),
+            (
+                "evidence/notes.txt",
+                "01_stability/topic/notes/initial-state-evidence.txt",
+                (project / "evidence/notes.txt").read_bytes(),
+            ),
+        )
+    )
     run = RunEntry("run-portable", "active", original_target, launcher_target)
     transform = PortableTransform(
         transform_id="transform-portable",
@@ -983,7 +1042,7 @@ def _portable_fixture_plan(tmp_path: Path) -> tuple[BuildPlan, bytes]:
         project_root=project,
         old_delivery=old,
         destination=tmp_path / "portable-delivery",
-        required_assets=RequiredAssetInventory((row,)),
+        required_assets=RequiredAssetInventory((row, *dependency_rows)),
         old_baseline=capture_baseline(old),
         portable_contract=contract,
     )
@@ -1506,7 +1565,12 @@ def test_prepare_reroutes_enumerated_transform_source_to_original_tree(
             old_delivery=fixture_plan.old_delivery,
             destination=fixture_plan.destination,
             tree_specs=(TreeSourceSpec("src", "01_stability/topic"),),
-            exact_specs=(),
+            exact_specs=(
+                ExactSourceSpec(
+                    "evidence/notes.txt",
+                    "01_stability/topic/notes/initial-state-evidence.txt",
+                ),
+            ),
             include_thesis_assets=False,
             portable_contract=fixture_plan.portable_contract,
         )
@@ -2748,6 +2812,110 @@ def test_lineage_preflight_rejects_a_figure_without_one_packaged_target(
         builder_module._validate_lineage_preflight(plan)
 
 
+def test_lineage_preflight_accepts_routed_script_and_absolute_python_command(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    figure = FigureRecipe(
+        figure_id="fig-routed",
+        usage_status="formal",
+        scientific_status="valid",
+        provenance_type="theory",
+        story_module="02_spinwave_control",
+        claim_or_purpose="Routed executable fixture.",
+        figure_path="source/figure.png",
+        figure_sha256="a" * 64,
+        plot_script_path="source/plot.py",
+        plot_command="python3 source/plot.py source/input.npy redraw/output.npy",
+        input_data_ids="data-input",
+        parent_data_ids="data-input",
+        derived_data_ids="N/A",
+        run_ids="N/A",
+        theory_asset_ids="theory-a",
+        initial_state_recipe_id="N/A",
+        reproducibility="fully_reproducible",
+        source_document_ids="N/A",
+        comparison_reference_data_id="data-reference",
+        comparison_method="numpy.testing.assert_allclose",
+        tolerance="rtol=1e-12;atol=1e-12",
+        notes="Builder normalization fixture.",
+    )
+    required = RequiredAssetInventory(
+        tuple(
+            RequiredAssetRow(
+                source_path=source,
+                target_path=target,
+                disposition="copied_active",
+                expected_target_class="active",
+                reason="fixture",
+                sha256=sha,
+                size=1,
+                file_type=file_type,
+            )
+            for source, target, sha, file_type in (
+                ("source/figure.png", "02_spinwave_control/topic/figure.png", "a" * 64, "image"),
+                ("source/plot.py", "shared/plotting/plot.py", "b" * 64, "code"),
+                ("source/input.npy", "shared/data/input.npy", "c" * 64, "data"),
+                ("source/reference.npy", "shared/data/reference.npy", "d" * 64, "data"),
+            )
+        )
+    )
+    python = str(Path(sys.executable).resolve())
+    redraw = RedrawRecipe(
+        redraw_id="redraw-routed",
+        figure_id=figure.figure_id,
+        module=figure.story_module,
+        script_path="shared/plotting/plot.py",
+        command=(
+            f"{python} shared/plotting/plot.py shared/data/input.npy "
+            "redraw/output.npy"
+        ),
+        input_data_ids="data-input",
+        input_paths="shared/data/input.npy",
+        output_path="redraw/output.npy",
+        reference_product_path="shared/data/reference.npy",
+        comparison_method="numpy.testing.assert_allclose",
+        tolerance="rtol=1e-12;atol=1e-12",
+        environment_command=python,
+        representative=True,
+        notes="Execute a routed script with the pinned absolute Python.",
+    )
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=tmp_path / "delivery-v2",
+        required_assets=required,
+        old_baseline=capture_baseline(old),
+        figure_recipes=(figure,),
+        redraw_recipes=(redraw,),
+        manifest_keys=ManifestKeys(
+            data_ids=frozenset(("data-input", "data-reference")),
+            theory_asset_ids=frozenset(("theory-a",)),
+            data_paths={
+                "data-input": "shared/data/input.npy",
+                "data-reference": "shared/data/reference.npy",
+            },
+        ),
+    )
+    production_validate = builder_module.validate_redraw_plan
+
+    def validate_one_module(figures, recipes, **kwargs):
+        assert kwargs["executable_fields_prevalidated"] is True
+        return production_validate(
+            figures,
+            recipes,
+            required_modules=("02_spinwave_control",),
+            **kwargs,
+        )
+
+    monkeypatch.setattr(builder_module, "validate_redraw_plan", validate_one_module)
+
+    builder_module._validate_lineage_preflight(plan)
+
+
 def test_builder_materializes_only_fresh_derived_outputs_and_redraw_evidence(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -2839,3 +3007,251 @@ def test_builder_rejects_untracked_file_created_by_derived_producer(
     assert not destination.exists()
     assert not tuple(tmp_path.glob(".delivery-v2.staging-*"))
     assert not tuple(tmp_path.glob(".delivery-v2.derived-*"))
+
+
+def test_task6_finalizer_refuses_failed_gate_before_report_checksum_or_promotion(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=tmp_path / "delivery",
+        required_assets=RequiredAssetInventory(()),
+        old_baseline=capture_baseline(old),
+        portable_contract=SimpleNamespace(transforms=(), runtime_entries=()),
+        tree_specs=(),
+        exact_specs=(),
+        include_thesis_assets=False,
+    )
+    staging = tmp_path / "staging"
+    write_file(staging / "00_handoff/PORTABLE_CONFIG.toml", '[paths]\nwork="runtime"\n')
+    materialized = builder_module._pin_staging_pipeline_result(staging, ())
+    failed = (VerificationResult("G1", False, (("files", 1),), ("field found",), ()),)
+
+    try:
+        with patch.object(builder_module, "verify", return_value=failed):
+            with pytest.raises(BuildRefusedError, match="G1"):
+                builder_module._finalize_verified_staging(plan, staging, materialized)
+    finally:
+        os.close(materialized.staging_descriptor)
+    assert not (staging / "00_handoff/verification_report.json").exists()
+    assert not (staging / "00_handoff/SHA256SUMS.txt").exists()
+    assert not plan.destination.exists()
+
+
+def test_task6_finalizer_writes_report_then_checksum_and_rebuilds_same_fd_snapshot(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=tmp_path / "delivery",
+        required_assets=RequiredAssetInventory(()),
+        old_baseline=capture_baseline(old),
+        portable_contract=SimpleNamespace(),
+        tree_specs=(),
+        exact_specs=(),
+        include_thesis_assets=False,
+    )
+    staging = tmp_path / "staging"
+    write_file(staging / "00_handoff/PORTABLE_CONFIG.toml", '[paths]\nwork="runtime"\n')
+    materialized = builder_module._pin_staging_pipeline_result(staging, ())
+    passed = tuple(
+        VerificationResult(gate, True, (("checked", 1),), (), ("00_handoff",))
+        for gate in ("G1", "G2", "G3", "G4", "G5")
+    )
+    events: list[str] = []
+    real_report = builder_module.write_report
+    real_checksums = builder_module.write_checksums
+
+    def report(*args, **kwargs):
+        events.append("report")
+        return real_report(*args, **kwargs)
+
+    def checksums(*args, **kwargs):
+        events.append("checksum")
+        return real_checksums(*args, **kwargs)
+
+    with (
+        patch.object(builder_module, "verify", return_value=passed) as verify_mock,
+        patch.object(builder_module, "write_report", side_effect=report),
+        patch.object(builder_module, "write_checksums", side_effect=checksums),
+    ):
+        finalized = builder_module._finalize_verified_staging(
+            plan, staging, materialized
+        )
+    try:
+        assert events == ["report", "checksum"]
+        assert verify_mock.call_args.kwargs["expected_derived_recipes"] == ()
+        assert finalized.descriptor == materialized.staging_descriptor
+        final_paths = {row.relative_path for row in finalized.snapshot}
+        assert "00_handoff/verification_report.json" in final_paths
+        assert "00_handoff/SHA256SUMS.txt" in final_paths
+        assert final_paths > {row.relative_path for row in materialized.staging_snapshot}
+        listed = {
+            line.split("  ", 1)[1]
+            for line in (staging / "00_handoff/SHA256SUMS.txt")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        }
+        assert "00_handoff/verification_report.json" in listed
+        assert "00_handoff/SHA256SUMS.txt" not in listed
+    finally:
+        finalized.close()
+
+
+def test_task6_finalizer_rejects_existing_file_rewrite_after_gate_pass(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=tmp_path / "delivery",
+        required_assets=RequiredAssetInventory(()),
+        old_baseline=capture_baseline(old),
+        portable_contract=SimpleNamespace(),
+        tree_specs=(),
+        exact_specs=(),
+        include_thesis_assets=False,
+    )
+    staging = tmp_path / "staging"
+    config = staging / "00_handoff/PORTABLE_CONFIG.toml"
+    write_file(config, '[paths]\nwork="runtime"\n')
+    materialized = builder_module._pin_staging_pipeline_result(staging, ())
+    passed = tuple(
+        VerificationResult(gate, True, (("checked", 1),), (), ("00_handoff",))
+        for gate in ("G1", "G2", "G3", "G4", "G5")
+    )
+
+    def mutate_then_pass(*_args, **_kwargs):
+        original = config.read_bytes()
+        config.write_bytes(original.replace(b"runtime", b"changed"))
+        assert config.stat().st_size == len(original)
+        return passed
+
+    try:
+        with patch.object(builder_module, "verify", side_effect=mutate_then_pass):
+            with pytest.raises(BuildRefusedError, match="snapshot"):
+                builder_module._finalize_verified_staging(plan, staging, materialized)
+    finally:
+        os.close(materialized.staging_descriptor)
+
+
+@pytest.mark.parametrize("evidence_name", ["report", "checksum"])
+def test_task6_finalizer_rejects_equal_length_evidence_tampering(
+    tmp_path: Path, evidence_name: str,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=tmp_path / "delivery",
+        required_assets=RequiredAssetInventory(()),
+        old_baseline=capture_baseline(old),
+        portable_contract=SimpleNamespace(),
+        tree_specs=(),
+        exact_specs=(),
+        include_thesis_assets=False,
+    )
+    staging = tmp_path / "staging"
+    write_file(staging / "00_handoff/PORTABLE_CONFIG.toml", '[paths]\nwork="runtime"\n')
+    materialized = builder_module._pin_staging_pipeline_result(staging, ())
+    passed = tuple(
+        VerificationResult(gate, True, (("checked", 1),), (), ("00_handoff/README.md",))
+        for gate in ("G1", "G2", "G3", "G4", "G5")
+    )
+    real_checksums = builder_module.write_checksums
+
+    def checksums_then_tamper(*args, **kwargs):
+        result = real_checksums(*args, **kwargs)
+        target = (
+            staging / "00_handoff/verification_report.json"
+            if evidence_name == "report"
+            else staging / "00_handoff/SHA256SUMS.txt"
+        )
+        payload = target.read_bytes()
+        os.chmod(target, 0o644)
+        target.write_bytes(bytes([payload[0] ^ 1]) + payload[1:])
+        assert target.stat().st_size == len(payload)
+        return result
+
+    try:
+        with (
+            patch.object(builder_module, "verify", return_value=passed),
+            patch.object(
+                builder_module, "write_checksums", side_effect=checksums_then_tamper
+            ),
+        ):
+            with pytest.raises(BuildRefusedError, match="deterministic payload"):
+                builder_module._finalize_verified_staging(plan, staging, materialized)
+    finally:
+        os.close(materialized.staging_descriptor)
+
+
+def test_execute_build_never_calls_publisher_when_task6_gate_fails_and_cleans_staging(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    old = tmp_path / "old"
+    write_file(old / "README.md", "old\n")
+    destination = tmp_path / "delivery"
+    plan = BuildPlan(
+        project_root=project,
+        old_delivery=old,
+        destination=destination,
+        required_assets=RequiredAssetInventory(()),
+        old_baseline=capture_baseline(old),
+        portable_contract=SimpleNamespace(transforms=(), runtime_entries=()),
+        tree_specs=(),
+        exact_specs=(),
+        include_thesis_assets=False,
+    )
+    failed = (VerificationResult("G3", False, (), ("missing source",), ()),)
+    descriptors: list[int] = []
+    published = False
+
+    def materialize(_plan: BuildPlan, staging: Path):
+        result = builder_module._pin_staging_pipeline_result(staging, ())
+        descriptors.append(result.staging_descriptor)
+        return result
+
+    def publish(*_args, **_kwargs):
+        nonlocal published
+        published = True
+        raise AssertionError("failed verification must never reach publication")
+
+    with (
+        patch.object(builder_module, "_validate_portable_preflight", return_value=None),
+        patch.object(builder_module, "_validate_canonical_figure_plan", return_value=None),
+        patch.object(builder_module, "_validate_lineage_preflight", return_value=None),
+        patch.object(builder_module, "_materialize_portable_pipeline", side_effect=materialize),
+        patch.object(builder_module, "verify", return_value=failed),
+        patch.object(builder_module, "_publish_staging", side_effect=publish),
+    ):
+        result = _production_execute_build(plan)
+
+    assert result.exit_code != 0
+    assert not result.publishable
+    assert "G3" in result.reason
+    assert not published
+    assert not destination.exists()
+    assert not tuple(tmp_path.glob(".delivery.staging-*"))
+    assert len(descriptors) == 1
+    with pytest.raises(OSError):
+        os.fstat(descriptors[0])

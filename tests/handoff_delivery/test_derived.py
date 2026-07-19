@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import asdict, replace
 import hashlib
 import json
 from pathlib import Path
@@ -12,11 +12,15 @@ import pytest
 
 import handoff_delivery.derived as derived_module
 from handoff_delivery.derived import (
+    DERIVED_EVIDENCE_COLUMNS,
     HOPFION_ENVIRONMENT_COMMAND,
     DerivedDataError,
+    DerivedEvidence,
     DerivedRecipe,
+    parse_derived_evidence_rows,
     produce_derived,
     produce_derived_in_environment,
+    validate_derived_evidence_bindings,
     validate_derived_preflight,
     validate_derived_outputs,
 )
@@ -67,6 +71,145 @@ def make_recipe(project: Path, *, output_sha256: str) -> DerivedRecipe:
         is_complete_field="false",
         notes="bounded z-index slice for fig-a only",
     )
+
+
+def make_evidence(recipe: DerivedRecipe) -> DerivedEvidence:
+    return DerivedEvidence(
+        recipe_id=recipe.recipe_id,
+        output_data_id=recipe.output_data_id,
+        output_path=recipe.output_path,
+        source_path=recipe.source_path,
+        source_sha256=recipe.source_sha256,
+        producer_script=recipe.producer_script,
+        producer_sha256=recipe.producer_sha256,
+        selector_kind=recipe.selector_kind,
+        selector_json=recipe.selector_json,
+        coordinate_origin=recipe.coordinate_origin,
+        coordinate_spacing=recipe.coordinate_spacing,
+        coordinate_units=recipe.coordinate_units,
+        output_sha256=recipe.output_sha256,
+        output_size=123,
+        output_mtime_ns=10,
+        parent_figure_ids=("fig-a",),
+        parent_data_ids=("source-field-a",),
+        environment_command=recipe.environment_command,
+        executed_python=recipe.environment_command,
+        is_complete_field=False,
+        generation_token="a" * 32,
+        generated_at_ns=11,
+    )
+
+
+def serialized_evidence(evidence: DerivedEvidence) -> dict[str, str]:
+    row = asdict(evidence)
+    row["output_size"] = str(evidence.output_size)
+    row["output_mtime_ns"] = str(evidence.output_mtime_ns)
+    row["parent_figure_ids"] = ";".join(evidence.parent_figure_ids)
+    row["parent_data_ids"] = ";".join(evidence.parent_data_ids)
+    row["is_complete_field"] = "false"
+    row["generated_at_ns"] = str(evidence.generated_at_ns)
+    return {key: str(value) for key, value in row.items()}
+
+
+def test_typed_evidence_parser_round_trips_the_versioned_schema(
+    tmp_path: Path,
+) -> None:
+    recipe = make_recipe(tmp_path / "project", output_sha256="c" * 64)
+    evidence = make_evidence(recipe)
+
+    parsed = parse_derived_evidence_rows((serialized_evidence(evidence),))
+
+    assert DERIVED_EVIDENCE_COLUMNS == tuple(DerivedEvidence.__dataclass_fields__)
+    assert parsed == (evidence,)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value", "message"),
+    (
+        ("output_size", "1.0", "output_size.*integer"),
+        ("output_mtime_ns", "-1", "output_mtime_ns.*integer"),
+        ("generated_at_ns", "01", "generated_at_ns.*integer"),
+        ("is_complete_field", "true", "literal false"),
+        ("parent_figure_ids", "N/A", "parent_figure_ids"),
+    ),
+)
+def test_typed_evidence_parser_rejects_noncanonical_cells(
+    tmp_path: Path,
+    field_name: str,
+    value: str,
+    message: str,
+) -> None:
+    recipe = make_recipe(tmp_path / "project", output_sha256="c" * 64)
+    row = serialized_evidence(make_evidence(recipe))
+    row[field_name] = value
+
+    with pytest.raises(DerivedDataError, match=message):
+        parse_derived_evidence_rows((row,))
+
+
+def test_evidence_binding_validates_recipe_fields_without_reading_output_root(
+    tmp_path: Path,
+) -> None:
+    recipe = make_recipe(tmp_path / "project", output_sha256="c" * 64)
+    evidence = make_evidence(recipe)
+
+    validate_derived_evidence_bindings((recipe,), (evidence,))
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value", "message"),
+    (
+        ("source_sha256", "d" * 64, "source_sha256 does not match recipe"),
+        ("parent_figure_ids", ("fig-b",), "parent_figure_ids does not match recipe"),
+        ("parent_data_ids", ("source-field-b",), "parent_data_ids does not match recipe"),
+        ("is_complete_field", True, "is_complete_field must be false"),
+        ("generation_token", "", "generation token"),
+        ("output_size", 0, "output_size must be positive"),
+        ("generated_at_ns", 9, "generated_at_ns.*output_mtime_ns"),
+    ),
+)
+def test_evidence_binding_rejects_tampered_static_or_internal_fields(
+    tmp_path: Path,
+    field_name: str,
+    value: object,
+    message: str,
+) -> None:
+    recipe = make_recipe(tmp_path / "project", output_sha256="c" * 64)
+    evidence = replace(make_evidence(recipe), **{field_name: value})
+
+    with pytest.raises(DerivedDataError, match=message):
+        validate_derived_evidence_bindings((recipe,), (evidence,))
+
+
+def test_evidence_binding_rejects_missing_extra_and_duplicate_tokens(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    first_recipe = make_recipe(project, output_sha256="c" * 64)
+    first_evidence = make_evidence(first_recipe)
+    second_recipe = replace(
+        first_recipe,
+        recipe_id="derive-fig-b-slice",
+        output_data_id="data-fig-b-slice",
+        output_path="02_dynamics/data/fig-b-slice.csv",
+        parent_figure_ids="fig-b",
+    )
+    second_evidence = replace(
+        make_evidence(second_recipe),
+        parent_figure_ids=("fig-b",),
+        generation_token=first_evidence.generation_token,
+    )
+
+    with pytest.raises(DerivedDataError, match="generation evidence mismatch"):
+        validate_derived_evidence_bindings((first_recipe,), ())
+    with pytest.raises(DerivedDataError, match="generation evidence mismatch"):
+        validate_derived_evidence_bindings(
+            (first_recipe,), (first_evidence, second_evidence)
+        )
+    with pytest.raises(DerivedDataError, match="generation tokens must be unique"):
+        validate_derived_evidence_bindings(
+            (first_recipe, second_recipe), (first_evidence, second_evidence)
+        )
 
 
 def test_complete_vector_volume_selector_is_rejected() -> None:
@@ -571,6 +714,7 @@ def test_csv_producer_is_byte_deterministic_and_records_all_hashes(
     assert first.parent_figure_ids == ("fig-a",)
     assert first.parent_data_ids == ("source-field-a",)
     assert first.is_complete_field is False
+    assert first.generated_at_ns >= first.output_mtime_ns
 
 
 def test_environment_runner_uses_the_declared_pinned_python(tmp_path: Path) -> None:
