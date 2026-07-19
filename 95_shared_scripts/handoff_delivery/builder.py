@@ -5,12 +5,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 import hashlib
+import json
 import os
 from pathlib import Path, PurePosixPath
 import secrets
 import shutil
 import stat
 import tempfile
+import subprocess
 from typing import Literal
 from collections.abc import Mapping
 
@@ -2356,9 +2358,18 @@ def build_production_delivery(
 
     keys = production_manifest_keys(inventory, figures, portable_contract)
     redraws = production_redraw_recipes(inventory, figures, keys)
+    git_head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=project, check=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+    ).stdout.strip()
+    tracked_tasks = {"Hopfion-ty3", "Hopfion-kx8", "Hopfion-9kj", "Hopfion-9vw"}
+    bd_snapshot = tuple(
+        row for line in (project / ".beads/issues.jsonl").read_text(encoding="utf-8").splitlines()
+        if (row := json.loads(line))["id"] in tracked_tasks
+    )
     payloads = production_manifest_payloads(
         inventory, figures, portable_contract, redraws, keys,
-        capture_baseline(old_delivery).entries,
+        capture_baseline(old_delivery).entries, git_head, bd_snapshot,
     )
     return build_delivery(
         project_root=project,

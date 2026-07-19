@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import json
 from dataclasses import asdict
 from io import StringIO
 from pathlib import Path, PurePosixPath
@@ -190,6 +191,8 @@ def manifest_payloads(
     redraws: Sequence[RedrawRecipe],
     keys: ManifestKeys,
     baseline_entries: Sequence[object] = (),
+    git_head: str = "N/A",
+    bd_snapshot: Sequence[Mapping[str, object]] = (),
 ) -> dict[str, bytes]:
     copied = _copied(inventory)
     registry = copied[REGISTRY_SOURCE]
@@ -272,6 +275,25 @@ def manifest_payloads(
             ("relative_path", "path_type", "size", "sha256", "symlink_target"),
             [asdict(row) for row in baseline_entries],
         )
+    if git_head != "N/A":
+        payloads["00_handoff/BUILD_PROVENANCE.json"] = (
+            json.dumps(
+                {
+                    "branch": "codex/hopfion-delivery-v2",
+                    "git_head": git_head,
+                    "generated_tree_committed": False,
+                    "source_code_committed": True,
+                },
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            ) + "\n"
+        ).encode("utf-8")
+    if bd_snapshot:
+        payloads["00_handoff/BD_SNAPSHOT.json"] = (
+            json.dumps(tuple(bd_snapshot), ensure_ascii=False, indent=2, sort_keys=True)
+            + "\n"
+        ).encode("utf-8")
     archive_categories = sorted({
         PurePosixPath(row.target_path).parts[1]
         for row in inventory.rows
