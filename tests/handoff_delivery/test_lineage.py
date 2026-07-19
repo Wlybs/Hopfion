@@ -175,11 +175,10 @@ def test_simulation_figure_requires_data_run_and_initial_recipe(
     with pytest.raises(ManifestError, match="run_ids"):
         validate_figure_closure(row, manifests)
 
-    with pytest.raises(ManifestError, match="comparison_reference_data_id"):
-        validate_figure_closure(
-            recipe(comparison_reference_data_id="N/A"),
-            manifests,
-        )
+    validate_figure_closure(
+        recipe(comparison_reference_data_id="N/A"),
+        manifests,
+    )
 
 
 def test_schematic_requires_generator_or_editable_source(

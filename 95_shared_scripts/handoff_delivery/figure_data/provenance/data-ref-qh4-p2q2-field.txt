@@ -1,0 +1,4 @@
+data_id=data-ref-qh4-p2q2-field
+status=provenance_anchor_only
+complete_field_in_delivery=false
+resolution=See FIGURE_MANIFEST.csv, RUN_MANIFEST.csv, FULL_FIELD_CONSUMERS.csv, and REQUIRED_ASSETS.csv for exact source paths and exclusion status. No OVF or complete vector field is embedded here.

@@ -12,6 +12,7 @@ import shutil
 import stat
 import tempfile
 from typing import Literal
+from collections.abc import Mapping
 
 from .docs import (
     DocsConfig,
@@ -170,6 +171,7 @@ class BuildPlan:
     tree_specs: tuple[TreeSourceSpec, ...] = TREE_SOURCE_SPECS
     exact_specs: tuple[ExactSourceSpec, ...] = EXACT_SOURCE_SPECS
     include_thesis_assets: bool = True
+    manifest_payloads: Mapping[str, bytes] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -877,6 +879,7 @@ def prepare_build(
     redraw_recipes: Sequence[RedrawRecipe] = (),
     portable_contract: PortableContract | None = None,
     docs_config: DocsConfig | None = None,
+    manifest_payloads: Mapping[str, bytes] | None = None,
 ) -> BuildPlan:
     """Prepare an immutable build plan without writing the v2 destination."""
     _require_portable_contract(portable_contract)
@@ -916,6 +919,7 @@ def prepare_build(
         tree_specs=tuple(tree_specs),
         exact_specs=tuple(exact_specs),
         include_thesis_assets=include_thesis_assets,
+        manifest_payloads=manifest_payloads,
     )
     _validate_lineage_preflight(plan)
     _validate_portable_preflight(plan)
@@ -1110,6 +1114,8 @@ def _declared_generated_paths(plan: BuildPlan) -> tuple[str, ...]:
         "00_handoff/SHA256SUMS.txt",
         *(recipe.output_path for recipe in plan.derived_recipes),
     }
+    if plan.manifest_payloads is not None:
+        paths.update(plan.manifest_payloads)
     if plan.derived_recipes:
         paths.add("00_handoff/DERIVED_DATA_EVIDENCE.csv")
     if plan.redraw_recipes:
@@ -1472,6 +1478,24 @@ def _materialize_lineage_pipeline(
                 raise BuildRefusedError(
                     f"cannot clean isolated derived workspace: {derived_root}"
                 ) from error
+
+
+def _materialize_manifest_pipeline(plan: BuildPlan, staging: Path) -> tuple[str, ...]:
+    """Write deterministic production manifests before redraw execution."""
+    if plan.manifest_payloads is None:
+        return ()
+    written: list[str] = []
+    for relative, payload in sorted(plan.manifest_payloads.items()):
+        target = _safe_target(staging, relative)
+        try:
+            with target.open("xb") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+        except OSError as error:
+            raise BuildRefusedError(f"cannot materialize manifest: {relative}") from error
+        written.append(relative)
+    return tuple(written)
 
 
 def _materialize_docs_pipeline(
@@ -2102,6 +2126,7 @@ def execute_build(plan: BuildPlan, *, resume: bool = False) -> BuildResult:
                 if row.target_path is not None:
                     written.append(row.target_path)
 
+        written.extend(_materialize_manifest_pipeline(plan, staging))
         written.extend(_materialize_lineage_pipeline(plan, staging))
         written.extend(_materialize_docs_pipeline(plan, staging))
         portable_materialization = _materialize_portable_pipeline(plan, staging)
@@ -2276,6 +2301,7 @@ def build_delivery(
     redraw_recipes: Sequence[RedrawRecipe] = (),
     portable_contract: PortableContract | None = None,
     docs_config: DocsConfig | None = None,
+    manifest_payloads: Mapping[str, bytes] | None = None,
 ) -> BuildResult:
     """Prepare and either dry-run or execute one deterministic delivery build."""
     plan = prepare_build(
@@ -2290,6 +2316,7 @@ def build_delivery(
         redraw_recipes=redraw_recipes,
         portable_contract=portable_contract,
         docs_config=docs_config,
+        manifest_payloads=manifest_payloads,
     )
     if dry_run:
         difference = _difference_or_error(plan)
@@ -2320,6 +2347,19 @@ def build_production_delivery(
     project = Path(project_root).absolute()
     inventory = enumerate_required_assets(project)
     portable_contract = assemble_portable_contract(project, inventory)
+    figures = _load_project_figure_recipes(project)
+    inventory = _route_figure_assets(inventory, figures)
+    inventory = _route_portable_original_assets(inventory, portable_contract)
+    from .production import manifest_keys as production_manifest_keys
+    from .production import manifest_payloads as production_manifest_payloads
+    from .production import redraw_recipes as production_redraw_recipes
+
+    keys = production_manifest_keys(inventory, figures, portable_contract)
+    redraws = production_redraw_recipes(inventory, figures, keys)
+    payloads = production_manifest_payloads(
+        inventory, figures, portable_contract, redraws, keys,
+        capture_baseline(old_delivery).entries,
+    )
     return build_delivery(
         project_root=project,
         old_delivery=old_delivery,
@@ -2327,4 +2367,7 @@ def build_production_delivery(
         dry_run=dry_run,
         resume=resume,
         portable_contract=portable_contract,
+        manifest_keys=keys,
+        redraw_recipes=redraws,
+        manifest_payloads=payloads,
     )

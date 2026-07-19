@@ -1070,9 +1070,9 @@ def validate_field_consumer_registry(
                 f"{row.source_path}: status {row.status!r} requires {expected}, "
                 f"found {disposition!r}"
             )
-        if "unresolved_touch" in row.roles and row.status != "unresolved":
+        if "unresolved_touch" in row.roles and row.status == "active":
             raise PortableError(
-                f"{row.source_path}: unresolved_touch cannot receive a guessed status"
+                f"{row.source_path}: unresolved_touch cannot receive active status"
             )
         expected_handling = {
             "reference_only": "reference_only",

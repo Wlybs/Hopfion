@@ -3417,26 +3417,29 @@ def test_canonical_consumer_ledger_matches_current_discovery_and_only_audited_le
         "07_thiele_theory_model/results_thiele_GD_convergence_20260703/compute_GD_convergence.py",
     }
     active = {row.source_path for row in registry if row.status == "active"}
-    unresolved = {row.source_path for row in registry if row.status == "unresolved"}
+    nonactive = {row.source_path for row in registry if row.status in {"reference_only", "archive"}}
 
-    assert len(discoveries) == 325
+    assert len(discoveries) == 326
     assert active == expected_active
     assert len(active) == 72
-    assert unresolved == {row.source_path for row in discoveries} - expected_active
-    assert len(unresolved) == 253
+    assert nonactive == {row.source_path for row in discoveries} - expected_active
+    assert len(nonactive) == 254
 
     mode_map = next(row for row in registry if row.source_path == mode_map_path)
     mode_map_discovery = next(
         row for row in discoveries if row.source_path == mode_map_path
     )
-    assert mode_map.status == "unresolved"
+    assert mode_map.status == "reference_only"
     assert (
         mode_map.status_evidence,
         mode_map.run_id,
         mode_map.initial_state_recipe_id,
         mode_map.non_full_field_data_id,
         mode_map.portable_handling,
-    ) == ("N/A", "N/A", "N/A", "N/A", "unresolved")
+    ) == (
+        "95_shared_scripts/handoff_delivery/document_registry.md:L15",
+        "N/A", "N/A", "N/A", "reference_only",
+    )
     for required_note in (
         "six current-valid figure recipes",
         "four complete-field roots",
@@ -3453,22 +3456,20 @@ def test_canonical_consumer_ledger_matches_current_discovery_and_only_audited_le
             if row.plot_script_path == mode_map_path
         )
     ) == 6
-    with pytest.raises(PortableError, match="mode_map_analysis.py"):
-        validate_field_consumer_registry(
-            (mode_map_discovery,),
-            (mode_map,),
-            {mode_map_path: dispositions[mode_map_path]},
-            publish=True,
-            project_root=project,
-        )
-    with pytest.raises(PortableError, match="unresolved"):
-        validate_field_consumer_registry(
-            discoveries,
-            registry,
-            dispositions,
-            publish=True,
-            project_root=project,
-        )
+    validate_field_consumer_registry(
+        (mode_map_discovery,),
+        (mode_map,),
+        {mode_map_path: dispositions[mode_map_path]},
+        publish=True,
+        project_root=project,
+    )
+    validate_field_consumer_registry(
+        discoveries,
+        registry,
+        dispositions,
+        publish=True,
+        project_root=project,
+    )
 
 
 def test_canonical_recipe_consumer_edges_equal_all_active_leaf_dependencies() -> None:

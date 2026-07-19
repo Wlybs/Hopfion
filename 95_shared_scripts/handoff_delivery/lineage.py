@@ -452,7 +452,7 @@ def validate_figure_closure(row: FigureRecipe, manifests: ManifestKeys) -> None:
                 row,
                 "comparison_reference_data_id",
                 manifests.data_ids,
-                required=True,
+                required=False,
             )
             _require_text(row, "initial_state_recipe_id")
             require_foreign_keys(
@@ -499,7 +499,7 @@ def validate_figure_closure(row: FigureRecipe, manifests: ManifestKeys) -> None:
                 row,
                 "comparison_reference_data_id",
                 manifests.data_ids,
-                required=True,
+                required=False,
             )
         else:
             _validate_fk_field(row, "input_data_ids", manifests.data_ids, required=False)

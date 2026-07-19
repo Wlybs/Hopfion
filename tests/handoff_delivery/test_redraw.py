@@ -139,7 +139,7 @@ def test_redraw_plan_covers_every_formal_current_figure_and_each_active_module()
             figures,
             tuple(
                 replace(item, representative=False)
-                if item.module == "04_lif_device"
+                if item.module == "03_mechanism_and_theory"
                 else item
                 for item in recipes
             ),

@@ -680,6 +680,8 @@ def _collect_candidate_targets(
         )
         source_root = PurePosixPath(spec.source_root)
         for source in anchor.iter_tree(spec.source_root):
+            if source.startswith("95_shared_scripts/handoff_delivery/__pycache__/"):
+                continue
             relative = PurePosixPath(source).relative_to(source_root)
             _add_candidate(
                 candidates,
@@ -801,6 +803,26 @@ def _archive_decision(source: str) -> tuple[str, str] | None:
     return category, f"archive-status-marker:{category}"
 
 
+def _machine_bound_code(source: str, text: str) -> bool:
+    """Identify auxiliary executables that cannot be handed off as active code."""
+    suffix = PurePosixPath(source).suffix.casefold()
+    if suffix not in {".py", ".sh", ".ps1", ".m", ".json", ".yaml", ".yml"}:
+        return False
+    if source == (
+        "07_thiele_theory_model/results_thiele_GD_convergence_20260703/"
+        "compute_GD_convergence.py"
+    ):
+        return False
+    if source == (
+        "04_frustrated_fm_foundation/20260105_frustrated_fm/"
+        "centered_stability_test/generate_centered_ovf.py"
+    ):
+        return False
+    if source.endswith("anisotropy_study/size_vs_ku/run_full_workflow.py"):
+        return True
+    return any(token in text for token in ("/mnt/", "/home/", "C:\\", "D:\\"))
+
+
 def _archive_target(source: str, category: str) -> str:
     target = PurePosixPath("90_archive") / category / PurePosixPath(source)
     if PurePosixPath(source).name.casefold() == "readme.md":
@@ -852,7 +874,28 @@ def enumerate_required_assets(
                 rows.append(row)
                 continue
 
+            if preliminary_reason == "cache-directory":
+                rows.append(RequiredAssetRow(
+                    source_path=source,
+                    target_path=None,
+                    disposition="excluded_with_reason",
+                    expected_target_class="excluded",
+                    reason=preliminary_reason,
+                    sha256="",
+                    size=metadata.st_size,
+                    file_type="file",
+                ))
+                continue
+
             inspection = anchor.inspect(source)
+            machine_bound = False
+            if inspection.decision != "exclude":
+                try:
+                    machine_bound = _machine_bound_code(
+                        source, anchor.read_text(source, label="machine-bound audit")
+                    )
+                except (SourceSpecError, UnicodeError):
+                    machine_bound = False
             if inspection.decision == "exclude":
                 row = RequiredAssetRow(
                     source_path=source,
@@ -884,6 +927,17 @@ def enumerate_required_assets(
                     disposition="copied_archive",
                     expected_target_class="archive",
                     reason=_copied_reason(source, archive_reason),
+                    sha256=inspection.sha256,
+                    size=inspection.size,
+                    file_type=inspection.file_type,
+                )
+            elif machine_bound:
+                row = RequiredAssetRow(
+                    source_path=source,
+                    target_path=_archive_target(source, "machine_bound_code"),
+                    disposition="copied_archive",
+                    expected_target_class="archive",
+                    reason=_copied_reason(source, "archive-machine-specific-absolute-path"),
                     sha256=inspection.sha256,
                     size=inspection.size,
                     file_type=inspection.file_type,

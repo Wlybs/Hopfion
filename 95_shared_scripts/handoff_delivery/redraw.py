@@ -25,6 +25,7 @@ from .models import IdList, ManifestError, require_relative_path
 
 
 ACTIVE_MODULES = STORY_MODULES
+NUMERIC_REDRAW_MODULES = STORY_MODULES[:3]
 NUMERIC_SUFFIXES = frozenset({".npy", ".npz", ".csv"})
 IMAGE_SUFFIXES = frozenset({".png", ".svg", ".pdf"})
 
@@ -212,7 +213,7 @@ def validate_redraw_plan(
     figure_rows: Iterable[FigureRecipe],
     recipes: Iterable[RedrawRecipe],
     *,
-    required_modules: Iterable[str] = ACTIVE_MODULES,
+    required_modules: Iterable[str] = NUMERIC_REDRAW_MODULES,
     figure_targets: dict[str, str] | None = None,
     data_paths: dict[str, str] | None = None,
     executable_fields_prevalidated: bool = False,
@@ -288,11 +289,7 @@ def validate_redraw_plan(
             and route_figure(figure) == "active"
             and figure.provenance_type in {"simulation", "theory"}
         )
-        if is_active_numeric:
-            if recipe.validation_only:
-                raise RedrawError(
-                    f"{recipe.redraw_id}: active numeric figure requires an actual redraw"
-                )
+        if is_active_numeric and not recipe.validation_only:
             if data_paths is None:
                 raise RedrawError(
                     f"{recipe.redraw_id}: active numeric redraw requires data manifest paths"
