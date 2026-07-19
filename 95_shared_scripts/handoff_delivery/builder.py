@@ -13,7 +13,12 @@ import stat
 import tempfile
 from typing import Literal
 
-from .docs import DocsConfig, package_verifier_assets, render_documents
+from .docs import (
+    DocsConfig,
+    load_docs_config,
+    package_verifier_assets,
+    render_documents,
+)
 from .derived import (
     DerivedDataError,
     DerivedRecipe,
@@ -837,6 +842,27 @@ def _require_portable_contract(contract: PortableContract | None) -> None:
         raise BuildRefusedError("portable contract is required for every build")
 
 
+def _resolve_docs_config(
+    project_root: Path,
+    supplied: DocsConfig | None,
+) -> DocsConfig | None:
+    if supplied is not None:
+        return supplied
+    path = project_root / "95_shared_scripts/handoff_delivery/handoff_docs.toml"
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        raise BuildRefusedError("cannot inspect versioned handoff_docs.toml") from error
+    if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
+        raise BuildRefusedError("versioned handoff_docs.toml is not a regular file")
+    try:
+        return load_docs_config(path, project_root=project_root)
+    except RuntimeError as error:
+        raise BuildRefusedError(f"versioned documentation config failed: {error}") from error
+
+
 def prepare_build(
     *,
     project_root: Path | str,
@@ -854,6 +880,7 @@ def prepare_build(
     """Prepare an immutable build plan without writing the v2 destination."""
     _require_portable_contract(portable_contract)
     project = Path(project_root).absolute()
+    resolved_docs_config = _resolve_docs_config(project, docs_config)
     assert portable_contract is not None
     _validate_canonical_portable_ledgers_at_root(project, portable_contract)
     old = Path(old_delivery).absolute()
@@ -884,7 +911,7 @@ def prepare_build(
         derived_recipes=tuple(derived_recipes),
         redraw_recipes=tuple(redraw_recipes),
         portable_contract=portable_contract,
-        docs_config=docs_config,
+        docs_config=resolved_docs_config,
         tree_specs=tuple(tree_specs),
         exact_specs=tuple(exact_specs),
         include_thesis_assets=include_thesis_assets,

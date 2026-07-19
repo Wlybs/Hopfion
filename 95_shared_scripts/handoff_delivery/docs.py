@@ -295,6 +295,9 @@ import stat
 import sys
 
 
+sys.dont_write_bytecode = True
+
+
 SHA256 = re.compile(r"[0-9a-f]{64}\\Z")
 CHECKSUM = "00_handoff/SHA256SUMS.txt"
 REPORT = "00_handoff/verification_report.json"

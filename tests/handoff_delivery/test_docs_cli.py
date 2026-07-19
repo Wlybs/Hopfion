@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import importlib.util
 import os
 import subprocess
 import sys
@@ -173,6 +174,29 @@ def test_docs_schema_requires_visible_warning_for_non_source_backed_claim(
         load_docs_config(config_path, project_root=project)
 
 
+def test_versioned_production_docs_cover_fixed_navigation_and_five_topics() -> None:
+    project = Path(__file__).parents[2]
+    config_path = (
+        project / "95_shared_scripts/handoff_delivery/handoff_docs.toml"
+    )
+
+    config = load_docs_config(config_path, project_root=project)
+    targets = {row.target_path for row in config.documents}
+    assert {
+        "README.md",
+        "00_handoff/START_HERE.md",
+        "shared/README.md",
+        "01_stability/README.md",
+        "02_spinwave_control/README.md",
+        "03_mechanism_and_theory/README.md",
+        "04_lif_device/README.md",
+        "05_papers_and_talks/README.md",
+    } <= targets
+    assert sum(row.document_type == "topic" for row in config.documents) == 5
+    rendered = render_documents(config)
+    assert set(rendered) == targets
+
+
 def test_cli_baseline_and_compare_old_round_trip_deterministically(
     tmp_path: Path,
 ) -> None:
@@ -229,6 +253,32 @@ def test_cli_build_dry_run_is_only_a_thin_nonmutating_builder_adapter(
     }
     assert not output.exists()
     assert not tuple(tmp_path.glob(".delivery.staging-*"))
+
+
+def test_cli_verify_delegates_to_the_packaged_full_verifier(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    delivery = tmp_path / "delivery"
+    project.mkdir()
+    verifier = delivery / "00_handoff/verify_delivery.py"
+    verifier.parent.mkdir(parents=True)
+    verifier.write_text(
+        "import sys\n"
+        "expected = ['--delivery', sys.argv[2], '--project-root', sys.argv[4]]\n"
+        "raise SystemExit(0 if sys.argv[1:] == expected else 9)\n",
+        encoding="utf-8",
+    )
+
+    assert main([
+        "verify",
+        "--project-root", str(project),
+        "--delivery", str(delivery),
+    ]) == 0
+
+
+def test_cli_validate_recipes_checks_current_versioned_ledgers() -> None:
+    project = Path(__file__).parents[2]
+
+    assert main(["validate-recipes", "--project-root", str(project)]) == 0
 
 
 def test_package_verifier_offline_mode_is_self_contained_read_only_and_fail_closed(
@@ -357,6 +407,19 @@ def test_builder_docs_pipeline_materializes_only_configured_docs_and_verifier(
     assert not tuple(staging.glob("**/*.out/README.md"))
 
 
+def test_builder_resolves_only_the_versioned_project_docs_source(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    evidence = project / "evidence/source.md"
+    evidence.parent.mkdir(parents=True)
+    evidence.write_text("question\nconclusion\nentry\nreproduction\n", encoding="utf-8")
+    config_path = project / "95_shared_scripts/handoff_delivery/handoff_docs.toml"
+    _write_config(config_path)
+
+    resolved = builder_module._resolve_docs_config(project, None)
+
+    assert resolved == load_docs_config(config_path, project_root=project)
+
+
 def test_full_package_verifier_assets_are_local_and_context_is_deterministic() -> None:
     contract = PortableContract(
         runs=(),
@@ -387,3 +450,63 @@ def test_full_package_verifier_assets_are_local_and_context_is_deterministic() -
     compile(assets["00_handoff/verify_delivery.py"], "verify_delivery.py", "exec")
     context = assets["00_handoff/_verifier/context.json"].decode("utf-8")
     assert str(Path.cwd()) not in context
+
+
+def test_full_package_verifier_runs_all_gates_outside_repository_without_bypass(
+    tmp_path: Path,
+) -> None:
+    verifier_tests_path = Path(__file__).with_name("test_verifier.py")
+    spec = importlib.util.spec_from_file_location(
+        "handoff_test_verifier_fixture", verifier_tests_path
+    )
+    assert spec is not None and spec.loader is not None
+    verifier_tests = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(verifier_tests)
+
+    project, delivery, contract, specs = verifier_tests._fixture(tmp_path)
+    tree_specs, exact_specs = specs
+    assets = package_verifier_assets(
+        contract,
+        tree_specs=tree_specs,
+        exact_specs=exact_specs,
+        include_thesis_assets=False,
+    )
+    for relative, payload in assets.items():
+        target = delivery / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(payload)
+    before = {
+        path.relative_to(delivery).as_posix(): path.stat().st_mtime_ns
+        for path in delivery.rglob("*")
+        if path.is_file()
+    }
+    outside = tmp_path / "outside-full"
+    outside.mkdir()
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = ""
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(delivery / "00_handoff/verify_delivery.py"),
+            "--delivery",
+            str(delivery),
+            "--project-root",
+            str(project),
+        ],
+        cwd=outside,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode != 0
+    assert all(f"{gate}:" in completed.stdout for gate in ("G1", "G2", "G3", "G4", "G5"))
+    assert "G3: FAIL" in completed.stdout
+    assert "bundled verification failed" not in completed.stderr
+    assert before == {
+        path.relative_to(delivery).as_posix(): path.stat().st_mtime_ns
+        for path in delivery.rglob("*")
+        if path.is_file()
+    }

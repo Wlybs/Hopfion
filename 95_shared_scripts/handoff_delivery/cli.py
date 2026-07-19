@@ -6,7 +6,10 @@ import argparse
 import csv
 from dataclasses import asdict
 import json
+import os
 from pathlib import Path
+import stat
+import subprocess
 import sys
 from typing import Sequence
 
@@ -17,6 +20,8 @@ from .builder import (
     capture_baseline,
     compare_baseline,
 )
+from .lineage import validate_recipe_ledger
+from .portable import load_field_consumer_registry, load_initial_state_recipes
 
 
 BASELINE_COLUMNS = tuple(BaselineEntry.__dataclass_fields__)
@@ -71,6 +76,13 @@ def _parser() -> argparse.ArgumentParser:
     build.add_argument("--output", required=True, type=Path)
     build.add_argument("--dry-run", action="store_true")
     build.add_argument("--resume", action="store_true")
+
+    verify = commands.add_parser("verify")
+    verify.add_argument("--project-root", required=True, type=Path)
+    verify.add_argument("--delivery", required=True, type=Path)
+
+    recipes = commands.add_parser("validate-recipes")
+    recipes.add_argument("--project-root", required=True, type=Path)
     return parser
 
 
@@ -95,6 +107,49 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             print(result.reason)
             return result.exit_code
+        if args.command == "verify":
+            verifier = args.delivery / "00_handoff/verify_delivery.py"
+            metadata = verifier.lstat()
+            if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
+                raise ValueError(f"packaged verifier is not one regular file: {verifier}")
+            environment = os.environ.copy()
+            environment["PYTHONPATH"] = ""
+            environment["PYTHONDONTWRITEBYTECODE"] = "1"
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(verifier),
+                    "--delivery",
+                    str(args.delivery),
+                    "--project-root",
+                    str(args.project_root),
+                ],
+                env=environment,
+                check=False,
+            )
+            return completed.returncode
+        if args.command == "validate-recipes":
+            ledger_root = args.project_root / "95_shared_scripts/handoff_delivery"
+            figures = validate_recipe_ledger(args.project_root)
+            recipes = load_initial_state_recipes(
+                ledger_root / "initial_state_recipes.csv",
+                project_root=args.project_root,
+            )
+            consumers = load_field_consumer_registry(
+                ledger_root / "full_field_consumers.csv",
+                project_root=args.project_root,
+            )
+            print(
+                json.dumps(
+                    {
+                        "figures": len(figures),
+                        "initial_state_recipes": len(recipes),
+                        "full_field_consumers": len(consumers),
+                    },
+                    sort_keys=True,
+                )
+            )
+            return 0
     except (OSError, RuntimeError, ValueError) as error:
         print(str(error), file=sys.stderr)
         return 2

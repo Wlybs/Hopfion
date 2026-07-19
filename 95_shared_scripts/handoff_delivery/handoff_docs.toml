@@ -1,0 +1,460 @@
+version = 1
+
+[[documents]]
+document_id = "root"
+document_type = "root"
+target_path = "README.md"
+title = "Hopfion 项目交接包"
+reading_order = 0
+
+[[documents]]
+document_id = "start"
+document_type = "handoff"
+target_path = "00_handoff/START_HERE.md"
+title = "从这里开始"
+reading_order = 1
+
+[[documents]]
+document_id = "module-stability"
+document_type = "module"
+target_path = "01_stability/README.md"
+title = "01 稳定性"
+reading_order = 10
+
+[[documents]]
+document_id = "topic-stability"
+document_type = "topic"
+target_path = "01_stability/centered_hopfion/README.md"
+title = "中心 Hopfion 稳定性"
+reading_order = 11
+
+[[documents]]
+document_id = "module-spinwave"
+document_type = "module"
+target_path = "02_spinwave_control/README.md"
+title = "02 自旋波控制"
+reading_order = 20
+
+[[documents]]
+document_id = "topic-spinwave"
+document_type = "topic"
+target_path = "02_spinwave_control/plane_wave/README.md"
+title = "平面波驱动与运动控制"
+reading_order = 21
+
+[[documents]]
+document_id = "module-theory"
+document_type = "module"
+target_path = "03_mechanism_and_theory/README.md"
+title = "03 机理与理论"
+reading_order = 30
+
+[[documents]]
+document_id = "topic-theory"
+document_type = "topic"
+target_path = "03_mechanism_and_theory/thiele/README.md"
+title = "Thiele 理论闭环"
+reading_order = 31
+
+[[documents]]
+document_id = "module-lif"
+document_type = "module"
+target_path = "04_lif_device/README.md"
+title = "04 LIF 器件"
+reading_order = 40
+
+[[documents]]
+document_id = "topic-lif"
+document_type = "topic"
+target_path = "04_lif_device/current_evidence/README.md"
+title = "LIF 当前证据"
+reading_order = 41
+
+[[documents]]
+document_id = "module-papers"
+document_type = "module"
+target_path = "05_papers_and_talks/README.md"
+title = "05 论文与汇报"
+reading_order = 50
+
+[[documents]]
+document_id = "topic-papers"
+document_type = "topic"
+target_path = "05_papers_and_talks/thesis_and_talk/README.md"
+title = "论文与汇报材料"
+reading_order = 51
+
+[[documents]]
+document_id = "shared"
+document_type = "module"
+target_path = "shared/README.md"
+title = "共享代码与数据"
+reading_order = 60
+
+[[claims]]
+claim_id = "root-reading-order"
+document_id = "root"
+section = "阅读顺序"
+text = "先读 `00_handoff/START_HERE.md`，再按 01–05 模块阅读；所有物理结论以 manifest、原始数据和源定位为准。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§3, §8"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+[[claims]]
+claim_id = "start-verification"
+document_id = "start"
+section = "验收与诚信边界"
+text = "完整验收使用 `python3 00_handoff/verify_delivery.py --delivery <交付目录> --project-root <原项目目录>`；`--offline` 只核对包内报告与校验和，不声称重跑 G3。"
+source_path = "docs/superpowers/plans/2026-07-12-hopfion-human-handoff-delivery-v2-implementation.md"
+source_locator = "Task 7 Step 3"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+[[claims]]
+claim_id = "module-stability-entry"
+document_id = "module-stability"
+section = "模块入口"
+text = "从 `centered_hopfion/README.md` 开始；它只总结已登记的稳定性证据和复现级别。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§3, §8"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+[[claims]]
+claim_id = "module-spinwave-entry"
+document_id = "module-spinwave"
+section = "模块入口"
+text = "从 `plane_wave/README.md` 开始，并通过 manifest 区分方向、频率、幅度和多源控制链路。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§3, §8"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+[[claims]]
+claim_id = "module-theory-entry"
+document_id = "module-theory"
+section = "模块入口"
+text = "从 `thiele/README.md` 开始；理论计划、代码和结果必须保持证据等级区分。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§3, §8"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+[[claims]]
+claim_id = "module-lif-entry"
+document_id = "module-lif"
+section = "模块入口"
+text = "从 `current_evidence/README.md` 开始；源 README 将 Phase 1 和 Phase 2 结果标为 pending，不得写成已完成 LIF 周期。"
+source_path = "08_lif_neuron_device_application/lif_neuron_hopfion/README.md"
+source_locator = "§Key Results"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+[[claims]]
+claim_id = "module-papers-entry"
+document_id = "module-papers"
+section = "模块入口"
+text = "从 `thesis_and_talk/README.md` 开始；学校模板、代理说明和生成预览不进入 active 交付。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§8, G5"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+[[claims]]
+claim_id = "shared-entry"
+document_id = "shared"
+section = "用途"
+text = "这里集中放置被多个研究模块共同使用的分析、绘图、初态和运行时代码；具体依赖由 manifest 绑定。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§3, §6"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+# Topic 01
+[[claims]]
+claim_id = "stability-question"
+document_id = "topic-stability"
+section = "研究问题"
+text = "中心化 frustrated-FM Hopfion 初态在既定参数和观察时间内是否保持结构稳定，并能否作为后续动力学初态。"
+source_path = "04_frustrated_fm_foundation/20260105_frustrated_fm/centered_stability_test/README.md"
+source_locator = "§实验目的"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+[[claims]]
+claim_id = "stability-status"
+document_id = "topic-stability"
+section = "当前状态"
+text = "源项目记录了中心化稳定性测试及其结果；交付只核对既有文件和哈希，不运行新的物理仿真。"
+source_path = "04_frustrated_fm_foundation/20260105_frustrated_fm/centered_stability_test/README.md"
+source_locator = "§结果"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 20
+
+[[claims]]
+claim_id = "stability-conclusion"
+document_id = "topic-stability"
+section = "有效/无效结论"
+text = "有效结论以 FIGURE、DATA 和 RUN manifest 中闭合的项目为限；未登记或状态为 unverified/failed 的材料不作为 active 结论。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§6.2, G2"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 30
+
+[[claims]]
+claim_id = "stability-entry"
+document_id = "topic-stability"
+section = "数据与代码入口"
+text = "从 `../../00_handoff/START_HERE.md` 进入 manifest，再按 run、data 和 initial-state recipe ID 追踪。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§6, §8.1"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 40
+
+[[claims]]
+claim_id = "stability-repro"
+document_id = "topic-stability"
+section = "复现级别"
+text = "初态链默认按 INITIAL_STATE_RECIPES 的实际状态展示；documented_only 不等同于完整复跑。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§7"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 50
+
+# Topic 02
+[[claims]]
+claim_id = "spinwave-question"
+document_id = "topic-spinwave"
+section = "研究问题"
+text = "平面自旋波的传播方向、频率、振幅和源组合如何改变 Hopfion 的位移与运动方向。"
+source_path = "04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/README.md"
+source_locator = "§实验1–§实验5"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+[[claims]]
+claim_id = "spinwave-status"
+document_id = "topic-spinwave"
+section = "当前状态"
+text = "源项目包含方向、频率、幅度、Hall 角和多源控制分支；交付逐图逐 run 登记，不以目录名替代证据。"
+source_path = "04_frustrated_fm_foundation/20260105_frustrated_fm/spin_wave_dynamics/README.md"
+source_locator = "§目录结构, §实验1–§实验5"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 20
+
+[[claims]]
+claim_id = "spinwave-conclusion"
+document_id = "topic-spinwave"
+section = "有效/无效结论"
+text = "只有具备原始小数据、绘图代码、运行脚本、初态配方和重绘证据的图才进入 active 结论；历史拟合或缺脚本算例保持警告状态。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§6.2, G2"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 30
+
+[[claims]]
+claim_id = "spinwave-entry"
+document_id = "topic-spinwave"
+section = "数据与代码入口"
+text = "从 `../../00_handoff/START_HERE.md` 进入清单；不同频率和源方向必须使用各自的 run/recipe 绑定。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§6, §7"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 40
+
+[[claims]]
+claim_id = "spinwave-repro"
+document_id = "topic-spinwave"
+section = "复现级别"
+text = "交付不含 OVF；portable entry 需要由接手者显式提供或按配方重建初态。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§7, G4"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 50
+
+# Topic 03
+[[claims]]
+claim_id = "theory-question"
+document_id = "topic-theory"
+section = "研究问题"
+text = "Thiele/集体坐标框架能解释哪些平移与 Hall 响应，哪些耦合仍是开放问题。"
+source_path = "07_thiele_theory_model/hopfion_thiele_research_plan_20260615/RESEARCH_PLAN.md"
+source_locator = "§2.0–§2.4"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+[[claims]]
+claim_id = "theory-status"
+document_id = "topic-theory"
+section = "当前状态"
+text = "研究计划把零仿真分析、廉价定向仿真和昂贵仿真分阶段，并明确后两者的决策边界。"
+source_path = "07_thiele_theory_model/hopfion_thiele_research_plan_20260615/RESEARCH_PLAN.md"
+source_locator = "§3"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 20
+
+[[claims]]
+claim_id = "theory-conclusion"
+document_id = "topic-theory"
+section = "有效/无效结论"
+text = "概念方程、前向检验、逆向提取和开放问题必须按证据等级呈现；计划中的 must-not-say 项不得升级为结论。"
+source_path = "07_thiele_theory_model/hopfion_thiele_research_plan_20260615/RESEARCH_PLAN.md"
+source_locator = "§4, §绝不可说清单"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 30
+
+[[claims]]
+claim_id = "theory-entry"
+document_id = "topic-theory"
+section = "数据与代码入口"
+text = "从 `../../00_handoff/START_HERE.md` 进入 REQUIRED_ASSETS 和 DATA manifest，定位两组 G/D 结果及其计算代码。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "G3"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 40
+
+[[claims]]
+claim_id = "theory-repro"
+document_id = "topic-theory"
+section = "复现级别"
+text = "小型理论结果应由包内代码和登记数据重算；需要完整磁化场的步骤使用外部依赖，不把场文件装入交付。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§6.3, §7"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 50
+
+# Topic 04
+[[claims]]
+claim_id = "lif-question"
+document_id = "topic-lif"
+section = "研究问题"
+text = "如何把 Hopfion 的驱动、累积、释放和恢复过程映射到 LIF 神经元行为。"
+source_path = "08_lif_neuron_device_application/lif_neuron_hopfion/README.md"
+source_locator = "§LIF Mapping"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+[[claims]]
+claim_id = "lif-status"
+document_id = "topic-lif"
+section = "当前状态"
+text = "源 README 登记了物理系统、LIF 映射、目录和关键结果；具体运行完整性仍以日志、table 和 manifest 为准。"
+source_path = "08_lif_neuron_device_application/lif_neuron_hopfion/README.md"
+source_locator = "§Physical System–§Key Results"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 20
+
+[[claims]]
+claim_id = "lif-conclusion"
+document_id = "topic-lif"
+section = "有效/无效结论"
+text = "源 README 将 Phase 1 的 V2/V3 验证和 Phase 2 都标为 pending，因此本交付不能把它们升级为完整 LIF 周期结论。"
+source_path = "08_lif_neuron_device_application/lif_neuron_hopfion/README.md"
+source_locator = "§Key Results"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 30
+
+[[claims]]
+claim_id = "lif-entry"
+document_id = "topic-lif"
+section = "数据与代码入口"
+text = "从 `../../00_handoff/START_HERE.md` 进入图、数据、run 和初态清单；不要从旧 delivery 的 README 继承状态。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§8, G5"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 40
+
+[[claims]]
+claim_id = "lif-repro"
+document_id = "topic-lif"
+section = "复现级别"
+text = "当前初态与运行链按 documented_only/partial 等实际证据级别交接，不宣称本次完整复跑。"
+source_path = "95_shared_scripts/handoff_delivery/initial_state_recipes.csv"
+source_locator = "verification_status, notes"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 50
+
+# Topic 05
+[[claims]]
+claim_id = "papers-question"
+document_id = "topic-papers"
+section = "研究问题"
+text = "论文与汇报材料如何准确复用前四个模块的已闭合图、数据、代码和证据状态。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§3, §6.1"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 10
+
+[[claims]]
+claim_id = "papers-status"
+document_id = "topic-papers"
+section = "当前状态"
+text = "正式论文图与当前研究图由统一 FIGURE_MANIFEST 管理；文档容器单独进入 DOCUMENT_MANIFEST。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§6.1, §8.1"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 20
+
+[[claims]]
+claim_id = "papers-conclusion"
+document_id = "topic-papers"
+section = "有效/无效结论"
+text = "论文或汇报中已被推翻、失败或未验证的图只能进入 archive，并在引用处显示警告。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§6.2, §8"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 30
+
+[[claims]]
+claim_id = "papers-entry"
+document_id = "topic-papers"
+section = "数据与代码入口"
+text = "从 `../../00_handoff/START_HERE.md` 进入图、数据和文档清单，再回到对应研究模块查看复现链。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§8"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 40
+
+[[claims]]
+claim_id = "papers-repro"
+document_id = "topic-papers"
+section = "复现级别"
+text = "图的复现级别逐行记录；文档本身不把 input_validated 或 documented_only 改写为 fully reproducible。"
+source_path = "docs/superpowers/specs/2026-07-12-hopfion-human-handoff-delivery-v2-design.md"
+source_locator = "§6.2, G2"
+integrity_status = "source_backed"
+warning = ""
+reading_order = 50
