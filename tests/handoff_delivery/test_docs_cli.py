@@ -215,7 +215,7 @@ def test_cli_baseline_and_compare_old_round_trip_deterministically(
     assert main(["compare-old", "--old", str(old), "--baseline", str(baseline)]) == 1
 
 
-def test_cli_build_dry_run_is_only_a_thin_nonmutating_builder_adapter(
+def test_cli_build_dry_run_is_only_a_thin_nonmutating_production_builder_adapter(
     tmp_path: Path,
 ) -> None:
     project = tmp_path / "project"
@@ -234,7 +234,9 @@ def test_cli_build_dry_run_is_only_a_thin_nonmutating_builder_adapter(
         baseline_difference=BaselineDifference(),
     )
 
-    with patch("handoff_delivery.cli.build_delivery", return_value=result) as build:
+    with patch(
+        "handoff_delivery.cli.build_production_delivery", return_value=result
+    ) as build:
         assert main([
             "build",
             "--project-root", str(project),

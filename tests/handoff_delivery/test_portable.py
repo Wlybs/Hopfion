@@ -28,6 +28,7 @@ from handoff_delivery.portable import (
     RunEntry,
     TemporaryDependencyContract,
     apply_portable_transform,
+    assemble_portable_contract,
     bind_initial_state_recipes_to_package,
     detect_field_consumer,
     discover_full_field_consumers,
@@ -49,7 +50,11 @@ from handoff_delivery.portable import (
     validate_portable_coverage,
     validate_portable_contract,
 )
-from handoff_delivery.source_specs import RequiredAssetInventory, RequiredAssetRow
+from handoff_delivery.source_specs import (
+    RequiredAssetInventory,
+    RequiredAssetRow,
+    enumerate_required_assets,
+)
 
 
 ORIGINAL_PATH = (
@@ -62,6 +67,120 @@ LAUNCHER_PATH = (
     "01_stability/case/simulation/portable/launch_run_1.py"
 )
 RUNNER_PATH = "shared/runtime/portable_runner.py"
+
+
+def test_assemble_portable_contract_from_versioned_ledgers_is_exact_and_reversible(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    ledger_root = project / "95_shared_scripts/handoff_delivery"
+    ledger_root.mkdir(parents=True)
+    source_path = "src/run.mx3"
+    original = b'm.LoadFile("historical_seed.ovf")\nrun(0.2e-9)\n'
+    source = project / source_path
+    source.parent.mkdir(parents=True)
+    source.write_bytes(original)
+    (project / "evidence.txt").write_text("documented source chain\n", encoding="utf-8")
+
+    with (ledger_root / "initial_state_recipes.csv").open(
+        "w", encoding="utf-8", newline=""
+    ) as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=list(portable_module.INITIAL_STATE_RECIPE_COLUMNS),
+            lineterminator="\n",
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "recipe_id": "recipe-seed",
+                "logical_name": "Documented test seed",
+                "original_ovf_reference": "historical_seed.ovf",
+                "generator_script": "N/A",
+                "generator_parameters": "{}",
+                "relaxation_mx3": "N/A",
+                "expected_output": "temporary/initial_states/seed.ovf",
+                "consumers": source_path,
+                "verification_status": "documented_only",
+                "verification_evidence": "evidence.txt",
+                "notes": "Documented only; no simulation was run.",
+                "steps_json": '["provide the documented seed"]',
+            }
+        )
+    with (ledger_root / "full_field_consumers.csv").open(
+        "w", encoding="utf-8", newline=""
+    ) as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=list(portable_module.FIELD_CONSUMER_COLUMNS),
+            lineterminator="\n",
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "source_path": source_path,
+                "roles": "direct_loader",
+                "detection_evidence": "mx3.m_loadfile@L1",
+                "status": "active",
+                "status_evidence": "evidence.txt:L1",
+                "run_id": "run-seed",
+                "initial_state_recipe_id": "recipe-seed",
+                "non_full_field_data_id": "N/A",
+                "portable_handling": "literal_transform",
+                "notes": "Active fixture leaf.",
+            }
+        )
+    inventory = RequiredAssetInventory(
+        (
+            RequiredAssetRow(
+                source_path=source_path,
+                target_path="01_stability/topic/run.mx3",
+                disposition="copied_active",
+                expected_target_class="active",
+                reason="fixture",
+                sha256=hashlib.sha256(original).hexdigest(),
+                size=len(original),
+                file_type="code",
+            ),
+        )
+    )
+
+    contract = assemble_portable_contract(project, inventory)
+
+    assert len(contract.runs) == len(contract.transforms) == len(contract.runtime_entries) == 1
+    transform = contract.transforms[0]
+    assert transform.original_path == "01_stability/topic/simulation/original/run.mx3"
+    assert transform.portable_path == "01_stability/topic/simulation/portable/run.mx3"
+    assert apply_portable_transform(original, transform) == (
+        b'm.LoadFile("${INIT_OVF}")\nrun(0.2e-9)\n'
+    )
+    assert reverse_portable_transform(
+        apply_portable_transform(original, transform), transform
+    ) == original
+    validate_portable_contract(contract, project_root=project)
+
+
+def test_project_production_contract_closes_every_active_consumer() -> None:
+    project = Path(__file__).parents[2]
+
+    contract = assemble_portable_contract(
+        project,
+        enumerate_required_assets(project),
+    )
+
+    active = tuple(row for row in contract.consumers if row.status == "active")
+    assert len(active) == 72
+    assert len(contract.runs) == len(contract.transforms) == len(active)
+    assert len(contract.runtime_entries) == len(active)
+    assert sum(
+        transform.strategy == "wrapper_plus_transform"
+        for transform in contract.transforms
+    ) == 1
+    for transform in contract.transforms:
+        original = (project / transform.source_path).read_bytes()
+        portable = apply_portable_transform(original, transform)
+        assert not scan_executable_text(portable, context=transform.portable_path)
+        assert reverse_portable_transform(portable, transform) == original
 
 
 def make_transform(

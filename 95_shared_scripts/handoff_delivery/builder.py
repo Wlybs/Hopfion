@@ -45,6 +45,7 @@ from .portable import (
     _snapshot_delivery_descriptor,
     PortableContract,
     PortableError,
+    assemble_portable_contract,
     bind_initial_state_recipes_to_package,
     discover_full_field_consumers,
     load_field_consumer_registry,
@@ -2305,3 +2306,25 @@ def build_delivery(
             difference=difference,
         )
     return execute_build(plan, resume=resume)
+
+
+def build_production_delivery(
+    *,
+    project_root: Path | str,
+    old_delivery: Path | str,
+    destination: Path | str,
+    dry_run: bool = False,
+    resume: bool = False,
+) -> BuildResult:
+    """Assemble canonical production inputs, then use the sole builder path."""
+    project = Path(project_root).absolute()
+    inventory = enumerate_required_assets(project)
+    portable_contract = assemble_portable_contract(project, inventory)
+    return build_delivery(
+        project_root=project,
+        old_delivery=old_delivery,
+        destination=destination,
+        dry_run=dry_run,
+        resume=resume,
+        portable_contract=portable_contract,
+    )

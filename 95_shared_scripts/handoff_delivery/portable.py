@@ -3995,6 +3995,221 @@ def validate_portable_coverage(
 from .source_specs import RequiredAssetInventory
 
 
+_DIRECT_LOAD_LITERAL = re.compile(
+    rb'm\s*\.\s*LoadFile\s*\(\s*"(?P<path>[^"\r\n]+)"\s*\)'
+)
+_ARCHIVE_SOURCE_ASSIGNMENT = re.compile(
+    rb'(?m)^ARCHIVE_SOURCE[ \t]*=[ \t]*\([ \t\r\n]*'
+    rb'(?:r?"[^"\r\n]*"[ \t\r\n]*)+\)'
+)
+
+
+def _portable_target_paths(target_path: str, run_id: str) -> tuple[str, str, str]:
+    target = require_relative_path(target_path)
+    parent = target.parent
+    original = parent / "simulation" / "original" / target.name
+    portable = parent / "simulation" / "portable" / target.name
+    launcher = (
+        parent
+        / "simulation"
+        / "portable"
+        / f"launch_{target.stem}_{run_id}.py"
+    )
+    return original.as_posix(), portable.as_posix(), launcher.as_posix()
+
+
+def _direct_loader_replacements(payload: bytes, *, source_path: str) -> tuple[LiteralReplacement, ...]:
+    matches = tuple(_DIRECT_LOAD_LITERAL.finditer(payload))
+    if len(matches) != 1:
+        raise PortableError(
+            "active direct loader must contain exactly one literal m.LoadFile path: "
+            f"{source_path}"
+        )
+    old = matches[0].group("path")
+    return (
+        LiteralReplacement(
+            old=old,
+            new=b"${INIT_OVF}",
+            expected_count=payload.count(old),
+        ),
+    )
+
+
+def _python_string_assignment_value(
+    payload: bytes,
+    *,
+    name: bytes,
+    source_path: str,
+) -> bytes:
+    pattern = re.compile(
+        rb"(?m)^" + re.escape(name) + rb'[ \t]*=[ \t]*r?"(?P<value>[^"\r\n]+)"'
+    )
+    matches = tuple(pattern.finditer(payload))
+    if len(matches) != 1:
+        raise PortableError(
+            f"active archive consumer needs one {name.decode('ascii')} assignment: "
+            f"{source_path}"
+        )
+    return matches[0].group("value")
+
+
+def _thiele_archive_replacements(
+    payload: bytes,
+    *,
+    source_path: str,
+) -> tuple[LiteralReplacement, ...]:
+    archive_matches = tuple(_ARCHIVE_SOURCE_ASSIGNMENT.finditer(payload))
+    if len(archive_matches) != 1:
+        raise PortableError(
+            "active archive consumer needs one literal ARCHIVE_SOURCE assignment: "
+            f"{source_path}"
+        )
+    archive_assignment = archive_matches[0].group(0)
+    output_root = _python_string_assignment_value(
+        payload, name=b"OUT_DIR", source_path=source_path
+    )
+    tar_executable = _python_string_assignment_value(
+        payload, name=b"TAR_EXE", source_path=source_path
+    )
+    return (
+        LiteralReplacement(
+            archive_assignment,
+            b'ARCHIVE_SOURCE = "${ARCHIVE_SOURCE}"',
+            1,
+        ),
+        LiteralReplacement(output_root, b"${OUTPUT_ROOT}", payload.count(output_root)),
+        LiteralReplacement(tar_executable, b"${TAR_EXE}", payload.count(tar_executable)),
+    )
+
+
+def assemble_portable_contract(
+    project_root: Path | str,
+    required_assets: RequiredAssetInventory,
+) -> PortableContract:
+    """Assemble the production portable contract from canonical ledgers and bytes."""
+    project = Path(project_root).absolute()
+    ledger_root = project / "95_shared_scripts/handoff_delivery"
+    recipes = load_initial_state_recipes(
+        ledger_root / "initial_state_recipes.csv",
+        project_root=project,
+    )
+    consumers = load_field_consumer_registry(
+        ledger_root / "full_field_consumers.csv",
+        project_root=project,
+    )
+    assets = {row.source_path: row for row in required_assets}
+    runs: list[RunEntry] = []
+    transforms: list[PortableTransform] = []
+    runtimes: list[PortableRuntimeEntry] = []
+    wrappers: list[TemporaryDependencyContract] = []
+
+    for consumer in sorted(
+        (row for row in consumers if row.status == "active"),
+        key=lambda row: row.source_path,
+    ):
+        asset = assets.get(consumer.source_path)
+        if (
+            asset is None
+            or asset.disposition != "copied_active"
+            or asset.target_path is None
+        ):
+            raise PortableError(
+                "active portable consumer is unavailable in required assets: "
+                f"{consumer.source_path}"
+            )
+        payload = _read_path_anchored(
+            project / consumer.source_path,
+            label="active portable source",
+            project_root=project,
+        )
+        if hashlib.sha256(payload).hexdigest() != asset.sha256:
+            raise PortableError(
+                f"portable source SHA256 disagrees with inventory: {consumer.source_path}"
+            )
+        if consumer.portable_handling == "literal_transform" and consumer.roles == (
+            "direct_loader",
+        ):
+            replacements = _direct_loader_replacements(
+                payload, source_path=consumer.source_path
+            )
+            strategy = "literal_transform"
+            wrapper_id = "N/A"
+            mode: RuntimeMode = "direct_loader"
+            command_json = '["mumax3","{runtime_entry}"]'
+            runtime_tokens = ("INIT_OVF",)
+        elif consumer.portable_handling == "wrapper_plus_transform" and (
+            "archive_member_reader" in consumer.roles
+        ):
+            replacements = _thiele_archive_replacements(
+                payload, source_path=consumer.source_path
+            )
+            strategy = "wrapper_plus_transform"
+            wrapper_id = f"wrapper-{consumer.run_id}"
+            mode = "thiele_archive"
+            command_json = '["python3","{runtime_entry}"]'
+            runtime_tokens = ("ARCHIVE_SOURCE", "OUTPUT_ROOT", "TAR_EXE")
+        else:
+            raise PortableError(
+                f"unsupported production portable handling: {consumer.source_path}"
+            )
+        original_path, portable_path, launcher_path = _portable_target_paths(
+            asset.target_path, consumer.run_id
+        )
+        transform_id = f"transform-{consumer.run_id}"
+        transform = PortableTransform(
+            transform_id=transform_id,
+            run_id=consumer.run_id,
+            source_path=consumer.source_path,
+            original_path=original_path,
+            original_sha256=asset.sha256,
+            portable_path=portable_path,
+            replacements=replacements,
+            strategy=strategy,
+            wrapper_id=wrapper_id,
+        )
+        runs.append(RunEntry(consumer.run_id, "active", original_path, launcher_path))
+        transforms.append(transform)
+        runtimes.append(
+            PortableRuntimeEntry(
+                runtime_id=f"runtime-{consumer.run_id}",
+                source_path=consumer.source_path,
+                run_id=consumer.run_id,
+                transform_id=transform_id,
+                initial_state_recipe_id=consumer.initial_state_recipe_id,
+                runner_path=PORTABLE_RUNNER_PATH,
+                launcher_path=launcher_path,
+                mode=mode,
+                template_path=portable_path,
+                command_json=command_json,
+                runtime_tokens=runtime_tokens,
+            )
+        )
+        if strategy == "wrapper_plus_transform":
+            wrappers.append(
+                TemporaryDependencyContract(
+                    wrapper_id=wrapper_id,
+                    run_id=consumer.run_id,
+                    transform_id=transform_id,
+                    temporary_paths=(
+                        "input/m000020.ovf",
+                        "input/ovf_archive.tar.zst",
+                    ),
+                )
+            )
+
+    contract = PortableContract(
+        runs=tuple(runs),
+        transforms=tuple(transforms),
+        consumers=consumers,
+        recipes=recipes,
+        wrapper_contracts=tuple(wrappers),
+        config_toml=b'[runtime]\ntemp_prefix = "hopfion-portable-"\n',
+        runtime_entries=tuple(runtimes),
+    )
+    validate_portable_contract(contract, project_root=project)
+    return contract
+
+
 RecipePathField = Literal[
     "generator_script",
     "relaxation_mx3",

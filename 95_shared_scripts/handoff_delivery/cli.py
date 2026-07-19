@@ -16,7 +16,7 @@ from typing import Sequence
 from .builder import (
     BaselineEntry,
     BaselineSnapshot,
-    build_delivery,
+    build_production_delivery,
     capture_baseline,
     compare_baseline,
 )
@@ -98,7 +98,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps(asdict(difference), sort_keys=True, ensure_ascii=False))
             return 0 if difference.is_clean else 1
         if args.command == "build":
-            result = build_delivery(
+            result = build_production_delivery(
                 project_root=args.project_root,
                 old_delivery=args.old,
                 destination=args.output,
